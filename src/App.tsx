@@ -74,7 +74,7 @@ export default function App() {
       if (!silent) {
         setError(
           err?.message ||
-            'Impossibile scaricare i dati dal foglio Google. Sono mostrati i dati memorizzati in locale.'
+            'Impossibile scaricare i dati remoti. Vengono mostrati i dati di riserva salvati localmente.'
         );
       }
     } finally {
@@ -84,85 +84,43 @@ export default function App() {
     }
   };
 
-  // Caricamento iniziale all'avvio e sincronizzazione in tempo reale
+  // Caricamento iniziale e polling automatico ogni 5 minuti
   useEffect(() => {
-    // Controllo se è stato passato un link tramite parametro nell'URL (es. ?sheet=...)
-    let initialUrl = config.sheetUrl;
-    let initialTab = config.tabName;
+    refreshData(undefined, undefined, true);
 
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const urlParam = params.get('sheet') || params.get('csv') || params.get('url');
-      const tabParam = params.get('tab');
-      if (urlParam) {
-        initialUrl = urlParam;
-        initialTab = tabParam || config.tabName;
-        const newCfg = { ...config, sheetUrl: initialUrl, tabName: initialTab };
-        setConfig(newCfg);
-        saveStoredConfig(newCfg);
-      }
-    } catch (e) {
-      // Ignora se non accessibile
-    }
-
-    // Primo caricamento visibile
-    refreshData(initialUrl, initialTab);
-
-    // Sincronizzazione in tempo reale:
-    // 1. Polling automatico frequente (ogni 20 secondi) per rilevare modifiche sul foglio
-    const timer = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        refreshData(undefined, undefined, true);
-      }
-    }, 20000);
-
-    // 2. Ricarica istantanea non appena l'utente torna sulla pagina (es. dopo aver modificato il foglio in un'altra scheda)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refreshData(undefined, undefined, true);
-      }
-    };
-
-    const handleFocus = () => {
+    const intervalId = setInterval(() => {
       refreshData(undefined, undefined, true);
-    };
+    }, 5 * 60 * 1000);
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
+    return () => clearInterval(intervalId);
+  }, []);
 
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [config.sheetUrl, config.tabName]);
-
-  // Lista di tutti i campionati unici disponibili
+  // Categorie / Campionati unici per il filtro
   const availableCampionati = useMemo(() => {
-    const unique = Array.from<string>(new Set(partite.map(p => p.campionato.trim()).filter(Boolean)));
-    return unique.sort((a, b) => a.localeCompare(b, 'it'));
+    const list = Array.from(new Set(partite.map(p => p.campionato))).filter(Boolean);
+    return list.sort();
   }, [partite]);
 
-  // Lista di tutte le date uniche disponibili
+  // Date uniche per il filtro
   const availableDate = useMemo(() => {
-    const unique = Array.from<string>(new Set(partite.map(p => p.data.trim()).filter(Boolean)));
-    return unique;
+    const list = Array.from(new Set(partite.map(p => p.data))).filter(Boolean);
+    return list.sort();
   }, [partite]);
 
   // Partite filtrate
   const filteredPartite = useMemo(() => {
     return partite.filter(p => {
-      // Filtro per Campionato/Categoria
+      // Filtro Campionato
       if (filters.campionato !== 'ALL' && p.campionato !== filters.campionato) {
         return false;
       }
 
-      // Filtro per Data
+      // Filtro Data
       if (filters.data !== 'ALL' && p.data !== filters.data) {
         return false;
       }
 
-      // Filtro per Luogo (Casa o Trasferta)
+      // Filtro Casa / Trasferta
       if (filters.location === 'casa' && !p.isCynthiaCasa) {
         return false;
       }
@@ -195,7 +153,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-150">
       {/* Header Principale */}
       <Header
         lastUpdated={lastUpdated}
@@ -206,17 +164,17 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
         {/* Notifica di errore / avviso se presente */}
         {error && (
-          <div className="mb-5 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm flex items-start justify-between gap-3 shadow-xs animate-in fade-in">
+          <div className="mb-5 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs sm:text-sm flex items-start justify-between gap-3 shadow-xs animate-in fade-in">
             <div className="flex items-start gap-2.5">
-              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-amber-950">Avviso sincronizzazione</p>
-                <p className="text-amber-800 mt-0.5">{error}</p>
+                <p className="font-bold text-amber-950 dark:text-amber-100">Avviso sincronizzazione</p>
+                <p className="text-amber-800 dark:text-amber-300 mt-0.5">{error}</p>
               </div>
             </div>
             <button
               onClick={() => setError(null)}
-              className="text-xs font-bold text-amber-800 hover:text-amber-950 underline flex-shrink-0"
+              className="text-xs font-bold text-amber-800 dark:text-amber-300 hover:text-amber-950 dark:hover:text-amber-100 underline flex-shrink-0"
             >
               Chiudi
             </button>
@@ -238,12 +196,12 @@ export default function App() {
 
         {/* Visualizzazione Partite: Schede o Tabella */}
         {filteredPartite.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center shadow-xs my-6">
-            <div className="w-16 h-16 rounded-full bg-sky-50 text-sky-600 flex items-center justify-center mx-auto mb-3 text-2xl font-bold">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center shadow-xs my-6">
+            <div className="w-16 h-16 rounded-full bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400 flex items-center justify-center mx-auto mb-3 text-2xl font-bold">
               ⚽
             </div>
-            <h3 className="text-lg font-bold text-slate-800">Nessuna gara corrispondente ai filtri</h3>
-            <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Nessuna gara corrispondente ai filtri</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
               Non ci sono partite con i criteri di filtro o ricerca selezionati. Prova ad azzerare i filtri per vedere tutte le gare del weekend.
             </p>
             <button
@@ -275,13 +233,13 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-200/80 py-6 text-xs text-slate-500 mt-10">
+      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 py-6 text-xs text-slate-500 dark:text-slate-400 mt-10 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-lg bg-sky-700 text-white font-bold flex items-center justify-center text-xs">
               C
             </div>
-            <p className="font-semibold text-slate-700">
+            <p className="font-semibold text-slate-700 dark:text-slate-300">
               ASD Cynthia 1920 • Stadio Comunale Bruno Abbatini (Genzano di Roma)
             </p>
           </div>
@@ -291,16 +249,16 @@ export default function App() {
               href="https://github.com/pmonaldi68/ProgrammaGareCynthia1920_2026"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-slate-600 hover:text-sky-700 transition flex items-center gap-1"
+              className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 transition flex items-center gap-1"
             >
               Repository GitHub <ExternalLink className="w-3 h-3" />
             </a>
-            <span className="text-slate-300">•</span>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
             <a
               href="./standalone.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-slate-600 hover:text-sky-700 transition flex items-center gap-1"
+              className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 transition flex items-center gap-1"
             >
               Versione HTML Puro <FileCode className="w-3 h-3" />
             </a>

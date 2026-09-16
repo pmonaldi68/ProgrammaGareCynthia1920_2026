@@ -1,5 +1,6 @@
 import React from 'react';
-import { Shield, Share2, Printer, Calendar, Lock } from 'lucide-react';
+import { Shield, Share2, Printer, Calendar, Lock, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
   lastUpdated: string | null;
@@ -10,6 +11,8 @@ export const Header: React.FC<HeaderProps> = ({
   lastUpdated,
   onOpenAdmin,
 }) => {
+  const { resolvedTheme, toggleTheme } = useTheme();
+
   const handlePrint = () => {
     window.print();
   };
@@ -32,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="bg-gradient-to-r from-sky-900 via-sky-800 to-cyan-800 text-white shadow-lg border-b border-sky-700/50">
+    <header className="bg-gradient-to-r from-sky-900 via-sky-800 to-cyan-800 dark:from-slate-950 dark:via-sky-950 dark:to-slate-900 text-white shadow-lg border-b border-sky-700/50 dark:border-slate-800 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Logo & Titolo */}
@@ -55,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
                   Biancoazzurri
                 </span>
               </div>
-              <p className="text-sky-100/90 text-sm font-medium mt-0.5">
+              <p className="text-sky-100/90 dark:text-sky-200/90 text-sm font-medium mt-0.5">
                 Programma Gare del Fine Settimana • Genzano di Roma
               </p>
               {lastUpdated && (
@@ -75,6 +78,22 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Bottoni Azioni Rapide */}
           <div className="flex items-center justify-center gap-2 mt-1 sm:mt-0">
+            {/* Toggle Rapido Tema Dark / Light */}
+            <button
+              id="btn-header-theme"
+              type="button"
+              onClick={toggleTheme}
+              title={`Passa a tema ${resolvedTheme === 'dark' ? 'Chiaro' : 'Scuro'}`}
+              className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition border border-white/15 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            >
+              {resolvedTheme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-300" />
+              ) : (
+                <Moon className="w-4 h-4 text-sky-200" />
+              )}
+            </button>
+
+            {/* Pulsante Area Admin */}
             <button
               id="btn-header-admin"
               onClick={onOpenAdmin}
@@ -86,7 +105,7 @@ export const Header: React.FC<HeaderProps> = ({
               <Lock className="w-3.5 h-3.5 text-sky-200 ml-0.5 opacity-80" />
             </button>
 
-            <div className="flex items-center gap-1.5 pl-1 border-l border-sky-600/50">
+            <div className="flex items-center gap-1.5 pl-1 border-l border-sky-600/50 dark:border-slate-700">
               <button
                 id="btn-header-print"
                 onClick={handlePrint}
