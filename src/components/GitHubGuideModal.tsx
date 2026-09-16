@@ -11,8 +11,8 @@ export const GitHubGuideModal: React.FC<GitHubGuideModalProps> = ({ isOpen, onCl
 
   if (!isOpen) return null;
 
-  const repoUrl = 'https://github.com/pmonaldi68/ProgrammaGareCynthia1920_new';
-  const pagesUrl = 'https://pmonaldi68.github.io/ProgrammaGareCynthia1920_new/';
+  const repoUrl = 'https://github.com/pmonaldi68/ProgrammaGareCynthia1920_2026';
+  const pagesUrl = 'https://pmonaldi68.github.io/ProgrammaGareCynthia1920_2026/';
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -22,7 +22,7 @@ export const GitHubGuideModal: React.FC<GitHubGuideModalProps> = ({ isOpen, onCl
 
   const gitCommands = `# 1. Clona il repository se non lo hai ancora fatto:
 git clone ${repoUrl}.git
-cd ProgrammaGareCynthia1920_new
+cd ProgrammaGareCynthia1920_2026
 
 # 2. Se hai scaricato i file del progetto, copiali nella cartella
 git add .
@@ -61,7 +61,7 @@ git push origin main`;
                 <p className="text-xs font-bold text-slate-800 group-hover:text-sky-900 flex items-center gap-1">
                   Repository GitHub <ExternalLink className="w-3 h-3" />
                 </p>
-                <p className="text-xs text-slate-500 truncate mt-0.5">pmonaldi68/ProgrammaGareCynthia1920_new</p>
+                <p className="text-xs text-slate-500 truncate mt-0.5">pmonaldi68/ProgrammaGareCynthia1920_2026</p>
               </div>
             </a>
 

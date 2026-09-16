@@ -231,7 +231,7 @@ export default function App() {
 
           <div className="flex flex-wrap items-center gap-4 text-xs font-medium">
             <a
-              href="https://github.com/pmonaldi68/ProgrammaGareCynthia1920_new"
+              href="https://github.com/pmonaldi68/ProgrammaGareCynthia1920_2026"
               target="_blank"
               rel="noopener noreferrer"
               className="text-slate-600 hover:text-sky-700 transition flex items-center gap-1"
