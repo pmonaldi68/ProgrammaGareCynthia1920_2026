@@ -62,10 +62,16 @@ export const Header: React.FC<HeaderProps> = ({
                 Programma Gare del Fine Settimana • Genzano di Roma
               </p>
               {lastUpdated && (
-                <p className="text-sky-200/75 text-xs mt-1 flex items-center justify-center md:justify-start gap-1">
-                  <Calendar className="w-3.5 h-3.5" />
-                  Ultimo aggiornamento: <span className="font-semibold text-white">{lastUpdated}</span>
-                </p>
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-1">
+                  <p className="text-sky-200/75 text-xs flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5" />
+                    Ultimo controllo: <span className="font-semibold text-white">{lastUpdated}</span>
+                  </p>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-200 border border-emerald-400/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Live Sync attivo
+                  </span>
+                </div>
               )}
             </div>
           </div>

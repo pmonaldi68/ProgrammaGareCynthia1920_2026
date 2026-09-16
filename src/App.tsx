@@ -43,9 +43,10 @@ export default function App() {
   });
 
   // Funzione per caricare i dati
-  const refreshData = async (customSheetUrl?: string, customTab?: string) => {
-    setIsLoading(true);
-    setError(null);
+  const refreshData = async (customSheetUrl?: string, customTab?: string, silent: boolean = false) => {
+    if (!silent) {
+      setIsLoading(true);
+    }
     try {
       const urlToUse = customSheetUrl !== undefined ? customSheetUrl : config.sheetUrl;
       const tabToUse = customTab !== undefined ? customTab : config.tabName;
@@ -54,7 +55,13 @@ export default function App() {
       setPartite(loaded);
       saveCachedPartite(loaded);
 
-      const nowStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+      if ((loaded as any).fallbackWarning) {
+        setError((loaded as any).fallbackWarning);
+      } else {
+        setError(null);
+      }
+
+      const nowStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setLastUpdated(nowStr);
 
       const updatedConfig = { ...config, lastUpdated: nowStr };
@@ -62,35 +69,71 @@ export default function App() {
       saveStoredConfig(updatedConfig);
     } catch (err: any) {
       console.warn('Errore durante il recupero dei dati dal foglio:', err);
-      setError(
-        err?.message ||
-          'Impossibile scaricare i dati dal foglio Google. Sono mostrati i dati memorizzati in locale.'
-      );
+      if (!silent) {
+        setError(
+          err?.message ||
+            'Impossibile scaricare i dati dal foglio Google. Sono mostrati i dati memorizzati in locale.'
+        );
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
   };
 
-  // Caricamento iniziale all'avvio
+  // Caricamento iniziale all'avvio e sincronizzazione in tempo reale
   useEffect(() => {
     // Controllo se è stato passato un link tramite parametro nell'URL (es. ?sheet=...)
+    let initialUrl = config.sheetUrl;
+    let initialTab = config.tabName;
+
     try {
       const params = new URLSearchParams(window.location.search);
       const urlParam = params.get('sheet') || params.get('csv') || params.get('url');
       const tabParam = params.get('tab');
       if (urlParam) {
-        const newCfg = { ...config, sheetUrl: urlParam, tabName: tabParam || config.tabName };
+        initialUrl = urlParam;
+        initialTab = tabParam || config.tabName;
+        const newCfg = { ...config, sheetUrl: initialUrl, tabName: initialTab };
         setConfig(newCfg);
         saveStoredConfig(newCfg);
-        refreshData(urlParam, tabParam || config.tabName);
-        return;
       }
     } catch (e) {
       // Ignora se non accessibile
     }
 
-    refreshData();
-  }, []);
+    // Primo caricamento visibile
+    refreshData(initialUrl, initialTab);
+
+    // Sincronizzazione in tempo reale:
+    // 1. Polling automatico frequente (ogni 20 secondi) per rilevare modifiche sul foglio
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshData(undefined, undefined, true);
+      }
+    }, 20000);
+
+    // 2. Ricarica istantanea non appena l'utente torna sulla pagina (es. dopo aver modificato il foglio in un'altra scheda)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshData(undefined, undefined, true);
+      }
+    };
+
+    const handleFocus = () => {
+      refreshData(undefined, undefined, true);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [config.sheetUrl, config.tabName]);
 
   // Lista di tutti i campionati unici disponibili
   const availableCampionati = useMemo(() => {

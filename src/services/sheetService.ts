@@ -266,33 +266,81 @@ export async function fetchPartiteFromSource(sheetUrlOrId?: string, tabName?: st
     return DEFAULT_PARTITE;
   }
 
-  const csvUrl = buildCsvUrl(target, tabName);
+  const rawCsvUrl = buildCsvUrl(target, tabName);
+  const cacheBuster = `_cb=${Date.now()}`;
+  const csvUrl = rawCsvUrl.includes('?') ? `${rawCsvUrl}&${cacheBuster}` : `${rawCsvUrl}?${cacheBuster}`;
 
-  const response = await fetch(csvUrl, {
-    method: 'GET',
-    headers: {
-      Accept: 'text/csv, text/plain, */*',
-    },
-  });
+  try {
+    const response = await fetch(csvUrl, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        Accept: 'text/csv, text/plain, */*',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+      },
+    });
 
-  if (!response.ok) {
-    throw new Error(`Errore HTTP ${response.status}: Impossibile scaricare il foglio.`);
+    if (!response.ok) {
+      throw new Error(`Errore HTTP ${response.status}: Impossibile scaricare il foglio.`);
+    }
+
+    const csvText = await response.text();
+
+    if (
+      csvText.includes('<!DOCTYPE html') ||
+      csvText.includes('<html') ||
+      csvText.includes('Sign in to your Google Account') ||
+      csvText.includes('accounts.google.com')
+    ) {
+      throw new Error(
+        'Il foglio Google è privato o richiede l\'accesso con account Google. Nel foglio clicca su "Condividi" in alto a destra e imposta "Chiunque abbia il link" come Visualizzatore.'
+      );
+    }
+
+    const rows = parseCSV(csvText);
+
+    if (rows.length < 2) {
+      throw new Error('Il foglio scaricato non contiene abbastanza righe o intestazioni valide.');
+    }
+
+    const partite = mapCsvToPartite(rows);
+    if (partite.length === 0) {
+      throw new Error('Nessuna partita valida trovata nel foglio.');
+    }
+
+    saveCachedPartite(partite);
+    return partite;
+  } catch (error: any) {
+    console.warn('Errore nel download dal foglio Google:', error?.message);
+
+    // Fallback su ./data/partite.csv
+    try {
+      const localResp = await fetch('./data/partite.csv', { cache: 'no-cache' });
+      if (localResp.ok) {
+        const localText = await localResp.text();
+        const localRows = parseCSV(localText);
+        const localPartite = mapCsvToPartite(localRows);
+        if (localPartite.length > 0) {
+          saveCachedPartite(localPartite);
+          (localPartite as any).fallbackWarning = error?.message;
+          return localPartite;
+        }
+      }
+    } catch {
+      // Ignora errore fallback
+    }
+
+    const cached = loadCachedPartite();
+    if (cached && cached.length > 0) {
+      (cached as any).fallbackWarning = error?.message;
+      return cached;
+    }
+
+    const def = [...DEFAULT_PARTITE];
+    (def as any).fallbackWarning = error?.message;
+    return def;
   }
-
-  const csvText = await response.text();
-  const rows = parseCSV(csvText);
-
-  if (rows.length < 2) {
-    throw new Error('Il foglio scaricato non contiene abbastanza righe o intestazioni valide.');
-  }
-
-  const partite = mapCsvToPartite(rows);
-  if (partite.length === 0) {
-    throw new Error('Nessuna partita valida trovata nel foglio.');
-  }
-
-  saveCachedPartite(partite);
-  return partite;
 }
 
 /**
