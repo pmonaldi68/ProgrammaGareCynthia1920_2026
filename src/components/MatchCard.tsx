@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Partita } from '../types';
-import { MapPin, Navigation, Clock, Calendar, Shield, Copy, Check } from 'lucide-react';
+import { MapPin, Navigation, Clock, Calendar, Copy, Check } from 'lucide-react';
 
 interface MatchCardProps {
   partita: Partita;
@@ -60,27 +60,15 @@ export const MatchCard: React.FC<MatchCardProps> = ({ partita }) => {
         <div className="space-y-2 mb-4">
           {/* Squadra Casa */}
           <div
-            className={`p-3 rounded-xl flex items-center justify-between gap-2 border transition ${
+            className={`p-3 rounded-xl flex items-center justify-center text-center border transition ${
               partita.isCynthiaCasa
-                ? 'bg-sky-50/95 border-sky-300 text-sky-950 font-bold shadow-xs'
-                : 'bg-slate-50/90 border-slate-200/90 text-slate-800 font-semibold'
+                ? 'bg-sky-50/95 border-sky-300 text-sky-950 font-extrabold shadow-xs'
+                : 'bg-slate-50/90 border-slate-200/90 text-slate-800 font-bold'
             }`}
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <Shield
-                className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${
-                  partita.isCynthiaCasa ? 'text-sky-700 fill-sky-600' : 'text-slate-400'
-                }`}
-              />
-              <span className="truncate text-sm sm:text-base font-bold">{partita.squadraCasa}</span>
-            </div>
-            {partita.isCynthiaCasa ? (
-              <span className="flex-shrink-0 text-[11px] uppercase tracking-wider bg-sky-700 text-white font-black px-2 py-0.5 rounded-md">
-                CASA
-              </span>
-            ) : (
-              <span className="flex-shrink-0 text-[11px] text-slate-400 font-semibold">Casa</span>
-            )}
+            <span className="text-base sm:text-lg tracking-tight">
+              {partita.squadraCasa}
+            </span>
           </div>
 
           <div className="flex items-center justify-center -my-1 relative z-10">
@@ -91,27 +79,15 @@ export const MatchCard: React.FC<MatchCardProps> = ({ partita }) => {
 
           {/* Squadra Ospite */}
           <div
-            className={`p-3 rounded-xl flex items-center justify-between gap-2 border transition ${
+            className={`p-3 rounded-xl flex items-center justify-center text-center border transition ${
               partita.isCynthiaOspite
-                ? 'bg-sky-50/95 border-sky-300 text-sky-950 font-bold shadow-xs'
-                : 'bg-slate-50/90 border-slate-200/90 text-slate-800 font-semibold'
+                ? 'bg-sky-50/95 border-sky-300 text-sky-950 font-extrabold shadow-xs'
+                : 'bg-slate-50/90 border-slate-200/90 text-slate-800 font-bold'
             }`}
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <Shield
-                className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${
-                  partita.isCynthiaOspite ? 'text-sky-700 fill-sky-600' : 'text-slate-400'
-                }`}
-              />
-              <span className="truncate text-sm sm:text-base font-bold">{partita.squadraOspite}</span>
-            </div>
-            {partita.isCynthiaOspite ? (
-              <span className="flex-shrink-0 text-[11px] uppercase tracking-wider bg-sky-700 text-white font-black px-2 py-0.5 rounded-md">
-                TRASFERTA
-              </span>
-            ) : (
-              <span className="flex-shrink-0 text-[11px] text-slate-400 font-semibold">Fuori</span>
-            )}
+            <span className="text-base sm:text-lg tracking-tight">
+              {partita.squadraOspite}
+            </span>
           </div>
         </div>
 

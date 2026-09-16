@@ -1,6 +1,6 @@
 import React from 'react';
 import { Partita } from '../types';
-import { Navigation, ExternalLink, Shield } from 'lucide-react';
+import { Navigation, ExternalLink } from 'lucide-react';
 
 interface MatchTableProps {
   partite: Partita[];
@@ -64,43 +64,29 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
                 </td>
 
                 {/* SQUADRA CASA */}
-                <td className="py-3 px-4 whitespace-nowrap">
-                  <div className="flex items-center gap-1.5">
-                    <Shield
-                      className={`w-3.5 h-3.5 flex-shrink-0 ${
-                        p.isCynthiaCasa ? 'text-sky-700 fill-sky-600' : 'text-slate-300'
-                      }`}
-                    />
-                    <span
-                      className={`${
-                        p.isCynthiaCasa
-                          ? 'font-extrabold text-sky-900 bg-sky-100/70 px-2 py-0.5 rounded'
-                          : 'font-medium text-slate-800'
-                      }`}
-                    >
-                      {p.squadraCasa}
-                    </span>
-                  </div>
+                <td className="py-3.5 px-4 whitespace-nowrap">
+                  <span
+                    className={`inline-block ${
+                      p.isCynthiaCasa
+                        ? 'font-extrabold text-sky-950 bg-sky-100/90 px-2.5 py-1 rounded-lg border border-sky-200/80'
+                        : 'font-semibold text-slate-800'
+                    }`}
+                  >
+                    {p.squadraCasa}
+                  </span>
                 </td>
 
                 {/* SQUADRA OSPITE */}
-                <td className="py-3 px-4 whitespace-nowrap">
-                  <div className="flex items-center gap-1.5">
-                    <Shield
-                      className={`w-3.5 h-3.5 flex-shrink-0 ${
-                        p.isCynthiaOspite ? 'text-sky-700 fill-sky-600' : 'text-slate-300'
-                      }`}
-                    />
-                    <span
-                      className={`${
-                        p.isCynthiaOspite
-                          ? 'font-extrabold text-sky-900 bg-sky-100/70 px-2 py-0.5 rounded'
-                          : 'font-medium text-slate-800'
-                      }`}
-                    >
-                      {p.squadraOspite}
-                    </span>
-                  </div>
+                <td className="py-3.5 px-4 whitespace-nowrap">
+                  <span
+                    className={`inline-block ${
+                      p.isCynthiaOspite
+                        ? 'font-extrabold text-sky-950 bg-sky-100/90 px-2.5 py-1 rounded-lg border border-sky-200/80'
+                        : 'font-semibold text-slate-800'
+                    }`}
+                  >
+                    {p.squadraOspite}
+                  </span>
                 </td>
 
                 {/* CAMPO */}
