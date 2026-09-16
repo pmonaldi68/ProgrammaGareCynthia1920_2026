@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Programma Gare Cynthia 1920 - Single Page Pure HTML/JS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-sky-800 via-sky-700 to-cyan-700 text-white shadow-md">
+    <div class="max-w-6xl mx-auto px-4 py-6">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-full bg-white text-sky-800 font-extrabold flex items-center justify-center text-xl shadow">
+            C
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight">ASD CYNTHIA 1920</h1>
+            <p class="text-sky-100 text-sm">Programma Gare del Fine Settimana • Genzano di Roma</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-refresh" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition border border-white/20 flex items-center gap-1.5">
+            🔄 Aggiorna Dati
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Filter Controls -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Campionato / Categoria</label>
+          <select id="filter-campionato" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none">
+            <option value="ALL">Tutte le categorie</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Data Gara</label>
+          <select id="filter-data" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none">
+            <option value="ALL">Tutte le date</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Luogo</label>
+          <select id="filter-luogo" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none">
+            <option value="ALL">Tutte le partite</option>
+            <option value="CASA">Solo in Casa 🏠</option>
+            <option value="TRASFERTA">Solo Fuori Casa 🚌</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Cerca Squadra o Campo</label>
+          <input type="text" id="filter-search" placeholder="Es. Ostia, Abbatini, Velletri..." class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none">
+        </div>
+      </div>
+    </div>
+
+    <!-- Status / Count Bar -->
+    <div class="flex items-center justify-between mb-4">
+      <p id="match-counter" class="text-sm font-medium text-slate-600">Caricamento partite in corso...</p>
+      <div class="flex items-center gap-1 bg-slate-200 p-1 rounded-lg text-xs font-semibold">
+        <button id="view-cards-btn" class="px-2.5 py-1 rounded bg-white text-sky-800 shadow-sm">Schede</button>
+        <button id="view-table-btn" class="px-2.5 py-1 rounded text-slate-600 hover:text-slate-900">Tabella</button>
+      </div>
+    </div>
+
+    <!-- Cards Container -->
+    <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+    <!-- Table Container -->
+    <div id="table-container" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-100 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
+          <tr>
+            <th class="py-3 px-3">Campionato</th>
+            <th class="py-3 px-3">Girone</th>
+            <th class="py-3 px-3">Gara</th>
+            <th class="py-3 px-3">Data & Ora</th>
+            <th class="py-3 px-3">Squadra Casa</th>
+            <th class="py-3 px-3">Squadra Ospite</th>
+            <th class="py-3 px-3">Campo & Comune</th>
+            <th class="py-3 px-3">Mappa</th>
+          </tr>
+        </thead>
+        <tbody id="table-body" class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="hidden text-center py-12 bg-white rounded-xl border border-slate-200 p-6">
+      <div class="text-4xl mb-3">⚽</div>
+      <h3 class="text-lg font-bold text-slate-700">Nessuna partita trovata</h3>
+      <p class="text-sm text-slate-500 mt-1">Prova a cambiare i filtri o il termine di ricerca.</p>
+    </div>
+  </main>
+
+  <script>
+    // Configurazione predefinita e dati
+    const CSV_URL = './data/partite.csv';
+    let partiteData = [];
+    let currentView = 'cards';
+
+    async function loadData() {
+      try {
+        const resp = await fetch(CSV_URL + '?t=' + Date.now());
+        if (resp.ok) {
+          const text = await resp.text();
+          partiteData = parseCsv(text);
+          populateFilters();
+          render();
+          return;
+        }
+      } catch (e) {
+        console.warn('Caricamento CSV fallito, utilizzo dati locali di fallback', e);
+      }
+    }
+
+    function parseCsv(text) {
+      const lines = text.trim().split('\n');
+      if (lines.length < 2) return [];
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toUpperCase());
+      
+      const getIdx = (name) => headers.findIndex(h => h.includes(name));
+      const iCamp = getIdx('CAMPIONATO');
+      const iGir = getIdx('GIRONE');
+      const iGara = getIdx('GARA');
+      const iData = getIdx('DATA');
+      const iOra = getIdx('ORA');
+      const iCasa = getIdx('CASA');
+      const iOsp = getIdx('OSPITE');
+      const iCampo = getIdx('CAMPO');
+      const iTipo = getIdx('TIPO');
+      const iIndirizzo = getIdx('INDIRIZZO');
+      const iComune = getIdx('COMUNE');
+      const iMaps = getIdx('MAPS');
+
+      const items = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        // Basic CSV split
+        const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+        const casa = cols[iCasa] || '';
+        const ospite = cols[iOsp] || '';
+        const campo = cols[iCampo] || '';
+        const indirizzo = cols[iIndirizzo] || '';
+        const comune = cols[iComune] || '';
+        let maps = cols[iMaps] || '';
+        if (!maps) {
+          maps = 'https://maps.google.com/?q=' + encodeURIComponent([campo, indirizzo, comune].filter(Boolean).join(', '));
+        }
+
+        items.push({
+          campionato: cols[iCamp] || 'Campionato',
+          girone: cols[iGir] || '-',
+          gara: cols[iGara] || '',
+          data: cols[iData] || '',
+          ora: cols[iOra] || '',
+          squadraCasa: casa,
+          squadraOspite: ospite,
+          campo: campo,
+          tipo: cols[iTipo] || 'Sintetico',
+          indirizzo: indirizzo,
+          comune: comune,
+          lnkMaps: maps,
+          isCynthiaCasa: /cynthia/i.test(casa),
+          isCynthiaOspite: /cynthia/i.test(ospite)
+        });
+      }
+      return items;
+    }
+
+    function populateFilters() {
+      const campSelect = document.getElementById('filter-campionato');
+      const dataSelect = document.getElementById('filter-data');
+
+      const campionati = [...new Set(partiteData.map(p => p.campionato).filter(Boolean))].sort();
+      const dateList = [...new Set(partiteData.map(p => p.data).filter(Boolean))];
+
+      campSelect.innerHTML = '<option value="ALL">Tutte le categorie</option>' + 
+        campionati.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      dataSelect.innerHTML = '<option value="ALL">Tutte le date</option>' + 
+        dateList.map(d => `<option value="${d}">${d}</option>`).join('');
+    }
+
+    function getFilteredPartite() {
+      const camp = document.getElementById('filter-campionato').value;
+      const data = document.getElementById('filter-data').value;
+      const luogo = document.getElementById('filter-luogo').value;
+      const q = document.getElementById('filter-search').value.toLowerCase().trim();
+
+      return partiteData.filter(p => {
+        if (camp !== 'ALL' && p.campionato !== camp) return false;
+        if (data !== 'ALL' && p.data !== data) return false;
+        if (luogo === 'CASA' && !p.isCynthiaCasa) return false;
+        if (luogo === 'TRASFERTA' && !p.isCynthiaOspite) return false;
+        if (q) {
+          const matchStr = `${p.campionato} ${p.squadraCasa} ${p.squadraOspite} ${p.campo} ${p.comune}`.toLowerCase();
+          if (!matchStr.includes(q)) return false;
+        }
+        return true;
+      });
+    }
+
+    function render() {
+      const filtered = getFilteredPartite();
+      const counter = document.getElementById('match-counter');
+      const cardsContainer = document.getElementById('cards-container');
+      const tableBody = document.getElementById('table-body');
+      const emptyState = document.getElementById('empty-state');
+      const tableContainer = document.getElementById('table-container');
+
+      counter.textContent = `${filtered.length} ${filtered.length === 1 ? 'partita trovata' : 'partite in programma'}`;
+
+      if (filtered.length === 0) {
+        cardsContainer.classList.add('hidden');
+        tableContainer.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      if (currentView === 'cards') {
+        cardsContainer.classList.remove('hidden');
+        tableContainer.classList.add('hidden');
+        cardsContainer.innerHTML = filtered.map(p => `
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition">
+            <div class="bg-sky-50 px-4 py-2.5 border-b border-sky-100 flex items-center justify-between text-xs">
+              <span class="font-bold text-sky-900 uppercase">${p.campionato}</span>
+              <span class="text-sky-700 font-medium">${p.girone} ${p.gara ? '• ' + p.gara : ''}</span>
+            </div>
+            <div class="p-4">
+              <div class="flex items-center justify-between text-xs text-slate-500 font-medium mb-3">
+                <span class="flex items-center gap-1 font-semibold text-slate-700">📅 ${p.data}</span>
+                <span class="bg-amber-100 text-amber-900 px-2 py-0.5 rounded font-bold">⏰ ${p.ora}</span>
+              </div>
+              <div class="space-y-2 mb-4">
+                <div class="flex items-center justify-between p-2 rounded-lg ${p.isCynthiaCasa ? 'bg-sky-100/70 font-bold text-sky-950 border border-sky-200' : 'bg-slate-50 font-medium text-slate-800'}">
+                  <span>${p.squadraCasa}</span>
+                  ${p.isCynthiaCasa ? '<span class="text-[10px] bg-sky-600 text-white px-1.5 py-0.5 rounded">CASA</span>' : ''}
+                </div>
+                <div class="text-center text-xs font-black text-slate-400">VS</div>
+                <div class="flex items-center justify-between p-2 rounded-lg ${p.isCynthiaOspite ? 'bg-sky-100/70 font-bold text-sky-950 border border-sky-200' : 'bg-slate-50 font-medium text-slate-800'}">
+                  <span>${p.squadraOspite}</span>
+                  ${p.isCynthiaOspite ? '<span class="text-[10px] bg-sky-600 text-white px-1.5 py-0.5 rounded">FUORI</span>' : ''}
+                </div>
+              </div>
+              <div class="pt-3 border-t border-slate-100 text-xs text-slate-600 space-y-1">
+                <p class="font-semibold text-slate-800">📍 ${p.campo} <span class="text-slate-400">(${p.tipo})</span></p>
+                <p class="text-slate-500">${p.indirizzo} - ${p.comune}</p>
+              </div>
+              <div class="mt-3">
+                <a href="${p.lnkMaps}" target="_blank" rel="noopener noreferrer" class="block text-center w-full py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold rounded-lg transition">
+                  Apri su Google Maps 🗺️
+                </a>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        cardsContainer.classList.add('hidden');
+        tableContainer.classList.remove('hidden');
+        tableBody.innerHTML = filtered.map(p => `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-3 font-semibold text-sky-900">${p.campionato}</td>
+            <td class="py-3 px-3 text-slate-600">${p.girone}</td>
+            <td class="py-3 px-3 text-slate-600">${p.gara}</td>
+            <td class="py-3 px-3 whitespace-nowrap">
+              <span class="font-semibold text-slate-800">${p.data}</span>
+              <span class="text-amber-700 font-bold block text-xs">${p.ora}</span>
+            </td>
+            <td class="py-3 px-3 font-medium ${p.isCynthiaCasa ? 'text-sky-700 font-bold' : 'text-slate-800'}">${p.squadraCasa}</td>
+            <td class="py-3 px-3 font-medium ${p.isCynthiaOspite ? 'text-sky-700 font-bold' : 'text-slate-800'}">${p.squadraOspite}</td>
+            <td class="py-3 px-3 text-xs">
+              <span class="font-semibold text-slate-800 block">${p.campo}</span>
+              <span class="text-slate-500">${p.indirizzo}, ${p.comune} (${p.tipo})</span>
+            </td>
+            <td class="py-3 px-3">
+              <a href="${p.lnkMaps}" target="_blank" rel="noopener noreferrer" class="text-sky-600 hover:text-sky-800 font-semibold text-xs inline-flex items-center gap-1">
+                Mappa ↗
+              </a>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // Event listeners
+    document.getElementById('filter-campionato').addEventListener('change', render);
+    document.getElementById('filter-data').addEventListener('change', render);
+    document.getElementById('filter-luogo').addEventListener('change', render);
+    document.getElementById('filter-search').addEventListener('input', render);
+    document.getElementById('btn-refresh').addEventListener('click', loadData);
+
+    document.getElementById('view-cards-btn').addEventListener('click', () => {
+      currentView = 'cards';
+      document.getElementById('view-cards-btn').className = 'px-2.5 py-1 rounded bg-white text-sky-800 shadow-sm';
+      document.getElementById('view-table-btn').className = 'px-2.5 py-1 rounded text-slate-600 hover:text-slate-900';
+      render();
+    });
+
+    document.getElementById('view-table-btn').addEventListener('click', () => {
+      currentView = 'table';
+      document.getElementById('view-table-btn').className = 'px-2.5 py-1 rounded bg-white text-sky-800 shadow-sm';
+      document.getElementById('view-cards-btn').className = 'px-2.5 py-1 rounded text-slate-600 hover:text-slate-900';
+      render();
+    });
+
+    loadData();
+  </script>
+</body>
+</html>

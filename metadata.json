@@ -1,0 +1,6 @@
+{
+  "name": "Programma Gare Cynthia 1920",
+  "description": "Programma gare del fine settimana per ASD Cynthia 1920 calcio con dati da Google Sheets, filtri per campionato e data.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

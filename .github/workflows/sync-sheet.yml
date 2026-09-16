@@ -1,0 +1,42 @@
+name: Aggiorna Dati Google Sheets
+
+on:
+  schedule:
+    # Esegui ogni 3 ore (dal lunedì al venerdì) e ogni ora nel weekend
+    - cron: '0 */3 * * 1-5'
+    - cron: '0 * * * 6,0'
+  workflow_dispatch: # Permette anche di avviarlo a mano da GitHub
+
+permissions:
+  contents: write
+
+jobs:
+  sync-sheet:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Scarica dati aggiornati dal foglio Google
+        run: |
+          mkdir -p public/data
+          # Inserisci il link CSV pubblico del tuo Google Sheet oppure usa il secret GOOGLE_SHEET_CSV_URL
+          SHEET_URL="${{ secrets.GOOGLE_SHEET_CSV_URL }}"
+          if [ -z "$SHEET_URL" ]; then
+            echo "Nessun secret GOOGLE_SHEET_CSV_URL trovato, mantenimento file attuale."
+          else
+            echo "Scaricamento in corso da Google Sheets..."
+            curl -sSL "$SHEET_URL" -o public/data/partite.csv
+          fi
+
+      - name: Commit e push se ci sono modifiche
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add public/data/partite.csv
+          if git diff --staged --quiet; then
+            echo "Nessuna modifica rilevata nel calendario gare."
+          else
+            git commit -m "Aggiornamento automatico programma gare da Google Sheets"
+            git push
+          fi
