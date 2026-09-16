@@ -102,7 +102,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl px-3 py-3 sm:py-2.5 text-base sm:text-sm font-semibold text-slate-900 transition outline-none"
           >
             <option value="all">Tutte le partite</option>
-            <option value="casa">Solo in Casa 🏠 (Abbatini / Ciriaci)</option>
+            <option value="casa">Solo in Casa 🏠</option>
             <option value="trasferta">Solo in Trasferta 🚌</option>
           </select>
         </div>
