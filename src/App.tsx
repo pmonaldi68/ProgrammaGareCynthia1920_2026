@@ -15,6 +15,7 @@ import { MatchCard } from './components/MatchCard';
 import { MatchTable } from './components/MatchTable';
 import { SheetConfigModal } from './components/SheetConfigModal';
 import { GitHubGuideModal } from './components/GitHubGuideModal';
+import { AdminPanelModal } from './components/AdminPanelModal';
 import { AlertCircle, FileCode, RefreshCw, Calendar, MapPin, ExternalLink } from 'lucide-react';
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
   });
 
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
   const [isSheetModalOpen, setIsSheetModalOpen] = useState<boolean>(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState<boolean>(false);
 
@@ -196,11 +198,8 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       {/* Header Principale */}
       <Header
-        isLoading={isLoading}
         lastUpdated={lastUpdated}
-        onRefresh={() => refreshData()}
-        onOpenSheetConfig={() => setIsSheetModalOpen(true)}
-        onOpenGitHubGuide={() => setIsGitHubModalOpen(true)}
+        onOpenAdmin={() => setIsAdminModalOpen(true)}
       />
 
       {/* Contenuto Pagina */}
@@ -308,6 +307,17 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Modale Area Amministrazione Protetta */}
+      <AdminPanelModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+        isLoading={isLoading}
+        onRefresh={() => refreshData()}
+        onOpenSheetConfig={() => setIsSheetModalOpen(true)}
+        onOpenGitHubGuide={() => setIsGitHubModalOpen(true)}
+        sheetUrl={config.sheetUrl}
+      />
 
       {/* Modale Configurazione Google Sheets */}
       <SheetConfigModal

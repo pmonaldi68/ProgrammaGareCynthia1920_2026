@@ -34,31 +34,31 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
                 className="hover:bg-sky-50/40 transition duration-150 group"
               >
                 {/* CAMPIONATO */}
-                <td className="py-3 px-4 font-bold text-sky-950 whitespace-nowrap">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-sky-600"></span>
-                    <span>{p.campionato}</span>
+                <td className="py-3.5 px-4 font-black text-sky-950 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-sky-600"></span>
+                    <span className="text-base font-black tracking-tight">{p.campionato}</span>
                   </div>
                 </td>
 
                 {/* GIRONE */}
-                <td className="py-3 px-3 text-slate-600 whitespace-nowrap text-xs">
+                <td className="py-3.5 px-3 text-slate-600 whitespace-nowrap text-xs font-medium">
                   {p.girone || '-'}
                 </td>
 
                 {/* GARA */}
-                <td className="py-3 px-3 text-slate-600 whitespace-nowrap text-xs">
+                <td className="py-3.5 px-3 text-slate-600 whitespace-nowrap text-xs font-medium">
                   {p.gara || '-'}
                 </td>
 
                 {/* DATA */}
-                <td className="py-3 px-3 whitespace-nowrap font-semibold text-slate-900">
+                <td className="py-3.5 px-3 whitespace-nowrap font-bold text-slate-900 text-sm">
                   {p.data}
                 </td>
 
                 {/* ORA */}
-                <td className="py-3 px-3 whitespace-nowrap">
-                  <span className="inline-block px-2 py-0.5 rounded-md font-bold text-xs bg-amber-50 text-amber-900 border border-amber-200">
+                <td className="py-3.5 px-3 whitespace-nowrap">
+                  <span className="inline-block px-2.5 py-1 rounded-lg font-black text-sm bg-amber-500 text-white shadow-2xs">
                     {p.ora}
                   </span>
                 </td>

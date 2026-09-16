@@ -51,9 +51,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             id="filter-campionato-select"
             value={filters.campionato}
             onChange={e => onChangeFilters({ ...filters, campionato: e.target.value })}
-            className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-800 transition outline-none"
+            className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl px-3 py-3 sm:py-2.5 text-base sm:text-sm font-semibold text-slate-900 transition outline-none"
           >
-            <option value="ALL">Tutti i Campionati ({availableCampionati.length})</option>
+            <option value="ALL">Tutte le Categorie ({availableCampionati.length})</option>
             {availableCampionati.map(camp => (
               <option key={camp} value={camp}>
                 {camp}
@@ -75,7 +75,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             id="filter-data-select"
             value={filters.data}
             onChange={e => onChangeFilters({ ...filters, data: e.target.value })}
-            className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-800 transition outline-none"
+            className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl px-3 py-3 sm:py-2.5 text-base sm:text-sm font-semibold text-slate-900 transition outline-none"
           >
             <option value="ALL">Tutte le date</option>
             {availableDate.map(d => (
@@ -99,7 +99,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             id="filter-location-select"
             value={filters.location}
             onChange={e => onChangeFilters({ ...filters, location: e.target.value as LocationFilter })}
-            className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-800 transition outline-none"
+            className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl px-3 py-3 sm:py-2.5 text-base sm:text-sm font-semibold text-slate-900 transition outline-none"
           >
             <option value="all">Tutte le partite</option>
             <option value="casa">Solo in Casa 🏠 (Abbatini / Ciriaci)</option>
@@ -122,17 +122,17 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               type="text"
               value={filters.search}
               onChange={e => onChangeFilters({ ...filters, search: e.target.value })}
-              placeholder="Es. Ostia, Velletri, Abbatini..."
-              className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl pl-9 pr-8 py-2.5 text-sm font-medium text-slate-800 transition outline-none"
+              placeholder="Es. Under 16, Ostia, Abbatini..."
+              className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl pl-9 pr-8 py-3 sm:py-2.5 text-base sm:text-sm font-medium text-slate-900 transition outline-none"
             />
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5 sm:top-3" />
             {filters.search && (
               <button
                 type="button"
                 onClick={() => onChangeFilters({ ...filters, search: '' })}
-                className="absolute right-2.5 top-2.5 p-0.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-200"
+                className="absolute right-2.5 top-3 sm:top-2.5 p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-200"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>

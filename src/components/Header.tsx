@@ -1,20 +1,14 @@
 import React from 'react';
-import { RefreshCw, Sheet, Github, Share2, Printer, ExternalLink, Calendar } from 'lucide-react';
+import { Shield, Share2, Printer, Calendar, Lock } from 'lucide-react';
 
 interface HeaderProps {
-  isLoading: boolean;
   lastUpdated: string | null;
-  onRefresh: () => void;
-  onOpenSheetConfig: () => void;
-  onOpenGitHubGuide: () => void;
+  onOpenAdmin: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  isLoading,
   lastUpdated,
-  onRefresh,
-  onOpenSheetConfig,
-  onOpenGitHubGuide,
+  onOpenAdmin,
 }) => {
   const handlePrint = () => {
     window.print();
@@ -44,10 +38,13 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Logo & Titolo */}
           <div className="flex items-center gap-4 text-center md:text-left">
             <div className="relative flex-shrink-0">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white text-sky-800 flex items-center justify-center font-black text-2xl sm:text-3xl shadow-md border-2 border-sky-200">
-                <span className="tracking-tighter text-sky-700">C</span>
-                <span className="text-xs absolute bottom-1 text-sky-600 font-bold tracking-widest">1920</span>
-              </div>
+              <img
+                id="header-cynthia-logo"
+                src="./assets/cynthia_logo.png"
+                alt="Stemma ASD Cynthia 1920"
+                className="h-16 w-auto sm:h-20 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.4)] transition-transform hover:scale-105"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
@@ -77,55 +74,34 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Bottoni Azioni Rapide */}
-          <div className="flex flex-wrap items-center justify-center gap-2">
+          <div className="flex items-center justify-center gap-2 mt-1 sm:mt-0">
             <button
-              id="btn-header-refresh"
-              onClick={onRefresh}
-              disabled={isLoading}
-              title="Aggiorna i dati dal foglio"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-sky-700/80 hover:bg-sky-600 text-white border border-sky-500/40 shadow-sm transition disabled:opacity-50"
+              id="btn-header-admin"
+              onClick={onOpenAdmin}
+              title="Area Amministrazione protetta"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-white/15 hover:bg-white/25 active:scale-[0.98] text-white border border-white/25 shadow-sm transition min-h-[44px]"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-              <span>{isLoading ? 'Caricamento...' : 'Aggiorna'}</span>
+              <Shield className="w-4 h-4 text-amber-300" />
+              <span>Area Admin</span>
+              <Lock className="w-3.5 h-3.5 text-sky-200 ml-0.5 opacity-80" />
             </button>
 
-            <button
-              id="btn-header-sheet"
-              onClick={onOpenSheetConfig}
-              title="Configura Google Sheets"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/20 shadow-sm transition"
-            >
-              <Sheet className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Google Sheets</span>
-            </button>
-
-            <button
-              id="btn-header-github"
-              onClick={onOpenGitHubGuide}
-              title="Info GitHub & Actions"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/20 shadow-sm transition"
-            >
-              <Github className="w-3.5 h-3.5 text-slate-200" />
-              <span className="hidden sm:inline">GitHub Actions</span>
-              <span className="sm:hidden">GitHub</span>
-            </button>
-
-            <div className="flex items-center gap-1 pl-1 border-l border-sky-600/50">
+            <div className="flex items-center gap-1.5 pl-1 border-l border-sky-600/50">
               <button
                 id="btn-header-print"
                 onClick={handlePrint}
                 title="Stampa programma gare"
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition border border-white/15"
+                className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition border border-white/15 min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
-                <Printer className="w-3.5 h-3.5" />
+                <Printer className="w-4 h-4" />
               </button>
               <button
                 id="btn-header-share"
                 onClick={handleShare}
                 title="Condividi o copia link"
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition border border-white/15"
+                className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition border border-white/15 min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
-                <Share2 className="w-3.5 h-3.5" />
+                <Share2 className="w-4 h-4" />
               </button>
             </div>
           </div>
