@@ -35,6 +35,8 @@ jobs:
         run: npm install
 
       - name: Build static website
+        env:
+          VITE_SHEET_URL: ${{ secrets.GOOGLE_SHEET_CSV_URL }}
         run: npm run build
 
       - name: Setup Pages

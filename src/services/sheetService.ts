@@ -1,14 +1,15 @@
 import { Partita, SheetConfig } from '../types';
 import { DEFAULT_PARTITE } from '../data/defaultPartite';
+import { APP_CONFIG } from '../appConfig';
 
 const CONFIG_STORAGE_KEY = 'cynthia_sheet_config_v1';
 const DATA_STORAGE_KEY = 'cynthia_partite_cache_v1';
 
 export const DEFAULT_CONFIG: SheetConfig = {
-  sheetUrl: '',
+  sheetUrl: APP_CONFIG.defaultSheetUrl || '',
   sheetId: '',
-  tabName: '',
-  autoRefreshInterval: 5,
+  tabName: APP_CONFIG.defaultTabName || '',
+  autoRefreshInterval: APP_CONFIG.autoRefreshInterval || 5,
   lastUpdated: null,
 };
 
@@ -16,7 +17,13 @@ export function loadStoredConfig(): SheetConfig {
   try {
     const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
     if (raw) {
-      return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+      const parsed = JSON.parse(raw);
+      return {
+        ...DEFAULT_CONFIG,
+        ...parsed,
+        // Se c'è un defaultUrl hardcoded nel codice ma il localStorage è vuoto o ha un url vuoto, preferisci il default
+        sheetUrl: parsed.sheetUrl || APP_CONFIG.defaultSheetUrl || '',
+      };
     }
   } catch (e) {
     console.warn('Impossibile caricare configurazione salvata', e);

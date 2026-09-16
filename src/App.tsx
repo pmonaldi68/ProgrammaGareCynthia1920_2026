@@ -73,7 +73,22 @@ export default function App() {
 
   // Caricamento iniziale all'avvio
   useEffect(() => {
-    // Se c'è una configurazione di URL oppure per verificare il file locale sincronizzato
+    // Controllo se è stato passato un link tramite parametro nell'URL (es. ?sheet=...)
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlParam = params.get('sheet') || params.get('csv') || params.get('url');
+      const tabParam = params.get('tab');
+      if (urlParam) {
+        const newCfg = { ...config, sheetUrl: urlParam, tabName: tabParam || config.tabName };
+        setConfig(newCfg);
+        saveStoredConfig(newCfg);
+        refreshData(urlParam, tabParam || config.tabName);
+        return;
+      }
+    } catch (e) {
+      // Ignora se non accessibile
+    }
+
     refreshData();
   }, []);
 
