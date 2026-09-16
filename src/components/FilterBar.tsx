@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FilterState, ViewMode, LocationFilter } from '../types';
-import { Search, Filter, Calendar, MapPin, LayoutGrid, Table, X, CalendarDays, ArrowRight } from 'lucide-react';
+import { Search, Filter, Calendar, MapPin, LayoutGrid, Table, X, CalendarDays, ArrowRight, FileDown } from 'lucide-react';
 
 interface FilterBarProps {
   filters: FilterState;
@@ -9,6 +9,7 @@ interface FilterBarProps {
   availableDate: string[];
   viewMode: ViewMode;
   onChangeViewMode: (mode: ViewMode) => void;
+  onOpenPdfExport: () => void;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -18,6 +19,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   availableDate,
   viewMode,
   onChangeViewMode,
+  onOpenPdfExport,
 }) => {
   const [showDatePicker, setShowDatePicker] = useState<boolean>(
     Boolean(filters.startDate || filters.endDate)
@@ -256,32 +258,47 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           )}
         </div>
 
-        {/* Switch Vista */}
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+        {/* Azioni: Report PDF & Switch Vista */}
+        <div className="flex items-center gap-2">
+          {/* Pulsante Esporta / Report PDF */}
           <button
-            id="btn-view-cards"
-            onClick={() => onChangeViewMode('cards')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-              viewMode === 'cards'
-                ? 'bg-white dark:bg-slate-700 text-sky-800 dark:text-sky-200 shadow-xs border border-slate-200/60 dark:border-slate-600 font-bold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
+            id="btn-filterbar-export-pdf"
+            type="button"
+            onClick={onOpenPdfExport}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-sky-700 hover:bg-sky-800 active:scale-[0.98] text-white shadow-2xs transition"
+            title="Genera e scarica il report PDF settimanale per stampa o WhatsApp"
           >
-            <LayoutGrid className="w-3.5 h-3.5" />
-            <span>Schede</span>
+            <FileDown className="w-3.5 h-3.5 text-sky-200" />
+            <span>Report PDF</span>
           </button>
-          <button
-            id="btn-view-table"
-            onClick={() => onChangeViewMode('table')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-              viewMode === 'table'
-                ? 'bg-white dark:bg-slate-700 text-sky-800 dark:text-sky-200 shadow-xs border border-slate-200/60 dark:border-slate-600 font-bold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <Table className="w-3.5 h-3.5" />
-            <span>Tabella</span>
-          </button>
+
+          {/* Switch Vista */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+            <button
+              id="btn-view-cards"
+              onClick={() => onChangeViewMode('cards')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                viewMode === 'cards'
+                  ? 'bg-white dark:bg-slate-700 text-sky-800 dark:text-sky-200 shadow-xs border border-slate-200/60 dark:border-slate-600 font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Schede</span>
+            </button>
+            <button
+              id="btn-view-table"
+              onClick={() => onChangeViewMode('table')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-slate-700 text-sky-800 dark:text-sky-200 shadow-xs border border-slate-200/60 dark:border-slate-600 font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Table className="w-3.5 h-3.5" />
+              <span>Tabella</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

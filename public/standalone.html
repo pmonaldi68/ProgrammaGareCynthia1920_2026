@@ -8,6 +8,17 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    @media print {
+      body { background: #fff !important; color: #000 !important; font-size: 10pt; }
+      header { background: #0c4a6e !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      #filter-card, .no-print { display: none !important; }
+      #table-container { display: block !important; border: 1px solid #cbd5e1 !important; box-shadow: none !important; }
+      #cards-container { display: none !important; }
+      table { width: 100% !important; border-collapse: collapse !important; }
+      th, td { border: 1px solid #e2e8f0 !important; padding: 4px 6px !important; font-size: 8.5pt !important; }
+      th { background-color: #0c4a6e !important; color: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -24,8 +35,14 @@
             <p class="text-sky-100 text-sm">Programma Gare del Fine Settimana • Genzano di Roma</p>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button id="btn-refresh" class="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition border border-white/20 flex items-center gap-1.5">
+        <div class="flex items-center gap-2 flex-wrap">
+          <button id="btn-pdf-print" title="Genera e scarica / stampa il report PDF settimanale" class="no-print bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition shadow-sm flex items-center gap-1.5">
+            📄 Report PDF / Stampa
+          </button>
+          <button id="btn-whatsapp-share" title="Condividi il programma gare su WhatsApp" class="no-print bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold transition shadow-sm flex items-center gap-1.5">
+            💬 WhatsApp
+          </button>
+          <button id="btn-refresh" class="no-print bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition border border-white/20 flex items-center gap-1.5">
             🔄 Aggiorna Dati
           </button>
         </div>
@@ -36,7 +53,7 @@
   <!-- Main Container -->
   <main class="max-w-6xl mx-auto px-4 py-6">
     <!-- Filter Controls -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+    <div id="filter-card" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div>
           <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Campionato / Categoria</label>
@@ -375,6 +392,38 @@
       document.getElementById('view-table-btn').className = 'px-2.5 py-1 rounded bg-white text-sky-800 shadow-sm';
       document.getElementById('view-cards-btn').className = 'px-2.5 py-1 rounded text-slate-600 hover:text-slate-900';
       render();
+    });
+
+    document.getElementById('btn-pdf-print').addEventListener('click', () => {
+      // Passa a vista tabella per massima leggibilità su stampa o salvataggio PDF
+      currentView = 'table';
+      document.getElementById('view-table-btn').className = 'px-2.5 py-1 rounded bg-white text-sky-800 shadow-sm';
+      document.getElementById('view-cards-btn').className = 'px-2.5 py-1 rounded text-slate-600 hover:text-slate-900';
+      render();
+      setTimeout(() => {
+        window.print();
+      }, 200);
+    });
+
+    document.getElementById('btn-whatsapp-share').addEventListener('click', () => {
+      const filtered = getFilteredPartite();
+      if (!filtered.length) {
+        alert('Nessuna partita da condividere con i filtri attuali.');
+        return;
+      }
+      let msg = '⚽ *ASD CYNTHIA 1920 - PROGRAMMA GARE SETTIMANALE*\n';
+      msg += `📅 Weekend Gare • ${filtered.length} Partite in programma\n`;
+      msg += '────────────────────────────\n\n';
+      filtered.forEach(p => {
+        msg += `🗓️ *${p.data}* (ore *${p.ora}*) - *${p.campionato}*\n`;
+        msg += `⚔️ ${p.squadraCasa} vs ${p.squadraOspite}\n`;
+        msg += `📍 ${p.campo} (${p.comune})\n`;
+        if (p.lnkMaps) msg += `🗺️ ${p.lnkMaps}\n`;
+        msg += '\n';
+      });
+      msg += '💙🤍 Forza Cynthia 1920!';
+      const waUrl = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(msg);
+      window.open(waUrl, '_blank');
     });
 
     loadData();

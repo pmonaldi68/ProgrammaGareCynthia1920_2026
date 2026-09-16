@@ -16,6 +16,7 @@ import {
   Moon,
   Laptop,
   BellRing,
+  FileDown,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { sendWebNotification, requestNotificationPermission } from '../services/notificationService';
@@ -27,6 +28,7 @@ interface AdminPanelModalProps {
   onRefresh: () => void;
   onOpenSheetConfig: () => void;
   onOpenGitHubGuide: () => void;
+  onOpenPdfExport?: () => void;
   sheetUrl: string;
 }
 
@@ -40,6 +42,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onRefresh,
   onOpenSheetConfig,
   onOpenGitHubGuide,
+  onOpenPdfExport,
   sheetUrl,
 }) => {
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -365,6 +368,36 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     Test
                   </span>
                 </button>
+
+                {/* 5. Genera Report PDF Settimanale */}
+                {onOpenPdfExport && (
+                  <button
+                    id="admin-btn-export-pdf"
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenPdfExport();
+                    }}
+                    className="flex items-center justify-between p-3.5 rounded-xl border border-sky-200 dark:border-sky-800/80 bg-sky-50/60 dark:bg-sky-950/20 hover:bg-sky-100/60 dark:hover:bg-sky-900/30 text-left transition group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-sky-700 text-white shadow-sm">
+                        <FileDown className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800 dark:text-slate-100 group-hover:text-slate-900 dark:group-hover:text-white">
+                          Genera e Scarica Report PDF Settimanale
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          Formatta per stampa A4 o condivisione rapida su gruppi WhatsApp
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-sky-700 dark:text-sky-300 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-sky-300 dark:border-sky-700 shadow-2xs">
+                      PDF
+                    </span>
+                  </button>
+                )}
               </div>
 
               {sheetUrl && (

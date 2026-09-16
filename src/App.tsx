@@ -22,6 +22,7 @@ import { SheetConfigModal } from './components/SheetConfigModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { GitHubGuideModal } from './components/GitHubGuideModal';
 import { NotificationModal } from './components/NotificationModal';
+import { PdfExportModal } from './components/PdfExportModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
 import { AlertCircle, ExternalLink, FileCode, BellRing, X } from 'lucide-react';
 
@@ -43,6 +44,7 @@ export default function App() {
   const [isSheetModalOpen, setIsSheetModalOpen] = useState<boolean>(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState<boolean>(false);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState<boolean>(false);
   const [recentVariations, setRecentVariations] = useState<MatchVariation[]>([]);
   const [bannerVariation, setBannerVariation] = useState<MatchVariation | null>(null);
 
@@ -205,6 +207,7 @@ export default function App() {
         lastUpdated={lastUpdated}
         onOpenAdmin={() => setIsAdminModalOpen(true)}
         onOpenNotifications={() => setIsNotificationModalOpen(true)}
+        onOpenPdfExport={() => setIsPdfModalOpen(true)}
         hasFollowedCategories={hasFollowed}
       />
 
@@ -276,6 +279,7 @@ export default function App() {
           availableDate={availableDate}
           viewMode={viewMode}
           onChangeViewMode={setViewMode}
+          onOpenPdfExport={() => setIsPdfModalOpen(true)}
         />
 
         {/* Visualizzazione Partite: Schede o Tabella */}
@@ -333,6 +337,15 @@ export default function App() {
           <div className="flex flex-wrap items-center gap-4 text-xs font-medium">
             <button
               type="button"
+              onClick={() => setIsPdfModalOpen(true)}
+              className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 transition flex items-center gap-1 font-semibold"
+            >
+              <FileCode className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+              Report PDF Settimanale
+            </button>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <button
+              type="button"
               onClick={() => setIsNotificationModalOpen(true)}
               className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 transition flex items-center gap-1 font-semibold"
             >
@@ -361,6 +374,22 @@ export default function App() {
         </div>
       </footer>
 
+      {/* Modale Esportazione e Stampa Report PDF Settimanale */}
+      <PdfExportModal
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        allPartite={partite}
+        filteredPartite={filteredPartite}
+        hasActiveFilters={
+          filters.campionato !== 'ALL' ||
+          filters.data !== 'ALL' ||
+          Boolean(filters.startDate) ||
+          Boolean(filters.endDate) ||
+          filters.location !== 'all' ||
+          Boolean(filters.search)
+        }
+      />
+
       {/* Modale Gestione Notifiche Variazioni Web Push */}
       <NotificationModal
         isOpen={isNotificationModalOpen}
@@ -377,6 +406,7 @@ export default function App() {
         onRefresh={() => refreshData()}
         onOpenSheetConfig={() => setIsSheetModalOpen(true)}
         onOpenGitHubGuide={() => setIsGitHubModalOpen(true)}
+        onOpenPdfExport={() => setIsPdfModalOpen(true)}
         sheetUrl={config.sheetUrl}
       />
 

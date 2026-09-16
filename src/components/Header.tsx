@@ -1,11 +1,12 @@
 import React from 'react';
-import { Shield, Calendar, Lock, Sun, Moon, Bell } from 'lucide-react';
+import { Shield, Calendar, Lock, Sun, Moon, Bell, FileDown } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
   lastUpdated: string | null;
   onOpenAdmin: () => void;
   onOpenNotifications: () => void;
+  onOpenPdfExport?: () => void;
   hasFollowedCategories?: boolean;
 }
 
@@ -13,6 +14,7 @@ export const Header: React.FC<HeaderProps> = ({
   lastUpdated,
   onOpenAdmin,
   onOpenNotifications,
+  onOpenPdfExport,
   hasFollowedCategories = false,
 }) => {
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -61,6 +63,20 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Bottoni Azioni Rapide */}
           <div className="flex items-center justify-center gap-2 mt-1 sm:mt-0">
+            {/* Pulsante Report PDF */}
+            {onOpenPdfExport && (
+              <button
+                id="btn-header-pdf"
+                type="button"
+                onClick={onOpenPdfExport}
+                title="Scarica il programma gare settimanale in PDF o condividi su WhatsApp"
+                className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-[0.98] text-white transition border border-white/15 min-h-[44px]"
+              >
+                <FileDown className="w-4 h-4 text-amber-300" />
+                <span className="text-xs sm:text-sm font-bold hidden sm:inline">Report PDF</span>
+              </button>
+            )}
+
             {/* Pulsante Notifiche Variazioni Web Push */}
             <button
               id="btn-header-notifications"
