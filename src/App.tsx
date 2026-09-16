@@ -1,32 +1,38 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Partita, FilterState, ViewMode, SheetConfig } from './types';
+import { Partita, SheetConfig, FilterState, ViewMode, MatchVariation } from './types';
 import {
+  fetchPartiteFromSource,
   loadStoredConfig,
   saveStoredConfig,
   loadCachedPartite,
   saveCachedPartite,
-  fetchPartiteFromSource,
 } from './services/sheetService';
-import { DEFAULT_PARTITE } from './data/defaultPartite';
+import {
+  registerServiceWorker,
+  getFollowedCategories,
+  checkPartiteVariations,
+} from './services/notificationService';
+import { getMatchIsoDate } from './utils/calendarUtils';
 import { Header } from './components/Header';
 import { StatsSummary } from './components/StatsSummary';
 import { FilterBar } from './components/FilterBar';
 import { MatchCard } from './components/MatchCard';
 import { MatchTable } from './components/MatchTable';
 import { SheetConfigModal } from './components/SheetConfigModal';
-import { GitHubGuideModal } from './components/GitHubGuideModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
-import { AlertCircle, FileCode, RefreshCw, Calendar, MapPin, ExternalLink } from 'lucide-react';
+import { GitHubGuideModal } from './components/GitHubGuideModal';
+import { NotificationModal } from './components/NotificationModal';
+import { DEFAULT_PARTITE } from './data/defaultPartite';
+import { AlertCircle, ExternalLink, FileCode, BellRing, X } from 'lucide-react';
 
 export default function App() {
-  const [config, setConfig] = useState<SheetConfig>(() => loadStoredConfig());
+  const [config, setConfig] = useState<SheetConfig>(loadStoredConfig);
   const [partite, setPartite] = useState<Partita[]>(() => {
-    const cached = loadCachedPartite();
-    return cached && cached.length > 0 ? cached : DEFAULT_PARTITE;
+    return loadCachedPartite() || DEFAULT_PARTITE;
   });
-
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
   const [lastUpdated, setLastUpdated] = useState<string | null>(() => {
     const cfg = loadStoredConfig();
     return cfg.lastUpdated || new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
@@ -36,15 +42,25 @@ export default function App() {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
   const [isSheetModalOpen, setIsSheetModalOpen] = useState<boolean>(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState<boolean>(false);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
+  const [recentVariations, setRecentVariations] = useState<MatchVariation[]>([]);
+  const [bannerVariation, setBannerVariation] = useState<MatchVariation | null>(null);
 
   const [filters, setFilters] = useState<FilterState>({
     campionato: 'ALL',
     data: 'ALL',
+    startDate: '',
+    endDate: '',
     location: 'all',
     search: '',
   });
 
-  // Funzione per caricare i dati
+  // Registrazione iniziale del Service Worker per Web Push
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
+
+  // Funzione per caricare i dati e verificare variazioni per le categorie seguite
   const refreshData = async (customSheetUrl?: string, customTab?: string, silent: boolean = false) => {
     if (!silent) {
       setIsLoading(true);
@@ -54,6 +70,15 @@ export default function App() {
       const tabToUse = customTab !== undefined ? customTab : config.tabName;
 
       const loaded = await fetchPartiteFromSource(urlToUse, tabToUse);
+
+      // Controllo variazioni di orario o di campo rispetto ai dati precedenti salvati
+      const followed = getFollowedCategories();
+      const detectedVariations = checkPartiteVariations(loaded, followed);
+      if (detectedVariations.length > 0) {
+        setRecentVariations(prev => [...detectedVariations, ...prev]);
+        setBannerVariation(detectedVariations[0]);
+      }
+
       setPartite(loaded);
       saveCachedPartite(loaded);
 
@@ -107,7 +132,7 @@ export default function App() {
     return list.sort();
   }, [partite]);
 
-  // Partite filtrate
+  // Partite filtrate (supporta Categoria, Data predefinita, Intervallo Date Picker Da/A, Casa/Fuori, Ricerca)
   const filteredPartite = useMemo(() => {
     return partite.filter(p => {
       // Filtro Campionato
@@ -115,9 +140,22 @@ export default function App() {
         return false;
       }
 
-      // Filtro Data
+      // Filtro Data predefinita (selezionata dal menu a tendina classico)
       if (filters.data !== 'ALL' && p.data !== filters.data) {
         return false;
+      }
+
+      // Filtro Intervallo Date (Date Picker personalizzato Da / A)
+      if (filters.startDate || filters.endDate) {
+        const matchIso = getMatchIsoDate(p.data);
+        if (matchIso) {
+          if (filters.startDate && matchIso < filters.startDate) {
+            return false;
+          }
+          if (filters.endDate && matchIso > filters.endDate) {
+            return false;
+          }
+        }
       }
 
       // Filtro Casa / Trasferta
@@ -147,10 +185,18 @@ export default function App() {
   };
 
   const handleApplyPartite = (newPartite: Partita[]) => {
+    const followed = getFollowedCategories();
+    const detectedVariations = checkPartiteVariations(newPartite, followed);
+    if (detectedVariations.length > 0) {
+      setRecentVariations(prev => [...detectedVariations, ...prev]);
+      setBannerVariation(detectedVariations[0]);
+    }
     setPartite(newPartite);
     const nowStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
     setLastUpdated(nowStr);
   };
+
+  const hasFollowed = getFollowedCategories().length > 0;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-150">
@@ -158,10 +204,48 @@ export default function App() {
       <Header
         lastUpdated={lastUpdated}
         onOpenAdmin={() => setIsAdminModalOpen(true)}
+        onOpenNotifications={() => setIsNotificationModalOpen(true)}
+        hasFollowedCategories={hasFollowed}
       />
 
       {/* Contenuto Pagina */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+        {/* Banner Variazione Rilevata in Tempo Reale */}
+        {bannerVariation && (
+          <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/60 dark:to-orange-950/50 border border-amber-300 dark:border-amber-700/80 shadow-xs flex items-start justify-between gap-3 animate-in fade-in">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-amber-500 text-white flex-shrink-0 mt-0.5">
+                <BellRing className="w-5 h-5 animate-bounce" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-amber-950 dark:text-amber-100 text-sm">
+                    ⚠️ Variazione Programma Rilevata: {bannerVariation.campionato}
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider font-black px-2 py-0.5 rounded-full bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200">
+                    Live
+                  </span>
+                </div>
+                <p className="text-xs text-amber-900 dark:text-amber-200 font-semibold mt-0.5">
+                  {bannerVariation.squadre} ({bannerVariation.data})
+                </p>
+                <ul className="list-disc pl-4 mt-1 text-xs text-amber-800 dark:text-amber-300">
+                  {bannerVariation.changes.map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <button
+              onClick={() => setBannerVariation(null)}
+              className="p-1 rounded-lg text-amber-800 dark:text-amber-300 hover:text-amber-950 dark:hover:text-amber-100 hover:bg-amber-200/50 dark:hover:bg-amber-900/50 flex-shrink-0"
+              title="Chiudi avviso"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Notifica di errore / avviso se presente */}
         {error && (
           <div className="mb-5 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs sm:text-sm flex items-start justify-between gap-3 shadow-xs animate-in fade-in">
@@ -184,7 +268,7 @@ export default function App() {
         {/* Barra Statistiche Riepilogative */}
         <StatsSummary partite={filteredPartite} totalAvailable={partite.length} />
 
-        {/* Barra Filtri (Campionato, Data, Casa/Fuori, Cerca, Switch Vista) */}
+        {/* Barra Filtri (Campionato, Data, Date Picker Intervallo, Casa/Fuori, Cerca, Switch Vista) */}
         <FilterBar
           filters={filters}
           onChangeFilters={setFilters}
@@ -210,6 +294,8 @@ export default function App() {
                 setFilters({
                   campionato: 'ALL',
                   data: 'ALL',
+                  startDate: '',
+                  endDate: '',
                   location: 'all',
                   search: '',
                 })
@@ -245,6 +331,15 @@ export default function App() {
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => setIsNotificationModalOpen(true)}
+              className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 transition flex items-center gap-1 font-semibold"
+            >
+              <BellRing className="w-3.5 h-3.5 text-amber-500" />
+              Avvisi Variazioni Web Push
+            </button>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
             <a
               href="https://github.com/pmonaldi68/ProgrammaGareCynthia1920_2026"
               target="_blank"
@@ -265,6 +360,14 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Modale Gestione Notifiche Variazioni Web Push */}
+      <NotificationModal
+        isOpen={isNotificationModalOpen}
+        onClose={() => setIsNotificationModalOpen(false)}
+        availableCampionati={availableCampionati}
+        recentVariations={recentVariations}
+      />
 
       {/* Modale Area Amministrazione Protetta */}
       <AdminPanelModal

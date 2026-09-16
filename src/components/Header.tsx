@@ -1,38 +1,21 @@
 import React from 'react';
-import { Shield, Share2, Printer, Calendar, Lock, Sun, Moon } from 'lucide-react';
+import { Shield, Calendar, Lock, Sun, Moon, Bell } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
   lastUpdated: string | null;
   onOpenAdmin: () => void;
+  onOpenNotifications: () => void;
+  hasFollowedCategories?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   lastUpdated,
   onOpenAdmin,
+  onOpenNotifications,
+  hasFollowedCategories = false,
 }) => {
   const { resolvedTheme, toggleTheme } = useTheme();
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Programma Gare ASD Cynthia 1920',
-          text: 'Consulta il programma gare del fine settimana per ASD Cynthia 1920',
-          url: window.location.href,
-        });
-      } catch (err) {
-        // Ignora se l'utente annulla la condivisione
-      }
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      alert('Link copiato negli appunti!');
-    }
-  };
 
   return (
     <header className="bg-gradient-to-r from-sky-900 via-sky-800 to-cyan-800 dark:from-slate-950 dark:via-sky-950 dark:to-slate-900 text-white shadow-lg border-b border-sky-700/50 dark:border-slate-800 transition-colors">
@@ -78,6 +61,21 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Bottoni Azioni Rapide */}
           <div className="flex items-center justify-center gap-2 mt-1 sm:mt-0">
+            {/* Pulsante Notifiche Variazioni Web Push */}
+            <button
+              id="btn-header-notifications"
+              type="button"
+              onClick={onOpenNotifications}
+              title="Configura avvisi notifiche variazioni gare (orario/campo)"
+              className="relative inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition border border-white/15 min-h-[44px]"
+            >
+              <Bell className="w-4 h-4 text-amber-300" />
+              <span className="text-xs sm:text-sm font-bold hidden xs:inline">Avvisi Variazioni</span>
+              {hasFollowedCategories && (
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" title="Notifiche attive per categorie selezionate" />
+              )}
+            </button>
+
             {/* Toggle Rapido Tema Dark / Light */}
             <button
               id="btn-header-theme"
@@ -101,28 +99,9 @@ export const Header: React.FC<HeaderProps> = ({
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-white/15 hover:bg-white/25 active:scale-[0.98] text-white border border-white/25 shadow-sm transition min-h-[44px]"
             >
               <Shield className="w-4 h-4 text-amber-300" />
-              <span>Area Admin</span>
+              <span className="hidden sm:inline">Area Admin</span>
               <Lock className="w-3.5 h-3.5 text-sky-200 ml-0.5 opacity-80" />
             </button>
-
-            <div className="flex items-center gap-1.5 pl-1 border-l border-sky-600/50 dark:border-slate-700">
-              <button
-                id="btn-header-print"
-                onClick={handlePrint}
-                title="Stampa programma gare"
-                className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition border border-white/15 min-h-[44px] min-w-[44px] flex items-center justify-center"
-              >
-                <Printer className="w-4 h-4" />
-              </button>
-              <button
-                id="btn-header-share"
-                onClick={handleShare}
-                title="Condividi o copia link"
-                className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition border border-white/15 min-h-[44px] min-w-[44px] flex items-center justify-center"
-              >
-                <Share2 className="w-4 h-4" />
-              </button>
-            </div>
           </div>
         </div>
       </div>

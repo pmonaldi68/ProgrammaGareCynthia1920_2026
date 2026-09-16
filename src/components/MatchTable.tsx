@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Partita } from '../types';
-import { Navigation, MapPin, X } from 'lucide-react';
+import { Navigation, MapPin, X, CalendarPlus, Share2, Download, ExternalLink, Check } from 'lucide-react';
 import { getGoogleMapsEmbedUrl } from '../utils/mapUtils';
+import { generateGoogleCalendarUrl, downloadIcsFile } from '../utils/calendarUtils';
 
 interface MatchTableProps {
   partite: Partita[];
@@ -9,6 +10,35 @@ interface MatchTableProps {
 
 export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
   const [selectedMapPartita, setSelectedMapPartita] = useState<Partita | null>(null);
+  const [activeCalendarPartitaId, setActiveCalendarPartitaId] = useState<string | null>(null);
+  const [sharedId, setSharedId] = useState<string | null>(null);
+
+  const handleShare = async (p: Partita) => {
+    const summary =
+      `⚽ ${p.campionato} ${p.girone ? `(${p.girone})` : ''} - ${p.gara || 'Gara'}\n` +
+      `📅 ${p.data} ore ${p.ora}\n` +
+      `⚔️ ${p.squadraCasa} vs ${p.squadraOspite}\n` +
+      `📍 Campo: ${p.campo} (${p.tipo || 'Sintetico'})\n` +
+      `🏠 Indirizzo: ${p.indirizzo ? `${p.indirizzo}, ` : ''}${p.comune}\n` +
+      (p.lnkMaps ? `🗺️ Indicazioni Mappa: ${p.lnkMaps}\n` : '') +
+      `ASD Cynthia 1920 Calcio`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Gara ${p.campionato}: ${p.squadraCasa} vs ${p.squadraOspite}`,
+          text: summary,
+          url: p.lnkMaps || window.location.href,
+        });
+      } catch (err) {
+        // Nessuna azione se annullato
+      }
+    } else {
+      navigator.clipboard.writeText(summary);
+      setSharedId(p.id);
+      setTimeout(() => setSharedId(null), 2000);
+    }
+  };
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
@@ -55,7 +85,7 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm border-collapse min-w-[980px]">
+        <table className="w-full text-left text-sm border-collapse min-w-[1020px]">
           <thead>
             <tr className="bg-slate-100/90 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs uppercase font-extrabold tracking-wider border-b border-slate-200 dark:border-slate-700 select-none">
               <th scope="col" className="py-3.5 px-4">Campionato</th>
@@ -67,9 +97,8 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
               <th scope="col" className="py-3.5 px-4">Squadra Ospite</th>
               <th scope="col" className="py-3.5 px-3">Campo</th>
               <th scope="col" className="py-3.5 px-3">Tipo</th>
-              <th scope="col" className="py-3.5 px-3">Indirizzo</th>
               <th scope="col" className="py-3.5 px-3">Comune</th>
-              <th scope="col" className="py-3.5 px-3 text-center">Mappa</th>
+              <th scope="col" className="py-3.5 px-4 text-center">Azioni</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
@@ -146,33 +175,87 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
                   </span>
                 </td>
 
-                {/* INDIRIZZO */}
-                <td className="py-3 px-3 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                  {p.indirizzo || '-'}
-                </td>
-
                 {/* COMUNE */}
                 <td className="py-3 px-3 text-xs font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
                   {p.comune}
                 </td>
 
-                {/* LNK MAPS */}
-                <td className="py-3 px-3 text-center whitespace-nowrap">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedMapPartita?.id === p.id) {
-                        setSelectedMapPartita(null);
-                      } else {
-                        setSelectedMapPartita(p);
-                      }
-                    }}
-                    title={`Mostra anteprima mappa per ${p.campo}`}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 dark:bg-sky-700 dark:hover:bg-sky-600 text-white font-semibold text-xs transition shadow-2xs"
-                  >
-                    <Navigation className="w-3 h-3" />
-                    <span>{selectedMapPartita?.id === p.id ? 'Chiudi' : 'Mappa'}</span>
-                  </button>
+                {/* AZIONI: MAPPA, CALENDARIO, CONDIVIDI */}
+                <td className="py-3 px-4 text-center whitespace-nowrap">
+                  <div className="inline-flex items-center gap-1.5 justify-center relative">
+                    {/* Pulsante Mappa */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedMapPartita?.id === p.id) {
+                          setSelectedMapPartita(null);
+                        } else {
+                          setSelectedMapPartita(p);
+                        }
+                      }}
+                      title={`Mostra anteprima mappa per ${p.campo}`}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 dark:bg-sky-700 dark:hover:bg-sky-600 text-white font-semibold text-xs transition shadow-2xs"
+                    >
+                      <Navigation className="w-3 h-3" />
+                      <span>{selectedMapPartita?.id === p.id ? 'Chiudi' : 'Mappa'}</span>
+                    </button>
+
+                    {/* Menu Calendario */}
+                    <div className="relative inline-block text-left">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveCalendarPartitaId(
+                            activeCalendarPartitaId === p.id ? null : p.id
+                          )
+                        }
+                        title="Esporta nel calendario (Google / .ics)"
+                        className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition"
+                      >
+                        <CalendarPlus className="w-3.5 h-3.5" />
+                      </button>
+
+                      {activeCalendarPartitaId === p.id && (
+                        <div className="absolute right-0 bottom-full mb-1.5 w-48 bg-white dark:bg-slate-850 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1 z-30 text-left">
+                          <a
+                            href={generateGoogleCalendarUrl(p)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => setActiveCalendarPartitaId(null)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-slate-700/80"
+                          >
+                            <ExternalLink className="w-3 h-3 text-sky-600 dark:text-sky-400" />
+                            Google Calendar
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              downloadIcsFile(p);
+                              setActiveCalendarPartitaId(null);
+                            }}
+                            className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-slate-700/80 text-left"
+                          >
+                            <Download className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                            Scarica file .ics
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Condividi Singola Gara */}
+                    <button
+                      type="button"
+                      onClick={() => handleShare(p)}
+                      title="Condividi dettagli gara"
+                      className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition"
+                    >
+                      {sharedId === p.id ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      ) : (
+                        <Share2 className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                      )}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

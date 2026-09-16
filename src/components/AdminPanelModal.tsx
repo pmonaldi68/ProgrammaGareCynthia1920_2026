@@ -15,8 +15,10 @@ import {
   Sun,
   Moon,
   Laptop,
+  BellRing,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { sendWebNotification, requestNotificationPermission } from '../services/notificationService';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -326,6 +328,41 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </div>
                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
                     Info
+                  </span>
+                </button>
+
+                {/* 4. Test Notifica Push */}
+                <button
+                  id="admin-btn-test-notification"
+                  type="button"
+                  onClick={async () => {
+                    const perm = await requestNotificationPermission();
+                    if (perm === 'granted') {
+                      await sendWebNotification(
+                        '⚽ ASD Cynthia 1920 • Test Notifica',
+                        'Notifiche Web Push attive! Riceverai avvisi in tempo reale per cambi orario e campo delle categorie seguite.'
+                      );
+                    } else {
+                      alert('Per ricevere il test, consenti le notifiche nel tuo browser.');
+                    }
+                  }}
+                  className="flex items-center justify-between p-3.5 rounded-xl border border-amber-200 dark:border-amber-800/80 bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-100/60 dark:hover:bg-amber-900/30 text-left transition group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-amber-500 text-white shadow-sm">
+                      <BellRing className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-slate-800 dark:text-slate-100 group-hover:text-slate-900 dark:group-hover:text-white">
+                        Invia Notifica Push di Prova
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        Verifica ricezione alert Web Push sul tuo dispositivo
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-700 shadow-2xs">
+                    Test
                   </span>
                 </button>
               </div>

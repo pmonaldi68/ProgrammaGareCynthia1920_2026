@@ -46,10 +46,18 @@
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Data Gara</label>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-semibold text-slate-500 uppercase">Data / Periodo</label>
+            <button id="toggle-date-picker-btn" type="button" class="text-[11px] font-bold text-sky-700 hover:underline">Intervallo Date</button>
+          </div>
           <select id="filter-data" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none">
             <option value="ALL">Tutte le date</option>
           </select>
+          <div id="custom-date-range-container" class="hidden flex items-center gap-1.5 bg-slate-50 border border-sky-400 rounded-lg p-1.5 mt-1">
+            <input type="date" id="filter-start-date" title="Da" class="w-full bg-transparent text-xs font-semibold outline-none" />
+            <span class="text-slate-400 text-xs font-bold">➔</span>
+            <input type="date" id="filter-end-date" title="A" class="w-full bg-transparent text-xs font-semibold outline-none" />
+          </div>
         </div>
 
         <div>
@@ -197,15 +205,43 @@
         dateList.map(d => `<option value="${d}">${d}</option>`).join('');
     }
 
+    function getMatchIsoDate(dataStr) {
+      if (!dataStr) return null;
+      const m = dataStr.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+      if (!m) return null;
+      const d = m[1].padStart(2, '0');
+      const mo = m[2].padStart(2, '0');
+      let y = new Date().getFullYear();
+      if (m[3]) {
+        let yr = parseInt(m[3], 10);
+        if (yr < 100) yr += 2000;
+        y = yr;
+      }
+      return `${y}-${mo}-${d}`;
+    }
+
     function getFilteredPartite() {
       const camp = document.getElementById('filter-campionato').value;
       const data = document.getElementById('filter-data').value;
+      const startDate = document.getElementById('filter-start-date').value;
+      const endDate = document.getElementById('filter-end-date').value;
+      const isCustomRange = !document.getElementById('custom-date-range-container').classList.contains('hidden');
       const luogo = document.getElementById('filter-luogo').value;
       const q = document.getElementById('filter-search').value.toLowerCase().trim();
 
       return partiteData.filter(p => {
         if (camp !== 'ALL' && p.campionato !== camp) return false;
-        if (data !== 'ALL' && p.data !== data) return false;
+
+        if (isCustomRange && (startDate || endDate)) {
+          const iso = getMatchIsoDate(p.data);
+          if (iso) {
+            if (startDate && iso < startDate) return false;
+            if (endDate && iso > endDate) return false;
+          }
+        } else {
+          if (data !== 'ALL' && p.data !== data) return false;
+        }
+
         if (luogo === 'CASA' && !p.isCynthiaCasa) return false;
         if (luogo === 'TRASFERTA' && !p.isCynthiaOspite) return false;
         if (q) {
@@ -303,9 +339,29 @@
     // Event listeners
     document.getElementById('filter-campionato').addEventListener('change', render);
     document.getElementById('filter-data').addEventListener('change', render);
+    document.getElementById('filter-start-date').addEventListener('change', render);
+    document.getElementById('filter-end-date').addEventListener('change', render);
     document.getElementById('filter-luogo').addEventListener('change', render);
     document.getElementById('filter-search').addEventListener('input', render);
     document.getElementById('btn-refresh').addEventListener('click', loadData);
+
+    document.getElementById('toggle-date-picker-btn').addEventListener('click', () => {
+      const container = document.getElementById('custom-date-range-container');
+      const select = document.getElementById('filter-data');
+      const btn = document.getElementById('toggle-date-picker-btn');
+      if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        select.classList.add('hidden');
+        btn.textContent = 'Scelta Rapida';
+      } else {
+        container.classList.add('hidden');
+        select.classList.remove('hidden');
+        btn.textContent = 'Intervallo Date';
+        document.getElementById('filter-start-date').value = '';
+        document.getElementById('filter-end-date').value = '';
+        render();
+      }
+    });
 
     document.getElementById('view-cards-btn').addEventListener('click', () => {
       currentView = 'cards';
