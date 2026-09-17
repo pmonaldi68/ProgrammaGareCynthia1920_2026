@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Partita } from '../types';
-import { Navigation, MapPin, X, CalendarPlus, Share2, Download, ExternalLink, Check } from 'lucide-react';
-import { getGoogleMapsEmbedUrl } from '../utils/mapUtils';
+import { Navigation, MapPin, X, CalendarPlus, Share2, Download, ExternalLink, Check, Clock } from 'lucide-react';
 import { generateGoogleCalendarUrl, downloadIcsFile } from '../utils/calendarUtils';
+import { formatMatchDateAndDay } from '../utils/dateFormatter';
+import { LazyMapPreview } from './LazyMapPreview';
 
 interface MatchTableProps {
   partite: Partita[];
@@ -14,9 +15,10 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
   const [sharedId, setSharedId] = useState<string | null>(null);
 
   const handleShare = async (p: Partita) => {
+    const dInfo = formatMatchDateAndDay(p.data, p.ora);
     const summary =
       `⚽ ${p.campionato} ${p.girone ? `(${p.girone})` : ''} - ${p.gara || 'Gara'}\n` +
-      `📅 ${p.data} ore ${p.ora}\n` +
+      `📅 ${dInfo.compactDisplay} ${dInfo.oraFormatted}\n` +
       `⚔️ ${p.squadraCasa} vs ${p.squadraOspite}\n` +
       `📍 Campo: ${p.campo} (${p.tipo || 'Sintetico'})\n` +
       `🏠 Indirizzo: ${p.indirizzo ? `${p.indirizzo}, ` : ''}${p.comune}\n` +
@@ -42,26 +44,18 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
-      {/* Modale / Drawer Anteprima Mappa per la Tabella */}
+      {/* Modale / Drawer Anteprima Mappa per la Tabella con Lazy Loading */}
       {selectedMapPartita && (
-        <div className="p-4 bg-sky-50 dark:bg-slate-950 border-b border-sky-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3 animate-in fade-in duration-200">
-          <div className="flex items-center gap-2 text-sm font-bold text-sky-950 dark:text-sky-200">
-            <MapPin className="w-4 h-4 text-rose-500 flex-shrink-0" />
-            <span>
-              Anteprima Mappa: {selectedMapPartita.campo} ({selectedMapPartita.comune})
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <a
-              href={selectedMapPartita.lnkMaps}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs font-bold text-sky-700 dark:text-sky-300 hover:underline"
-            >
-              Apri su Google Maps ↗
-            </a>
+        <div className="p-4 bg-sky-50/70 dark:bg-slate-950 border-b border-sky-200 dark:border-slate-800 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between pb-3">
+            <div className="flex items-center gap-2 text-sm font-bold text-sky-950 dark:text-sky-200">
+              <MapPin className="w-4 h-4 text-rose-500 flex-shrink-0" />
+              <span>
+                Mappa Impianto: {selectedMapPartita.campo} ({selectedMapPartita.comune})
+              </span>
+            </div>
             <button
+              type="button"
               onClick={() => setSelectedMapPartita(null)}
               className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-700 transition"
             >
@@ -69,18 +63,7 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
               Chiudi
             </button>
           </div>
-
-          <div className="w-full mt-2 rounded-xl overflow-hidden border border-sky-300 dark:border-slate-700">
-            <iframe
-              title={`Mappa per ${selectedMapPartita.campo}`}
-              src={getGoogleMapsEmbedUrl(selectedMapPartita)}
-              width="100%"
-              height="240"
-              loading="lazy"
-              className="w-full border-0 block"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          </div>
+          <LazyMapPreview partita={selectedMapPartita} isOpen={true} />
         </div>
       )}
 
@@ -91,8 +74,8 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
               <th scope="col" className="py-3.5 px-4">Campionato</th>
               <th scope="col" className="py-3.5 px-3">Girone</th>
               <th scope="col" className="py-3.5 px-3">Gara</th>
-              <th scope="col" className="py-3.5 px-3">Data</th>
-              <th scope="col" className="py-3.5 px-3">Ora</th>
+              <th scope="col" className="py-3.5 px-4">Data & Giorno</th>
+              <th scope="col" className="py-3.5 px-3">Orario</th>
               <th scope="col" className="py-3.5 px-4">Squadra Casa</th>
               <th scope="col" className="py-3.5 px-4">Squadra Ospite</th>
               <th scope="col" className="py-3.5 px-3">Campo</th>
@@ -102,40 +85,50 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-            {partite.map((p, idx) => (
-              <tr
-                key={p.id || idx}
-                className="hover:bg-sky-50/40 dark:hover:bg-slate-800/50 transition duration-150 group"
-              >
-                {/* CAMPIONATO */}
-                <td className="py-3.5 px-4 font-black text-sky-950 dark:text-sky-100 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-sky-600 dark:bg-sky-400"></span>
-                    <span className="text-base font-black tracking-tight">{p.campionato}</span>
-                  </div>
-                </td>
+            {partite.map((p, idx) => {
+              const dInfo = formatMatchDateAndDay(p.data, p.ora);
+              return (
+                <tr
+                  key={p.id || idx}
+                  className="hover:bg-sky-50/40 dark:hover:bg-slate-800/50 transition duration-150 group"
+                >
+                  {/* CAMPIONATO */}
+                  <td className="py-3.5 px-4 font-black text-sky-950 dark:text-sky-100 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-sky-600 dark:bg-sky-400"></span>
+                      <span className="text-base font-black tracking-tight">{p.campionato}</span>
+                    </div>
+                  </td>
 
-                {/* GIRONE */}
-                <td className="py-3.5 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap text-xs font-medium">
-                  {p.girone || '-'}
-                </td>
+                  {/* GIRONE */}
+                  <td className="py-3.5 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap text-xs font-medium">
+                    {p.girone || '-'}
+                  </td>
 
-                {/* GARA */}
-                <td className="py-3.5 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap text-xs font-medium">
-                  {p.gara || '-'}
-                </td>
+                  {/* GARA */}
+                  <td className="py-3.5 px-3 text-slate-600 dark:text-slate-400 whitespace-nowrap text-xs font-medium">
+                    {p.gara || '-'}
+                  </td>
 
-                {/* DATA */}
-                <td className="py-3.5 px-3 whitespace-nowrap font-bold text-slate-900 dark:text-slate-100 text-sm">
-                  {p.data}
-                </td>
+                  {/* DATA CON GIORNO IN MAIUSCOLO */}
+                  <td className="py-3.5 px-4 whitespace-nowrap">
+                    <div className="flex flex-col">
+                      <span className="text-[11px] font-black uppercase tracking-wider text-sky-700 dark:text-sky-400">
+                        {dInfo.dayOfWeek}
+                      </span>
+                      <span className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">
+                        {dInfo.dayNumber} {dInfo.monthName} {dInfo.year}
+                      </span>
+                    </div>
+                  </td>
 
-                {/* ORA */}
-                <td className="py-3.5 px-3 whitespace-nowrap">
-                  <span className="inline-block px-2.5 py-1 rounded-lg font-black text-sm bg-amber-500 text-white shadow-2xs">
-                    {p.ora}
-                  </span>
-                </td>
+                  {/* ORA FORMATTATA */}
+                  <td className="py-3.5 px-3 whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-black text-xs sm:text-sm bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-2xs">
+                      <Clock className="w-3 h-3 text-amber-100" />
+                      {dInfo.oraFormatted}
+                    </span>
+                  </td>
 
                 {/* SQUADRA CASA */}
                 <td className="py-3.5 px-4 whitespace-nowrap">
@@ -258,7 +251,8 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
                   </div>
                 </td>
               </tr>
-            ))}
+            );
+          })}
           </tbody>
         </table>
       </div>

@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Partita } from '../types';
+import { formatMatchDateAndDay } from './dateFormatter';
 
 /**
  * Genera il documento jsPDF con impaginazione A4 orientamento orizzontale (Landscape)
@@ -92,18 +93,21 @@ export function generateWeeklySchedulePdf(partite: Partita[], titleSuffix: strin
     'COMUNE',
   ];
 
-  const tableRows = partite.map(p => [
-    p.campionato,
-    p.girone || '-',
-    p.gara || '-',
-    p.data,
-    p.ora,
-    p.squadraCasa + (p.isCynthiaCasa ? ' ⭐' : ''),
-    p.squadraOspite + (p.isCynthiaOspite ? ' ⭐' : ''),
-    p.campo,
-    p.tipo || 'Sintetico',
-    p.comune,
-  ]);
+  const tableRows = partite.map(p => {
+    const dInfo = formatMatchDateAndDay(p.data, p.ora);
+    return [
+      p.campionato,
+      p.girone || '-',
+      p.gara || '-',
+      `${dInfo.dayOfWeek}\n${dInfo.dayNumber}/${dInfo.monthNumber}`,
+      dInfo.oraFormatted,
+      p.squadraCasa + (p.isCynthiaCasa ? ' ⭐' : ''),
+      p.squadraOspite + (p.isCynthiaOspite ? ' ⭐' : ''),
+      p.campo,
+      p.tipo || 'Sintetico',
+      p.comune,
+    ];
+  });
 
   autoTable(doc, {
     head: [tableHeaders],

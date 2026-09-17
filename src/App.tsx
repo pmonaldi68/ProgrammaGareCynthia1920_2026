@@ -18,6 +18,8 @@ import { StatsSummary } from './components/StatsSummary';
 import { FilterBar } from './components/FilterBar';
 import { MatchCard } from './components/MatchCard';
 import { MatchTable } from './components/MatchTable';
+import { MatchSkeleton } from './components/MatchSkeleton';
+import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { SheetConfigModal } from './components/SheetConfigModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { GitHubGuideModal } from './components/GitHubGuideModal';
@@ -282,8 +284,10 @@ export default function App() {
           onOpenPdfExport={() => setIsPdfModalOpen(true)}
         />
 
-        {/* Visualizzazione Partite: Schede o Tabella */}
-        {filteredPartite.length === 0 ? (
+        {/* Visualizzazione Partite: Skeleton Screen durante il fetch, altrimenti Schede o Tabella */}
+        {isLoading ? (
+          <MatchSkeleton viewMode={viewMode} count={6} />
+        ) : filteredPartite.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center shadow-xs my-6">
             <div className="w-16 h-16 rounded-full bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400 flex items-center justify-center mx-auto mb-3 text-2xl font-bold">
               ⚽
@@ -425,6 +429,9 @@ export default function App() {
         isOpen={isGitHubModalOpen}
         onClose={() => setIsGitHubModalOpen(false)}
       />
+
+      {/* Banner di Installazione PWA per Dispositivi Mobili */}
+      <PwaInstallPrompt />
     </div>
   );
 }
