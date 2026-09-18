@@ -57,7 +57,6 @@ export const MatchCard: React.FC<MatchCardProps> = ({ partita }) => {
   }, [showCalendarMenu, showShareMenu]);
 
   const matchSummaryText =
-    `⚽ ASD CYNTHIA 1920 CALCIO\n` +
     `🏆 ${partita.campionato}${partita.girone && partita.girone !== '#' ? ` (Girone ${partita.girone})` : ''} - ${partita.gara || 'Gara Ufficiale'}\n` +
     `⚔️ ${partita.squadraCasa} vs ${partita.squadraOspite}\n` +
     `📅 ${dateInfo.compactDisplay} ore ${dateInfo.oraFormatted}\n` +

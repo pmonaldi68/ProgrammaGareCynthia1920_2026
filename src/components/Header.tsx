@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Calendar, Lock, Sun, Moon, Bell, FileDown } from 'lucide-react';
+import { Shield, Calendar, Lock, Sun, Moon, Bell, FileDown, Palette } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
@@ -7,6 +7,7 @@ interface HeaderProps {
   onOpenAdmin: () => void;
   onOpenNotifications: () => void;
   onOpenPdfExport?: () => void;
+  onOpenSettings?: () => void;
   hasFollowedCategories?: boolean;
 }
 
@@ -15,6 +16,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAdmin,
   onOpenNotifications,
   onOpenPdfExport,
+  onOpenSettings,
   hasFollowedCategories = false,
 }) => {
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -91,6 +93,20 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" title="Notifiche attive per categorie selezionate" />
               )}
             </button>
+
+            {/* Pulsante Impostazioni Tema & Colore Primario */}
+            {onOpenSettings && (
+              <button
+                id="btn-header-settings"
+                type="button"
+                onClick={onOpenSettings}
+                title="Personalizza tonalità principale e impostazioni visive"
+                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-[0.98] text-white transition border border-white/15 min-h-[44px]"
+              >
+                <Palette className="w-4 h-4 text-amber-300" />
+                <span className="text-xs sm:text-sm font-bold hidden md:inline">Tema & Colore</span>
+              </button>
+            )}
 
             {/* Toggle Rapido Tema Dark / Light */}
             <button

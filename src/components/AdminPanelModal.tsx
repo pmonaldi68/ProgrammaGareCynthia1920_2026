@@ -17,8 +17,10 @@ import {
   Laptop,
   BellRing,
   FileDown,
+  Palette,
+  Check,
 } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme, COLOR_THEME_OPTIONS, PrimaryColor } from '../context/ThemeContext';
 import { sendWebNotification, requestNotificationPermission } from '../services/notificationService';
 
 interface AdminPanelModalProps {
@@ -45,7 +47,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onOpenPdfExport,
   sheetUrl,
 }) => {
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme, primaryColor, setPrimaryColor } = useTheme();
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
@@ -247,7 +249,46 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     <span>Auto Sistema</span>
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+                
+                {/* Selettore Tonalità Principale */}
+                <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700/80">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                      <Palette className="w-3.5 h-3.5 text-sky-500" />
+                      Tonalità Principale (Colore Primario)
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      {COLOR_THEME_OPTIONS.find((c) => c.id === primaryColor)?.name}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    {COLOR_THEME_OPTIONS.map((opt) => {
+                      const isSel = primaryColor === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setPrimaryColor(opt.id as PrimaryColor)}
+                          className={`p-1.5 rounded-lg border text-left flex items-center gap-2 transition ${
+                            isSel
+                              ? 'border-sky-500 bg-sky-100/50 dark:bg-sky-950/50 shadow-2xs ring-1 ring-sky-500/30 font-bold'
+                              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
+                          }`}
+                        >
+                          <span
+                            className="w-3.5 h-3.5 rounded-full flex-shrink-0 flex items-center justify-center"
+                            style={{ backgroundColor: opt.hex }}
+                          >
+                            {isSel && <Check className="w-2.5 h-2.5 text-white stroke-[3]" />}
+                          </span>
+                          <span className="text-[11px] truncate">{opt.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2.5">
                   "Auto Sistema" rileva automaticamente la modalità scura/chiara dello smartphone o del computer dell'utente.
                 </p>
               </div>

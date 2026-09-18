@@ -17,7 +17,6 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
   const handleShare = async (p: Partita) => {
     const dInfo = formatMatchDateAndDay(p.data, p.ora);
     const summary =
-      `⚽ ASD CYNTHIA 1920 CALCIO\n` +
       `🏆 ${p.campionato}${p.girone && p.girone !== '#' ? ` (Girone ${p.girone})` : ''} - ${p.gara || 'Gara Ufficiale'}\n` +
       `⚔️ ${p.squadraCasa} vs ${p.squadraOspite}\n` +
       `📅 ${dInfo.compactDisplay} ore ${dInfo.oraFormatted}\n` +

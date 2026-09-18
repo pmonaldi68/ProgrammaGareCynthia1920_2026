@@ -26,8 +26,9 @@ import { AdminPanelModal } from './components/AdminPanelModal';
 import { GitHubGuideModal } from './components/GitHubGuideModal';
 import { NotificationModal } from './components/NotificationModal';
 import { PdfExportModal } from './components/PdfExportModal';
+import { SettingsModal } from './components/SettingsModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
-import { AlertCircle, ExternalLink, FileCode, BellRing, X } from 'lucide-react';
+import { AlertCircle, ExternalLink, FileCode, BellRing, X, Palette } from 'lucide-react';
 
 export default function App() {
   const [config, setConfig] = useState<SheetConfig>(loadStoredConfig);
@@ -48,6 +49,7 @@ export default function App() {
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState<boolean>(false);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState<boolean>(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [recentVariations, setRecentVariations] = useState<MatchVariation[]>([]);
   const [bannerVariation, setBannerVariation] = useState<MatchVariation | null>(null);
 
@@ -211,6 +213,7 @@ export default function App() {
         onOpenAdmin={() => setIsAdminModalOpen(true)}
         onOpenNotifications={() => setIsNotificationModalOpen(true)}
         onOpenPdfExport={() => setIsPdfModalOpen(true)}
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
         hasFollowedCategories={hasFollowed}
       />
 
@@ -362,6 +365,15 @@ export default function App() {
               Avvisi Variazioni Web Push
             </button>
             <span className="text-slate-300 dark:text-slate-700">•</span>
+            <button
+              type="button"
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 transition flex items-center gap-1 font-semibold"
+            >
+              <Palette className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+              Impostazioni & Tema
+            </button>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
             <a
               href="https://github.com/pmonaldi68/ProgrammaGareCynthia1920_2026"
               target="_blank"
@@ -397,6 +409,12 @@ export default function App() {
           filters.location !== 'all' ||
           Boolean(filters.search)
         }
+      />
+
+      {/* Modale Impostazioni & Aspetto (Tonalità Colore Primario & Tema) */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
       />
 
       {/* Modale Gestione Notifiche Variazioni Web Push */}

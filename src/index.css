@@ -269,3 +269,125 @@
   background: transparent !important;
   border: none !important;
 }
+
+/* ==========================================================================
+   PRIMARY COLOR THEMES / SELETTORE TONALITÀ PRINCIPALE
+   ========================================================================== */
+
+/* 1. Azzurro Cynthia (Default societario) */
+[data-color-theme="sky"],
+:root:not([data-color-theme]) {
+  --color-sky-50: #f0f9ff;
+  --color-sky-100: #e0f2fe;
+  --color-sky-200: #bae6fd;
+  --color-sky-300: #7dd3fc;
+  --color-sky-400: #38bdf8;
+  --color-sky-500: #0ea5e9;
+  --color-sky-600: #0284c7;
+  --color-sky-700: #0369a1;
+  --color-sky-800: #075985;
+  --color-sky-900: #0c4a6e;
+  --color-sky-950: #082f49;
+}
+
+/* 2. Blu Reale */
+[data-color-theme="blue"] {
+  --color-sky-50: #eff6ff;
+  --color-sky-100: #dbeafe;
+  --color-sky-200: #bfdbfe;
+  --color-sky-300: #93c5fd;
+  --color-sky-400: #60a5fa;
+  --color-sky-500: #3b82f6;
+  --color-sky-600: #2563eb;
+  --color-sky-700: #1d4ed8;
+  --color-sky-800: #1e40af;
+  --color-sky-900: #1e3a8a;
+  --color-sky-950: #172554;
+  --color-cyan-800: #1e3a8a;
+  --color-cyan-900: #172554;
+}
+
+/* 3. Verde Campo */
+[data-color-theme="emerald"] {
+  --color-sky-50: #ecfdf5;
+  --color-sky-100: #d1fae5;
+  --color-sky-200: #a7f3d0;
+  --color-sky-300: #6ee7b7;
+  --color-sky-400: #34d399;
+  --color-sky-500: #10b981;
+  --color-sky-600: #059669;
+  --color-sky-700: #047857;
+  --color-sky-800: #065f46;
+  --color-sky-900: #064e3b;
+  --color-sky-950: #022c22;
+  --color-cyan-800: #115e59;
+  --color-cyan-900: #042f2e;
+}
+
+/* 4. Rosso Rubino */
+[data-color-theme="rose"] {
+  --color-sky-50: #fff1f2;
+  --color-sky-100: #ffe4e6;
+  --color-sky-200: #fecdd3;
+  --color-sky-300: #fda4af;
+  --color-sky-400: #fb7185;
+  --color-sky-500: #f43f5e;
+  --color-sky-600: #e11d48;
+  --color-sky-700: #be123c;
+  --color-sky-800: #9f1239;
+  --color-sky-900: #881337;
+  --color-sky-950: #4c0519;
+  --color-cyan-800: #831843;
+  --color-cyan-900: #500724;
+}
+
+/* 5. Viola Nobile */
+[data-color-theme="violet"] {
+  --color-sky-50: #f5f3ff;
+  --color-sky-100: #ede9fe;
+  --color-sky-200: #ddd6fe;
+  --color-sky-300: #c4b5fd;
+  --color-sky-400: #a78bfa;
+  --color-sky-500: #8b5cf6;
+  --color-sky-600: #7c3aed;
+  --color-sky-700: #6d28d9;
+  --color-sky-800: #5b21b6;
+  --color-sky-900: #4c1d95;
+  --color-sky-950: #2e1065;
+  --color-cyan-800: #3730a3;
+  --color-cyan-900: #1e1b4b;
+}
+
+/* 6. Ambra / Oro */
+[data-color-theme="amber"] {
+  --color-sky-50: #fffbeb;
+  --color-sky-100: #fef3c7;
+  --color-sky-200: #fde68a;
+  --color-sky-300: #fcd34d;
+  --color-sky-400: #fbbf24;
+  --color-sky-500: #f59e0b;
+  --color-sky-600: #d97706;
+  --color-sky-700: #b45309;
+  --color-sky-800: #92400e;
+  --color-sky-900: #78350f;
+  --color-sky-950: #451a03;
+  --color-cyan-800: #7c2d12;
+  --color-cyan-900: #431407;
+}
+
+/* 7. Ardesia Neutro */
+[data-color-theme="slate"] {
+  --color-sky-50: #f8fafc;
+  --color-sky-100: #f1f5f9;
+  --color-sky-200: #e2e8f0;
+  --color-sky-300: #cbd5e1;
+  --color-sky-400: #94a3b8;
+  --color-sky-500: #64748b;
+  --color-sky-600: #475569;
+  --color-sky-700: #334155;
+  --color-sky-800: #1e293b;
+  --color-sky-900: #0f172a;
+  --color-sky-950: #020617;
+  --color-cyan-800: #1e293b;
+  --color-cyan-900: #0f172a;
+}
