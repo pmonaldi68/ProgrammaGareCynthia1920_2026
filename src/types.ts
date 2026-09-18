@@ -41,6 +41,6 @@ export interface MatchVariation {
   campionato: string;
   squadre: string;
   data: string;
-  changes: string[]; // Es. ["Orario variato: 10:30 ➔ 11:00", "Campo variato: Abbatini ➔ Ciriaci"]
+  changes: string[]; // Es. ["Orario variato: 10:30 ➔ 11:00", "Campo variato: Comunale ➔ Ciriaci"]
   timestamp: number;
 }

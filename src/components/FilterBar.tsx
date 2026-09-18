@@ -356,7 +356,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   type="text"
                   value={filters.search}
                   onChange={e => onChangeFilters({ ...filters, search: e.target.value })}
-                  placeholder="Es. Under 16, Ostia, Abbatini..."
+                  placeholder="Es. Under 16, Ostia, Genzano..."
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl pl-9 pr-8 py-3 sm:py-2.5 text-base sm:text-sm font-medium text-slate-900 dark:text-slate-100 transition outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5 sm:top-3" />

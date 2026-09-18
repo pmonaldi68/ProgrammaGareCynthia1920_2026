@@ -47,7 +47,7 @@
     {
       "name": "Partite in Casa",
       "short_name": "In Casa",
-      "description": "Visualizza solo le gare casalinghe allo Stadio Abbatini",
+      "description": "Visualizza solo le gare casalinghe",
       "url": "/?filter=casa",
       "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
     }

@@ -334,7 +334,7 @@ export default function App() {
               C
             </div>
             <p className="font-semibold text-slate-700 dark:text-slate-300">
-              ASD Cynthia 1920 • Stadio Comunale Bruno Abbatini (Genzano di Roma)
+              ASD Cynthia 1920
             </p>
           </div>
 

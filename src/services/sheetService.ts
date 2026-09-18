@@ -199,14 +199,14 @@ export function mapCsvToPartite(rows: string[][]): Partita[] {
 
     const casa = getCol(row, idxCasa, 'ASD CYNTHIA 1920');
     const ospite = getCol(row, idxOspite, 'Avversario');
-    const campo = getCol(row, idxCampo, 'Stadio Comunale Bruno Abbatini');
+    const campo = getCol(row, idxCampo, 'Campo Comunale');
     const indirizzo = getCol(row, idxIndirizzo, 'Via San Carlino');
     const comune = getCol(row, idxComune, 'Genzano di Roma');
 
     let lnkMaps = getCol(row, idxMaps);
     if (!lnkMaps || !lnkMaps.startsWith('http')) {
       const query = [campo, indirizzo, comune].filter(Boolean).join(', ');
-      lnkMaps = `https://maps.google.com/?q=${encodeURIComponent(query || 'Stadio Bruno Abbatini Genzano di Roma')}`;
+      lnkMaps = `https://maps.google.com/?q=${encodeURIComponent(query || 'Cynthia 1920 Genzano di Roma')}`;
     }
 
     const isCynthiaCasa = /cynthia/i.test(casa);
