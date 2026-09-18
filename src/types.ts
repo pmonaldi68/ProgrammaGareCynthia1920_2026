@@ -46,3 +46,24 @@ export interface MatchVariation {
   changes: string[]; // Es. ["Orario variato: 10:30 ➔ 11:00", "Campo variato: Comunale ➔ Ciriaci"]
   timestamp: number;
 }
+
+export interface StaffByCategoria {
+  [categoria: string]: string;
+}
+
+export interface GiocatoreConvocato {
+  id: string;
+  nome: string;
+  ruolo?: string;
+  numero?: string;
+  categoria?: string;
+  selezionato: boolean;
+  note?: string;
+}
+
+export interface ConvocazioneConfig {
+  sheetUrl: string;
+  tabName: string;
+  lastUpdated?: string;
+  staffByCategoria?: StaffByCategoria;
+}

@@ -27,8 +27,9 @@ import { GitHubGuideModal } from './components/GitHubGuideModal';
 import { NotificationModal } from './components/NotificationModal';
 import { PdfExportModal } from './components/PdfExportModal';
 import { SettingsModal } from './components/SettingsModal';
+import { ConvocazioniModal } from './components/ConvocazioniModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
-import { AlertCircle, ExternalLink, FileCode, BellRing, X, Palette } from 'lucide-react';
+import { AlertCircle, ExternalLink, FileCode, BellRing, X, Palette, Users } from 'lucide-react';
 
 export default function App() {
   const [config, setConfig] = useState<SheetConfig>(loadStoredConfig);
@@ -50,6 +51,7 @@ export default function App() {
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState<boolean>(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
+  const [isConvocazioniModalOpen, setIsConvocazioniModalOpen] = useState<boolean>(false);
   const [recentVariations, setRecentVariations] = useState<MatchVariation[]>([]);
   const [bannerVariation, setBannerVariation] = useState<MatchVariation | null>(null);
 
@@ -374,6 +376,15 @@ export default function App() {
               Impostazioni & Tema
             </button>
             <span className="text-slate-300 dark:text-slate-700">•</span>
+            <button
+              type="button"
+              onClick={() => setIsConvocazioniModalOpen(true)}
+              className="text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition flex items-center gap-1 font-semibold"
+            >
+              <Users className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              Convocazioni WhatsApp
+            </button>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
             <a
               href="https://github.com/pmonaldi68/ProgrammaGareCynthia1920_2026"
               target="_blank"
@@ -434,7 +445,15 @@ export default function App() {
         onOpenSheetConfig={() => setIsSheetModalOpen(true)}
         onOpenGitHubGuide={() => setIsGitHubModalOpen(true)}
         onOpenPdfExport={() => setIsPdfModalOpen(true)}
+        onOpenConvocazioni={() => setIsConvocazioniModalOpen(true)}
         sheetUrl={config.sheetUrl}
+      />
+
+      {/* Modale Convocazioni Gara & Messaggio WhatsApp */}
+      <ConvocazioniModal
+        isOpen={isConvocazioniModalOpen}
+        onClose={() => setIsConvocazioniModalOpen(false)}
+        partite={partite}
       />
 
       {/* Modale Configurazione Google Sheets */}

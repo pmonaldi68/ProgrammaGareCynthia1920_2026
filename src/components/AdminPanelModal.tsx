@@ -19,6 +19,7 @@ import {
   FileDown,
   Palette,
   Check,
+  Users,
 } from 'lucide-react';
 import { useTheme, COLOR_THEME_OPTIONS, PrimaryColor } from '../context/ThemeContext';
 import { sendWebNotification, requestNotificationPermission } from '../services/notificationService';
@@ -31,6 +32,7 @@ interface AdminPanelModalProps {
   onOpenSheetConfig: () => void;
   onOpenGitHubGuide: () => void;
   onOpenPdfExport?: () => void;
+  onOpenConvocazioni?: () => void;
   sheetUrl: string;
 }
 
@@ -45,6 +47,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onOpenSheetConfig,
   onOpenGitHubGuide,
   onOpenPdfExport,
+  onOpenConvocazioni,
   sheetUrl,
 }) => {
   const { theme, setTheme, resolvedTheme, primaryColor, setPrimaryColor } = useTheme();
@@ -348,7 +351,39 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </span>
                 </button>
 
-                {/* 3. Pulsante GitHub Actions */}
+                {/* 3. Convocazioni & WhatsApp da Foglio Google */}
+                {onOpenConvocazioni && (
+                  <button
+                    id="admin-btn-convocazioni"
+                    onClick={() => {
+                      onClose();
+                      onOpenConvocazioni();
+                    }}
+                    className="flex items-center justify-between p-3.5 rounded-xl border border-emerald-300 dark:border-emerald-700/80 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/30 hover:from-emerald-100 hover:to-teal-100 dark:hover:from-emerald-900/50 dark:hover:to-teal-900/40 text-left transition group shadow-2xs ring-1 ring-emerald-500/20"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-emerald-600 text-white shadow-sm">
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-emerald-950 dark:group-hover:text-emerald-200 flex items-center gap-1.5">
+                          <span>Convocazioni Gara & WhatsApp</span>
+                          <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-600 text-white">
+                            Novità
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          Importa giocatori da un altro foglio Google e genera messaggio WhatsApp
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-emerald-300 dark:border-emerald-700 shadow-2xs">
+                      Apri 💬
+                    </span>
+                  </button>
+                )}
+
+                {/* 4. Pulsante GitHub Actions */}
                 <button
                   id="admin-btn-github"
                   onClick={() => {
