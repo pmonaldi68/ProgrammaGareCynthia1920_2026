@@ -16,6 +16,9 @@ import {
   Share2,
   Download,
   ExternalLink,
+  MessageCircle,
+  Send,
+  Mail,
 } from 'lucide-react';
 
 interface MatchCardProps {
@@ -26,53 +29,67 @@ export const MatchCard: React.FC<MatchCardProps> = ({ partita }) => {
   const [copied, setCopied] = useState(false);
   const [showMapPreview, setShowMapPreview] = useState(false);
   const [showCalendarMenu, setShowCalendarMenu] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
 
   const calendarMenuRef = useRef<HTMLDivElement>(null);
+  const shareMenuRef = useRef<HTMLDivElement>(null);
 
   const dateInfo = formatMatchDateAndDay(partita.data, partita.ora);
 
-  // Chiudi il menu calendario se si clicca all'esterno
+  // Chiudi i menu aperti se si clicca all'esterno
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (calendarMenuRef.current && !calendarMenuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (calendarMenuRef.current && !calendarMenuRef.current.contains(target)) {
         setShowCalendarMenu(false);
       }
+      if (shareMenuRef.current && !shareMenuRef.current.contains(target)) {
+        setShowShareMenu(false);
+      }
     }
-    if (showCalendarMenu) {
+    if (showCalendarMenu || showShareMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showCalendarMenu]);
+  }, [showCalendarMenu, showShareMenu]);
 
   const matchSummaryText =
-    `⚽ ${partita.campionato} ${partita.girone ? `(${partita.girone})` : ''} - ${partita.gara || 'Gara'}\n` +
-    `📅 ${dateInfo.compactDisplay} ${dateInfo.oraFormatted}\n` +
+    `⚽ ASD CYNTHIA 1920 CALCIO\n` +
+    `🏆 ${partita.campionato}${partita.girone && partita.girone !== '#' ? ` (Girone ${partita.girone})` : ''} - ${partita.gara || 'Gara Ufficiale'}\n` +
     `⚔️ ${partita.squadraCasa} vs ${partita.squadraOspite}\n` +
+    `📅 ${dateInfo.compactDisplay} ore ${dateInfo.oraFormatted}\n` +
     `📍 Campo: ${partita.campo} (${partita.tipo || 'Sintetico'})\n` +
     `🏠 Indirizzo: ${partita.indirizzo ? `${partita.indirizzo}, ` : ''}${partita.comune}\n` +
     (partita.lnkMaps ? `🗺️ Indicazioni Mappa: ${partita.lnkMaps}\n` : '') +
-    `ASD Cynthia 1920 Calcio`;
+    `🔵⚪ Forza Cynthia!`;
 
   const handleShareMatch = async () => {
-    if (navigator.share) {
+    // 1. Prova prima con la Web Share API nativa del browser/smartphone
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
         await navigator.share({
-          title: `Gara ${partita.campionato}: ${partita.squadraCasa} vs ${partita.squadraOspite}`,
+          title: `Gara Cynthia: ${partita.squadraCasa} vs ${partita.squadraOspite}`,
           text: matchSummaryText,
-          url: partita.lnkMaps || window.location.href,
         });
+        setShareSuccess(true);
+        setTimeout(() => setShareSuccess(false), 2200);
+        return;
       } catch (err) {
-        // Nessuna azione se annullato
+        // Se l'utente chiude la finestra di share nativa (AbortError), non forzare il menu
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
+        // Se la Web Share API fallisce (permessi iframe o restrizioni), apri il menu di fallback
+        setShowShareMenu(true);
+        return;
       }
-    } else {
-      // Fallback appunti con notifica visiva
-      navigator.clipboard.writeText(matchSummaryText);
-      setShareSuccess(true);
-      setTimeout(() => setShareSuccess(false), 2200);
     }
+
+    // 2. Se navigator.share non è supportato dal browser corrente, apri il menu di condivisione diretta
+    setShowShareMenu(prev => !prev);
   };
 
   const handleCopy = () => {
@@ -82,6 +99,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({ partita }) => {
   };
 
   const googleCalendarUrl = generateGoogleCalendarUrl(partita);
+  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(matchSummaryText)}`;
+  const telegramUrl = `https://t.me/share/url?text=${encodeURIComponent(matchSummaryText)}`;
+  const emailUrl = `mailto:?subject=${encodeURIComponent(`Gara ASD Cynthia 1920: ${partita.squadraCasa} vs ${partita.squadraOspite}`)}&body=${encodeURIComponent(matchSummaryText)}`;
 
   return (
     <div
@@ -187,19 +207,133 @@ export const MatchCard: React.FC<MatchCardProps> = ({ partita }) => {
 
         {/* Bottoni Azioni Scheda */}
         <div className="flex items-center gap-2 pt-1 relative">
+          {/* Bottone Condividi Principale con Web Share API (WhatsApp, Telegram, Email) */}
+          <div className="relative flex-1" ref={shareMenuRef}>
+            <button
+              id={`btn-share-match-${partita.id}`}
+              type="button"
+              onClick={handleShareMatch}
+              title="Condividi dettagli gara su WhatsApp, Telegram o Email"
+              className={`w-full inline-flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 px-3 text-xs sm:text-sm font-bold rounded-xl transition shadow-xs min-h-[44px] ${
+                shareSuccess
+                  ? 'bg-emerald-600 text-white'
+                  : showShareMenu
+                  ? 'bg-sky-800 text-white ring-2 ring-sky-300'
+                  : 'bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white'
+              }`}
+            >
+              {shareSuccess ? (
+                <>
+                  <Check className="w-4 h-4 flex-shrink-0 text-white" />
+                  <span>Condiviso!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-4 h-4 flex-shrink-0" />
+                  <span>Condividi</span>
+                </>
+              )}
+            </button>
+
+            {/* Menu Popover Fallback o Scelta Rapida (WhatsApp, Telegram, Email, Copia) */}
+            {showShareMenu && (
+              <div className="absolute left-0 bottom-full mb-2 w-64 bg-white dark:bg-slate-850 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-700 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Invia Dettagli Gara</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowShareMenu(false)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs px-1"
+                    title="Chiudi"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* WhatsApp */}
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowShareMenu(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 transition"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0">
+                    <MessageCircle className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="font-bold">WhatsApp</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Chat o gruppo squadra</span>
+                  </div>
+                </a>
+
+                {/* Telegram */}
+                <a
+                  href={telegramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowShareMenu(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-sky-950/40 hover:text-sky-700 dark:hover:text-sky-300 transition"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-sky-100 dark:bg-sky-900/50 flex items-center justify-center text-sky-600 dark:text-sky-400 flex-shrink-0">
+                    <Send className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="font-bold">Telegram</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Canale o messaggio</span>
+                  </div>
+                </a>
+
+                {/* Email */}
+                <a
+                  href={emailUrl}
+                  onClick={() => setShowShareMenu(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 flex-shrink-0">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="font-bold">Email</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Client di posta predefinito</span>
+                  </div>
+                </a>
+
+                {/* Copia Testo */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCopy();
+                    setShowShareMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-left border-t border-slate-100 dark:border-slate-700/60 mt-1"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 flex-shrink-0">
+                    <Copy className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="font-bold">Copia dettagli testo</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Per incollare ovunque</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Bottone Toggle Anteprima Rapida Mappa */}
           <button
             id={`btn-map-preview-${partita.id}`}
             type="button"
             onClick={() => setShowMapPreview(!showMapPreview)}
-            className={`flex-1 inline-flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 px-3 text-xs sm:text-sm font-bold rounded-xl transition shadow-xs min-h-[44px] ${
+            title="Visualizza mappa del campo"
+            className={`inline-flex items-center justify-center gap-1.5 py-2.5 px-3 text-xs sm:text-sm font-semibold rounded-xl border transition shadow-xs min-h-[44px] ${
               showMapPreview
-                ? 'bg-sky-700 dark:bg-sky-600 text-white'
-                : 'bg-sky-600 hover:bg-sky-700 dark:bg-sky-700 dark:hover:bg-sky-600 text-white'
+                ? 'bg-sky-50 dark:bg-sky-950/60 border-sky-300 text-sky-800 dark:text-sky-200 font-bold'
+                : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
             }`}
           >
-            <Navigation className="w-4 h-4 flex-shrink-0" />
-            <span>{showMapPreview ? 'Chiudi Mappa' : 'Vedi Mappa'}</span>
+            <Navigation className="w-4 h-4 text-sky-600 dark:text-sky-400 flex-shrink-0" />
+            <span className="hidden sm:inline">{showMapPreview ? 'Chiudi' : 'Mappa'}</span>
             {showMapPreview ? (
               <ChevronUp className="w-3.5 h-3.5 opacity-80" />
             ) : (
@@ -256,21 +390,6 @@ export const MatchCard: React.FC<MatchCardProps> = ({ partita }) => {
               </div>
             )}
           </div>
-
-          {/* Condividi Singola Gara con tutti i dettagli */}
-          <button
-            id={`btn-share-match-${partita.id}`}
-            type="button"
-            onClick={handleShareMatch}
-            title="Condividi tutti i dettagli di questa partita (WhatsApp, Messaggi, App)"
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 text-slate-700 dark:text-slate-300 transition min-h-[44px] min-w-[44px] flex items-center justify-center relative"
-          >
-            {shareSuccess ? (
-              <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            ) : (
-              <Share2 className="w-5 h-5 text-sky-600 dark:text-sky-400" />
-            )}
-          </button>
 
           {/* Copia Testo Veloce */}
           <button

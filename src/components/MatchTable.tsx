@@ -17,20 +17,20 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
   const handleShare = async (p: Partita) => {
     const dInfo = formatMatchDateAndDay(p.data, p.ora);
     const summary =
-      `⚽ ${p.campionato} ${p.girone ? `(${p.girone})` : ''} - ${p.gara || 'Gara'}\n` +
-      `📅 ${dInfo.compactDisplay} ${dInfo.oraFormatted}\n` +
+      `⚽ ASD CYNTHIA 1920 CALCIO\n` +
+      `🏆 ${p.campionato}${p.girone && p.girone !== '#' ? ` (Girone ${p.girone})` : ''} - ${p.gara || 'Gara Ufficiale'}\n` +
       `⚔️ ${p.squadraCasa} vs ${p.squadraOspite}\n` +
+      `📅 ${dInfo.compactDisplay} ore ${dInfo.oraFormatted}\n` +
       `📍 Campo: ${p.campo} (${p.tipo || 'Sintetico'})\n` +
       `🏠 Indirizzo: ${p.indirizzo ? `${p.indirizzo}, ` : ''}${p.comune}\n` +
       (p.lnkMaps ? `🗺️ Indicazioni Mappa: ${p.lnkMaps}\n` : '') +
-      `ASD Cynthia 1920 Calcio`;
+      `🔵⚪ Forza Cynthia!`;
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: `Gara ${p.campionato}: ${p.squadraCasa} vs ${p.squadraOspite}`,
           text: summary,
-          url: p.lnkMaps || window.location.href,
         });
       } catch (err) {
         // Nessuna azione se annullato
