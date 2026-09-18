@@ -13,7 +13,7 @@ export const StatsSummary: React.FC<StatsSummaryProps> = ({ partite, totalAvaila
   const categoriesCount = new Set(partite.map(p => p.campionato)).size;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
+    <div id="stats-summary" className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3 shadow-xs flex items-center gap-3">
         <div className="w-10 h-10 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 flex items-center justify-center font-bold">
           <Shield className="w-5 h-5" />

@@ -1,1 +1,271 @@
 @import "tailwindcss";
+
+/* ==========================================================================
+   DEDICATED PRINT STYLESHEET (STAMPA BROWSER DIRETTA)
+   Layout pulito, minimale, ink-friendly senza bottoni UI, filtri né barre
+   ========================================================================== */
+
+@page {
+  size: auto;
+  margin: 10mm 12mm 12mm 12mm;
+}
+
+@media print {
+  /* 1. Rimozione Elementi Interattivi e UI (Pulsanti, Filtri, Modali, Banner) */
+  button,
+  input,
+  select,
+  nav,
+  aside,
+  #filter-bar,
+  #banner-variation,
+  #banner-error,
+  #pwa-install-prompt,
+  [role="dialog"],
+  [aria-modal="true"],
+  .fixed,
+  .sticky,
+  /* Bottoni azioni nella testata (PDF, Notifiche, Tema) */
+  header .flex.items-center.justify-center.gap-2,
+  header button,
+  /* Barra pulsanti interattivi in fondo alle schede gara (Mappa, Calendario, Condivisione, Copia) */
+  [id^="match-card-"] > div:last-child,
+  [id^="match-card-"] button,
+  /* Colonna 'Azioni' e relativi pulsanti nella vista tabella */
+  table th:last-child,
+  table td:last-child,
+  table button,
+  /* Anteprime mappe dinamiche */
+  [id^="lazy-map-"],
+  .leaflet-container,
+  /* Link e pulsanti interattivi nel footer */
+  footer .flex.flex-wrap,
+  footer button,
+  footer a,
+  /* Badge 'Live Sync' e indicatori animati */
+  span.inline-flex.items-center.gap-1.px-2 {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* 2. Reset Globale e Ottimizzazione Inchiostro (Ink-Friendly) */
+  *,
+  *::before,
+  *::after {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+    transition: none !important;
+    animation: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html,
+  body,
+  #root,
+  .min-h-screen {
+    background: #ffffff !important;
+    color: #0f172a !important; /* slate-900 ad alto contrasto */
+    font-size: 10pt !important;
+    line-height: 1.4 !important;
+    width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  main {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* 3. Intestazione Pulita ed Elegante per la Stampa */
+  header {
+    background: transparent !important;
+    color: #0f172a !important;
+    border-bottom: 2px solid #0c4a6e !important; /* Linea blu Cynthia 1920 */
+    padding: 0 0 10px 0 !important;
+    margin-bottom: 14px !important;
+    box-shadow: none !important;
+  }
+
+  header .flex.flex-col.md\:flex-row {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  #header-cynthia-logo {
+    height: 52px !important;
+    width: auto !important;
+    filter: none !important;
+    display: block !important;
+  }
+
+  header h1 {
+    color: #0f172a !important;
+    font-size: 18pt !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.5px !important;
+  }
+
+  header p {
+    color: #475569 !important; /* slate-600 */
+    font-size: 9pt !important;
+  }
+
+  header span.bg-sky-500\/30 {
+    background: #f1f5f9 !important;
+    color: #0c4a6e !important;
+    border: 1px solid #cbd5e1 !important;
+    font-weight: 700 !important;
+  }
+
+  /* 4. Barra Statistiche Compatta */
+  #stats-summary {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+    margin: 10px 0 16px 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  #stats-summary > div {
+    border: 1px solid #cbd5e1 !important; /* slate-300 */
+    background: #f8fafc !important; /* slate-50 leggero */
+    border-radius: 6px !important;
+    padding: 6px 10px !important;
+    box-shadow: none !important;
+  }
+
+  #stats-summary p {
+    color: #0f172a !important;
+  }
+
+  /* 5. Impaginazione Schede Partita (Match Cards) */
+  .grid.grid-cols-1.md\:grid-cols-2.lg\:grid-cols-3 {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  [id^="match-card-"] {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    margin-bottom: 6px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Barra categoria scheda */
+  [id^="match-card-"] > div:first-child {
+    background: #f1f5f9 !important; /* slate-100 */
+    border-bottom: 1px solid #cbd5e1 !important;
+    padding: 6px 10px !important;
+  }
+
+  [id^="match-card-"] span {
+    color: #0f172a !important;
+  }
+
+  /* Corpo scheda: squadre, data, orario, campo */
+  [id^="match-card-"] .p-4,
+  [id^="match-card-"] .p-5 {
+    padding: 8px 10px !important;
+  }
+
+  /* Evidenziazione squadra Cynthia */
+  [id^="match-card-"] .bg-sky-50\/80,
+  [id^="match-card-"] .bg-sky-50 {
+    background: #f0f9ff !important;
+    border: 1px solid #bae6fd !important;
+  }
+
+  /* 6. Impaginazione Tabella Partite (Match Table) */
+  table {
+    width: 100% !important;
+    min-width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 8.5pt !important;
+    margin: 8px 0 !important;
+  }
+
+  table thead {
+    display: table-header-group !important;
+  }
+
+  table th {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 6px !important;
+    font-weight: 700 !important;
+    text-align: left !important;
+  }
+
+  table td {
+    border: 1px solid #e2e8f0 !important;
+    padding: 5px 6px !important;
+    color: #1e293b !important;
+    vertical-align: middle !important;
+  }
+
+  table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* 7. Footer per la Stampa */
+  footer {
+    background: transparent !important;
+    border-top: 1px solid #cbd5e1 !important;
+    margin-top: 20px !important;
+    padding: 8px 0 0 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  footer p {
+    color: #64748b !important;
+    font-size: 8pt !important;
+  }
+
+  /* 8. Evita stampa di destinazioni link */
+  a[href]::after {
+    content: "" !important;
+  }
+}
+
+/* ==========================================================================
+   INTERACTIVE MAP POPUP & MARKER STYLES
+   ========================================================================== */
+.leaflet-popup-content-wrapper {
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(226, 232, 240, 0.8) !important;
+}
+
+.leaflet-popup-content {
+  margin: 14px !important;
+  line-height: 1.4 !important;
+}
+
+.leaflet-popup-tip {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.custom-cynthia-map-marker {
+  background: transparent !important;
+  border: none !important;
+}

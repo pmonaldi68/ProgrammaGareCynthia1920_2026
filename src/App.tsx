@@ -18,6 +18,7 @@ import { StatsSummary } from './components/StatsSummary';
 import { FilterBar } from './components/FilterBar';
 import { MatchCard } from './components/MatchCard';
 import { MatchTable } from './components/MatchTable';
+import { MatchMapView } from './components/MatchMapView';
 import { MatchSkeleton } from './components/MatchSkeleton';
 import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { SheetConfigModal } from './components/SheetConfigModal';
@@ -217,7 +218,7 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
         {/* Banner Variazione Rilevata in Tempo Reale */}
         {bannerVariation && (
-          <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/60 dark:to-orange-950/50 border border-amber-300 dark:border-amber-700/80 shadow-xs flex items-start justify-between gap-3 animate-in fade-in">
+          <div id="banner-variation" className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/60 dark:to-orange-950/50 border border-amber-300 dark:border-amber-700/80 shadow-xs flex items-start justify-between gap-3 animate-in fade-in">
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-xl bg-amber-500 text-white flex-shrink-0 mt-0.5">
                 <BellRing className="w-5 h-5 animate-bounce" />
@@ -253,7 +254,7 @@ export default function App() {
 
         {/* Notifica di errore / avviso se presente */}
         {error && (
-          <div className="mb-5 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs sm:text-sm flex items-start justify-between gap-3 shadow-xs animate-in fade-in">
+          <div id="banner-error" className="mb-5 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs sm:text-sm flex items-start justify-between gap-3 shadow-xs animate-in fade-in">
             <div className="flex items-start gap-2.5">
               <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <div>
@@ -319,9 +320,13 @@ export default function App() {
               <MatchCard key={partita.id} partita={partita} />
             ))}
           </div>
-        ) : (
+        ) : viewMode === 'table' ? (
           <div className="animate-in fade-in duration-200">
             <MatchTable partite={filteredPartite} />
+          </div>
+        ) : (
+          <div className="animate-in fade-in duration-200">
+            <MatchMapView partite={filteredPartite} />
           </div>
         )}
       </main>

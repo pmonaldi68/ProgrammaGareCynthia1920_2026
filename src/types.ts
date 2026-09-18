@@ -14,9 +14,11 @@ export interface Partita {
   lnkMaps: string;
   isCynthiaCasa: boolean;
   isCynthiaOspite: boolean;
+  lat?: number;
+  lng?: number;
 }
 
-export type ViewMode = 'cards' | 'table';
+export type ViewMode = 'cards' | 'table' | 'map';
 export type LocationFilter = 'all' | 'casa' | 'trasferta';
 
 export interface FilterState {

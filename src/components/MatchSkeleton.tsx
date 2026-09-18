@@ -1,7 +1,8 @@
 import React from 'react';
+import { ViewMode } from '../types';
 
 interface MatchSkeletonProps {
-  viewMode?: 'cards' | 'table';
+  viewMode?: ViewMode;
   count?: number;
 }
 

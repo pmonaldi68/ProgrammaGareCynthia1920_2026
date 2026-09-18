@@ -113,7 +113,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs mb-5 overflow-hidden transition-all duration-200">
+    <div id="filter-bar" className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs mb-5 overflow-hidden transition-all duration-200">
       {/* Barra Superiore: Toggle Espansione Filtri + Azioni Rapide (PDF, Schede/Tabella) */}
       <div className="p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
         {/* Bottone Toggle Espandi/Comprimi Filtri */}
@@ -182,7 +182,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             <span className="sm:hidden">PDF</span>
           </button>
 
-          {/* Switch Vista Schede / Tabella */}
+          {/* Switch Vista Schede / Tabella / Mappa */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
             <button
               id="btn-view-cards"
@@ -211,6 +211,20 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             >
               <Table className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Tabella</span>
+            </button>
+            <button
+              id="btn-view-map"
+              type="button"
+              onClick={() => onChangeViewMode('map')}
+              className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                viewMode === 'map'
+                  ? 'bg-white dark:bg-slate-700 text-sky-800 dark:text-sky-200 shadow-xs border border-slate-200/60 dark:border-slate-600 font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+              title="Visualizza campi su mappa interattiva"
+            >
+              <MapPin className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Mappa</span>
             </button>
           </div>
         </div>

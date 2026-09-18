@@ -182,6 +182,9 @@ export function mapCsvToPartite(rows: string[][]): Partita[] {
   const idxIndirizzo = findIdx(['indirizzo', 'via']);
   const idxComune = findIdx(['comune', 'citta', 'paese']);
   const idxMaps = findIdx(['lnkmaps', 'linkmaps', 'maps', 'link', 'mappa', 'posizione']);
+  const idxLat = findIdx(['lat', 'latitudine']);
+  const idxLng = findIdx(['lng', 'lon', 'longitudine']);
+  const idxCoords = findIdx(['coordinate', 'coords', 'gps']);
 
   const getCol = (row: string[], idx: number, fallback = ''): string => {
     if (idx >= 0 && idx < row.length) {
@@ -212,6 +215,25 @@ export function mapCsvToPartite(rows: string[][]): Partita[] {
     const isCynthiaCasa = /cynthia/i.test(casa);
     const isCynthiaOspite = /cynthia/i.test(ospite);
 
+    let lat: number | undefined = undefined;
+    let lng: number | undefined = undefined;
+
+    const rawCoords = getCol(row, idxCoords);
+    if (rawCoords && rawCoords.includes(',')) {
+      const parts = rawCoords.split(',').map(s => parseFloat(s.trim()));
+      if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        lat = parts[0];
+        lng = parts[1];
+      }
+    } else {
+      const rawLat = parseFloat(getCol(row, idxLat));
+      const rawLng = parseFloat(getCol(row, idxLng));
+      if (!isNaN(rawLat) && !isNaN(rawLng)) {
+        lat = rawLat;
+        lng = rawLng;
+      }
+    }
+
     partite.push({
       id: `match-${r}-${Date.now().toString(36)}`,
       campionato: getCol(row, idxCampionato, 'Campionato'),
@@ -228,6 +250,8 @@ export function mapCsvToPartite(rows: string[][]): Partita[] {
       lnkMaps: lnkMaps,
       isCynthiaCasa,
       isCynthiaOspite,
+      lat,
+      lng,
     });
   }
 
