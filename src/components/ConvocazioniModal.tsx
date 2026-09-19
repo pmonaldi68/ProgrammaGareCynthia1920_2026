@@ -28,6 +28,9 @@ import {
   Download,
   CheckCircle2,
   Eye,
+  CheckSquare,
+  Square,
+  UserCheck,
 } from 'lucide-react';
 import { Partita, GiocatoreConvocato, ConvocazioneConfig } from '../types';
 import { APP_CONFIG } from '../appConfig';
@@ -50,11 +53,16 @@ import {
   saveCachedGiocatori,
   loadCachedStaff,
   saveCachedStaff,
+  loadSavedConvocatiForMatch,
+  saveConvocatiForMatch,
+  clearConvocatiForMatch,
   fetchGiocatoriFromSheet,
   findMatchingCategory,
   isCategoryMatch,
   buildWhatsAppConvocazioniMessage,
   calculateRitrovoFromOraGara,
+  calculateRitrovoTimeOnly,
+  extractTimeFromRitrovo,
 } from '../services/convocazioniService';
 
 interface ConvocazioniModalProps {
@@ -75,19 +83,25 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   const [sheetSuccess, setSheetSuccess] = useState<string | null>(null);
   const [showSheetGuide, setShowSheetGuide] = useState<boolean>(false);
 
-  // Giocatori e Staff per categoria (lasciati deselezionati per default)
+  // Partita selezionata
+  const [selectedPartitaId, setSelectedPartitaId] = useState<string>(() => {
+    return partite.length > 0 ? partite[0].id : '';
+  });
+
+  // Giocatori e Staff per categoria (ripristina automaticamente i convocati salvati per la gara)
   const [giocatori, setGiocatori] = useState<GiocatoreConvocato[]>(() => {
     const cached = loadCachedGiocatori();
     const rawList = cached && cached.length > 0 ? cached : DEFAULT_SAMPLE_PLAYERS;
+    const initialMatchId = partite.length > 0 ? partite[0].id : '';
+    const savedIds = initialMatchId ? loadSavedConvocatiForMatch(initialMatchId) : null;
+    if (savedIds !== null) {
+      const idSet = new Set(savedIds);
+      return rawList.map((g) => ({ ...g, selezionato: idSet.has(g.id) }));
+    }
     return rawList.map((g) => ({ ...g, selezionato: false }));
   });
   const [staffMap, setStaffMap] = useState<Record<string, string>>(() => {
     return loadCachedStaff();
-  });
-
-  // Partita selezionata
-  const [selectedPartitaId, setSelectedPartitaId] = useState<string>(() => {
-    return partite.length > 0 ? partite[0].id : '';
   });
 
   // Campi personalizzabili della convocazione
@@ -97,6 +111,9 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   const [dataGaraCustom, setDataGaraCustom] = useState<string>('');
   const [oraGaraCustom, setOraGaraCustom] = useState<string>('');
   const [oraRitrovo, setOraRitrovo] = useState<string>('14:00 PRESSO IL CAMPO DI GIUOCO');
+  // Orario di ritrovo specifico per singola partita (chiave: ID partita, valore: string "HH:MM")
+  const [ritrovoTimeByPartita, setRitrovoTimeByPartita] = useState<Record<string, string>>({});
+  const [ritrovoLuogo, setRitrovoLuogo] = useState<string>('PRESSO IL CAMPO DI GIUOCO');
   const [campoCustom, setCampoCustom] = useState<string>('');
   const [indirizzoCustom, setIndirizzoCustom] = useState<string>('');
   const [linkMapsCustom, setLinkMapsCustom] = useState<string>('');
@@ -185,18 +202,19 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     setIndirizzoCustom(`${p.indirizzo}, ${p.comune}`);
     setLinkMapsCustom(p.lnkMaps !== '#' ? p.lnkMaps : '');
 
-    // Calcola orario ritrovo stimato (90 minuti prima della gara)
-    if (p.ora) {
-      const calc = calculateRitrovoFromOraGara(p.ora);
-      if (calc) {
-        setOraRitrovo(calc);
-      }
-    }
+    // Calcola orario ritrovo per questa partita specifica
+    const savedTime = ritrovoTimeByPartita[p.id];
+    const targetTime = savedTime || (p.ora ? calculateRitrovoTimeOnly(p.ora) : '14:00');
+    setOraRitrovo(`${targetTime} ${ritrovoLuogo.trim()}`);
 
     // Reset modifiche manuali al cambio partita per rigenerare il testo fresco
     setEditedWhatsAppText(null);
 
-    // Filtra sulla squadra della partita selezionata e lascia tutti i giocatori deselezionati per default
+    // Carica la lista dei convocati salvati in localStorage per questa specifica gara
+    const savedSelectedIds = loadSavedConvocatiForMatch(p.id);
+    const savedIdSet = savedSelectedIds !== null ? new Set(savedSelectedIds) : null;
+
+    // Filtra sulla squadra della partita selezionata e ripristina la selezione salvata per questa gara
     setGiocatori((prev) => {
       const availableCats = Array.from(
         new Set(prev.map((g) => g.categoria).filter(Boolean))
@@ -208,16 +226,16 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
           setMisterName(staffMapRef.current[matchCat]);
         }
         setSelectedCategoryFilter(matchCat);
-
-        // Deseleziona tutti per default come richiesto
-        const updated = prev.map((g) => ({
-          ...g,
-          selezionato: false,
-        }));
-        saveCachedGiocatori(updated);
-        return updated;
       }
-      return prev;
+
+      // Se esistono convocati salvati in precedenza per questa specifica gara, ripristinali!
+      // Altrimenti, per una gara non ancora compilata, lascia tutti deselezionati
+      const updated = prev.map((g) => ({
+        ...g,
+        selezionato: savedIdSet ? savedIdSet.has(g.id) : false,
+      }));
+      saveCachedGiocatori(updated);
+      return updated;
     });
   }, [selectedPartitaId, isOpen, partite]);
 
@@ -252,8 +270,16 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         throw new Error('Nessun giocatore trovato nel foglio. Verifica che contenga righe con nomi.');
       }
 
-      setGiocatori(parsed.giocatori);
-      saveCachedGiocatori(parsed.giocatori);
+      const matchIdToUse = selectedPartitaId || 'custom_match';
+      const savedMatchIds = loadSavedConvocatiForMatch(matchIdToUse);
+      const savedSet = savedMatchIds !== null ? new Set(savedMatchIds) : null;
+      const playersWithPreserved = parsed.giocatori.map((g) => ({
+        ...g,
+        selezionato: savedSet ? savedSet.has(g.id) : false,
+      }));
+
+      setGiocatori(playersWithPreserved);
+      saveCachedGiocatori(playersWithPreserved);
 
       if (Object.keys(parsed.staffByCategoria).length > 0) {
         const mergedStaff = { ...staffMap, ...parsed.staffByCategoria };
@@ -304,23 +330,68 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     }
   }, [isOpen]);
 
-  // Toggle selezione singolo atleta
+  // Helper per salvare la lista convocati per la gara attiva in localStorage
+  const persistCurrentMatchConvocati = (players: GiocatoreConvocato[]) => {
+    const matchIdToSave = selectedPartitaId || 'custom_match';
+    const selectedIds = players.filter((g) => g.selezionato).map((g) => g.id);
+    saveConvocatiForMatch(matchIdToSave, selectedIds);
+  };
+
+  // Toggle selezione singolo atleta con salvataggio automatico per la gara
   const togglePlayer = (id: string) => {
     setGiocatori((prev) => {
       const updated = prev.map((g) => (g.id === id ? { ...g, selezionato: !g.selezionato } : g));
       saveCachedGiocatori(updated);
+      persistCurrentMatchConvocati(updated);
       return updated;
     });
   };
 
-  // Seleziona / Deseleziona solo la categoria visibile o tutti
-  const selectAllVisible = (status: boolean) => {
+  // Seleziona tutti i giocatori visibili nell'elenco (con salvataggio automatico)
+  const handleSelectAll = () => {
     setGiocatori((prev) => {
       const visibleIds = new Set(filteredGiocatori.map((g) => g.id));
-      const updated = prev.map((g) => (visibleIds.has(g.id) ? { ...g, selezionato: status } : g));
+      const updated = prev.map((g) => (visibleIds.has(g.id) ? { ...g, selezionato: true } : g));
       saveCachedGiocatori(updated);
+      persistCurrentMatchConvocati(updated);
       return updated;
     });
+  };
+
+  // Deseleziona tutti i giocatori (con salvataggio automatico)
+  const handleDeselectAll = () => {
+    setGiocatori((prev) => {
+      const visibleIds = new Set(filteredGiocatori.map((g) => g.id));
+      const isFiltered = filteredGiocatori.length < prev.length;
+      const updated = prev.map((g) => {
+        if (isFiltered) {
+          return visibleIds.has(g.id) ? { ...g, selezionato: false } : g;
+        }
+        return { ...g, selezionato: false };
+      });
+      saveCachedGiocatori(updated);
+      persistCurrentMatchConvocati(updated);
+      return updated;
+    });
+  };
+
+  // Azzera tutti i convocati in assoluto
+  const handleResetAllSelections = () => {
+    setGiocatori((prev) => {
+      const updated = prev.map((g) => ({ ...g, selezionato: false }));
+      saveCachedGiocatori(updated);
+      persistCurrentMatchConvocati(updated);
+      return updated;
+    });
+  };
+
+  // Compatibilità per selezione per stato
+  const selectAllVisible = (status: boolean) => {
+    if (status) {
+      handleSelectAll();
+    } else {
+      handleDeselectAll();
+    }
   };
 
   // Aggiungi giocatore manuale
@@ -342,6 +413,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     setGiocatori((prev) => {
       const updated = [newG, ...prev];
       saveCachedGiocatori(updated);
+      persistCurrentMatchConvocati(updated);
       return updated;
     });
 
@@ -356,6 +428,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     setGiocatori((prev) => {
       const updated = prev.filter((g) => g.id !== id);
       saveCachedGiocatori(updated);
+      persistCurrentMatchConvocati(updated);
       return updated;
     });
   };
@@ -433,6 +506,58 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
   };
 
+  // Calcolo dinamico dell'orario di ritrovo (formato "HH:MM") per la partita attiva
+  const currentRitrovoTime = useMemo(() => {
+    if (ritrovoTimeByPartita[selectedPartitaId]) {
+      return ritrovoTimeByPartita[selectedPartitaId];
+    }
+    if (oraRitrovo) {
+      const extracted = extractTimeFromRitrovo(oraRitrovo);
+      if (extracted) return extracted;
+    }
+    if (currentPartita?.ora) {
+      return calculateRitrovoTimeOnly(currentPartita.ora);
+    }
+    return '14:00';
+  }, [ritrovoTimeByPartita, selectedPartitaId, currentPartita, oraRitrovo]);
+
+  // Gestione modifica orario di ritrovo specifico per la partita corrente
+  const handleRitrovoTimeChange = (newTime: string) => {
+    if (!newTime) return;
+    setRitrovoTimeByPartita((prev) => ({
+      ...prev,
+      [selectedPartitaId]: newTime,
+    }));
+    const updatedFull = `${newTime} ${ritrovoLuogo.trim()}`;
+    setOraRitrovo(updatedFull);
+    // Reset modifiche manuali WhatsApp per sincronizzare subito il nuovo orario
+    setEditedWhatsAppText(null);
+  };
+
+  // Gestione modifica luogo / dettaglio ritrovo
+  const handleRitrovoLuogoChange = (newLuogo: string) => {
+    setRitrovoLuogo(newLuogo);
+    const updatedFull = `${currentRitrovoTime} ${newLuogo.trim()}`;
+    setOraRitrovo(updatedFull);
+    setEditedWhatsAppText(null);
+  };
+
+  // Preset rapidi minuti prima del fischio d'inizio (es. -90m, -75m, -60m)
+  const handleApplyPresetMinutesBefore = (minutes: number) => {
+    const oraGaraToUse = currentPartita?.ora || oraGaraCustom;
+    if (!oraGaraToUse || !oraGaraToUse.includes(':')) return;
+    const [hStr, mStr] = oraGaraToUse.split(':');
+    const h = Number(hStr);
+    const m = Number(mStr);
+    if (isNaN(h) || isNaN(m)) return;
+    let ritrovoMinutes = h * 60 + m - minutes;
+    if (ritrovoMinutes < 0) ritrovoMinutes += 24 * 60;
+    const rh = Math.floor(ritrovoMinutes / 60);
+    const rm = ritrovoMinutes % 60;
+    const formatted = `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
+    handleRitrovoTimeChange(formatted);
+  };
+
   // Prepara le opzioni per generare il PDF per il mister
   const getPdfOptions = (modalitaOverride?: 'tutta_la_rosa' | 'solo_convocati'): ConvocazioniPdfOptions => {
     const currentModalita = modalitaOverride || pdfModalita;
@@ -445,6 +570,8 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
             return true;
           });
 
+    const fullRitrovoToUse = oraRitrovo || `${currentRitrovoTime} ${ritrovoLuogo.trim()}`;
+
     return {
       partita: currentPartita,
       campionato: currentPartita?.campionato || categoriaCustom || 'Campionato Regionale',
@@ -452,7 +579,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       squadraOspite: currentPartita?.squadraOspite || squadraOspiteCustom || 'Avversario',
       dataGara: currentPartita?.data || dataGaraCustom || '',
       oraGara: currentPartita?.ora || oraGaraCustom || '',
-      oraRitrovo: oraRitrovo || '14:00 PRESSO IL CAMPO DI GIUOCO',
+      oraRitrovo: fullRitrovoToUse,
       campo: currentPartita?.campo || campoCustom || '',
       indirizzo: currentPartita?.indirizzo || indirizzoCustom || '',
       misterName: misterName,
@@ -669,31 +796,86 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
 
               {/* Dettagli Ritrovo e Mister */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-amber-500" />
-                    Ritrovo (90 min prima della gara):
-                  </label>
-                  <input
-                    type="text"
-                    value={oraRitrovo}
-                    onChange={(e) => setOraRitrovo(e.target.value)}
-                    placeholder="es. 13:30 PRESSO IL CAMPO DI GIUOCO"
-                    className="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:outline-hidden"
-                  />
+                <div className="bg-amber-50/70 dark:bg-amber-950/20 p-2.5 rounded-xl border border-amber-200 dark:border-amber-800/50">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label
+                      htmlFor="input-convocazioni-ora-ritrovo-main"
+                      className="text-[11px] font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5"
+                    >
+                      <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>Orario Ritrovo Partita:</span>
+                    </label>
+                    <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-200/70 dark:bg-amber-900/60 px-1.5 py-0.5 rounded">
+                      Gara ore {currentPartita?.ora || oraGaraCustom || '--:--'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="input-convocazioni-ora-ritrovo-main"
+                      type="time"
+                      value={currentRitrovoTime}
+                      onChange={(e) => handleRitrovoTimeChange(e.target.value)}
+                      className="text-xs sm:text-sm font-black p-1.5 rounded-lg border-2 border-amber-400 dark:border-amber-600 bg-white dark:bg-slate-700 text-amber-950 dark:text-amber-200 focus:ring-2 focus:ring-amber-500 focus:outline-hidden w-28 text-center cursor-pointer shadow-2xs"
+                      title="Imposta l'orario di ritrovo per questa gara"
+                    />
+                    <input
+                      type="text"
+                      value={ritrovoLuogo}
+                      onChange={(e) => handleRitrovoLuogoChange(e.target.value)}
+                      placeholder="PRESSO IL CAMPO DI GIUOCO"
+                      className="w-full text-xs p-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                      title="Luogo o indicazione di ritrovo"
+                    />
+                  </div>
+
+                  {/* Preset orari rapidi */}
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Preset:</span>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPresetMinutesBefore(90)}
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 transition active:scale-95"
+                      title="Imposta ritrovo a 90 minuti prima del fischio d'inizio"
+                    >
+                      -90 min (Std)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPresetMinutesBefore(75)}
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 transition active:scale-95"
+                      title="Imposta ritrovo a 75 minuti prima"
+                    >
+                      -75 min
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPresetMinutesBefore(60)}
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 transition active:scale-95"
+                      title="Imposta ritrovo a 60 minuti prima"
+                    >
+                      -60 min
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
-                    <Shield className="w-3 h-3 text-sky-500" />
-                    Mister ({matchedCategory || 'Squadra'}):
-                  </label>
-                  <input
-                    type="text"
-                    value={misterName}
-                    onChange={(e) => handleMisterChange(e.target.value)}
-                    placeholder="es. Ruotolo Giuseppe"
-                    className="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:outline-hidden font-medium"
-                  />
+
+                <div className="bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                      <Shield className="w-3.5 h-3.5 text-sky-500" />
+                      Mister ({matchedCategory || 'Squadra'}):
+                    </label>
+                    <input
+                      type="text"
+                      value={misterName}
+                      onChange={(e) => handleMisterChange(e.target.value)}
+                      placeholder="es. Ruotolo Giuseppe"
+                      className="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:outline-hidden font-medium"
+                    />
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-2">
+                    L'orario e il mister compaiono in evidenza nel PDF e nel messaggio WhatsApp.
+                  </div>
                 </div>
               </div>
 
@@ -915,8 +1097,12 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                     <Users className="w-4 h-4 text-sky-600 dark:text-sky-400" />
                     3. Rosa & Convocati
                   </span>
-                  <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-sky-600 text-white shadow-2xs">
-                    {convocatiCount} convocati
+                  <span
+                    id="badge-convocati-header"
+                    className="text-xs font-black px-2.5 py-0.5 rounded-full bg-sky-600 text-white shadow-2xs flex items-center gap-1"
+                  >
+                    <UserCheck className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Convocati: {convocatiCount}/{filteredGiocatori.length}</span>
                   </span>
                   {convocatiAggregati.length > 0 && (
                     <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-200 border border-amber-400/40">
@@ -928,18 +1114,20 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                 <div className="flex items-center gap-2 text-xs">
                   <button
                     type="button"
-                    onClick={() => selectAllVisible(true)}
-                    className="font-semibold text-sky-700 dark:text-sky-300 hover:underline"
+                    onClick={handleSelectAll}
+                    className="font-semibold text-sky-700 dark:text-sky-300 hover:underline flex items-center gap-1"
                   >
-                    Seleziona Visibili
+                    <CheckSquare className="w-3.5 h-3.5" />
+                    Seleziona tutti
                   </button>
                   <span className="text-slate-300 dark:text-slate-600">•</span>
                   <button
                     type="button"
-                    onClick={() => selectAllVisible(false)}
-                    className="font-semibold text-slate-500 dark:text-slate-400 hover:underline"
+                    onClick={handleDeselectAll}
+                    className="font-semibold text-slate-500 dark:text-slate-400 hover:underline flex items-center gap-1"
                   >
-                    Deseleziona
+                    <Square className="w-3.5 h-3.5" />
+                    Deseleziona tutti
                   </button>
                   <span className="text-slate-300 dark:text-slate-600">•</span>
                   <button
@@ -1088,6 +1276,59 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                   <option value="C">Centrocampisti (C)</option>
                   <option value="A">Attaccanti (A)</option>
                 </select>
+              </div>
+
+              {/* Barra Azioni & Indicatore Visuale Convocati: X/Y sopra la lista */}
+              <div
+                id="convocati-actions-bar-above-list"
+                className="flex flex-wrap items-center justify-between gap-2 p-2 mb-2 rounded-lg bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs shadow-2xs"
+              >
+                {/* Tasti Seleziona tutti e Deseleziona tutti */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    id="btn-convocazioni-select-all"
+                    type="button"
+                    onClick={handleSelectAll}
+                    className="px-2.5 py-1.5 rounded-md bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition"
+                    title="Seleziona tutti i giocatori mostrati nell'elenco"
+                  >
+                    <CheckSquare className="w-3.5 h-3.5" />
+                    <span>Seleziona tutti</span>
+                  </button>
+
+                  <button
+                    id="btn-convocazioni-deselect-all"
+                    type="button"
+                    onClick={handleDeselectAll}
+                    className="px-2.5 py-1.5 rounded-md bg-white dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 active:scale-95 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition"
+                    title="Deseleziona tutti i giocatori"
+                  >
+                    <Square className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                    <span>Deseleziona tutti</span>
+                  </button>
+                </div>
+
+                {/* Indicatore Visuale 'Convocati: X/Y' che si aggiorna in tempo reale */}
+                <div className="flex items-center gap-2">
+                  <div
+                    id="indicatore-visuale-convocati-counter"
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-black transition-all ${
+                      convocatiCount >= 18 && convocatiCount <= 22
+                        ? 'bg-emerald-600 text-white ring-1 ring-emerald-400/40'
+                        : convocatiCount > 22
+                        ? 'bg-amber-600 text-white'
+                        : convocatiCount > 0
+                        ? 'bg-sky-600 text-white'
+                        : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}
+                    title="Numero atleti attualmente spuntati rispetto al totale in elenco"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span>
+                      Convocati: {convocatiCount}/{filteredGiocatori.length}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* Lista Scrollabile Atleti */}
@@ -1282,6 +1523,34 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                 )}
               </div>
 
+              {/* Orario Ritrovo specifico nel PDF */}
+              <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                      <span>Ritrovo PDF</span>
+                      <span className="text-[9px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-200/60 dark:bg-amber-900/60 px-1 py-0.2 rounded">
+                        Gara {currentPartita?.ora || oraGaraCustom || '--:--'}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                      {ritrovoLuogo}
+                    </div>
+                  </div>
+                </div>
+                <input
+                  id="input-sidebar-ora-ritrovo"
+                  type="time"
+                  value={currentRitrovoTime}
+                  onChange={(e) => handleRitrovoTimeChange(e.target.value)}
+                  className="font-black text-xs p-1.5 rounded-lg border-2 border-amber-400 dark:border-amber-600 bg-white dark:bg-slate-800 text-amber-950 dark:text-amber-200 focus:ring-2 focus:ring-amber-500 focus:outline-hidden cursor-pointer shadow-2xs w-24 text-center shrink-0"
+                  title="Modifica l'orario di ritrovo per questa gara"
+                />
+              </div>
+
               {/* Pulsante Anteprima Live PDF */}
               <button
                 id="btn-preview-pdf-mister-main"
@@ -1445,6 +1714,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         onDownloadPdf={(m) => handleDownloadPdf(m)}
         onPrintPdf={(m) => handlePrintPdf(m)}
         onTogglePlayer={(id) => togglePlayer(id)}
+        onUpdateRitrovoTime={(newTime) => handleRitrovoTimeChange(newTime)}
       />
     </div>
   );

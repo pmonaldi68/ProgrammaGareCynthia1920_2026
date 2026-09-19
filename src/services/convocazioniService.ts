@@ -5,6 +5,7 @@ import { APP_CONFIG } from '../appConfig';
 const CONVOCAZIONI_CONFIG_KEY = 'cynthia_convocazioni_config_v1';
 const CONVOCAZIONI_PLAYERS_CACHE_KEY = 'cynthia_convocazioni_players_cache_v1';
 const CONVOCAZIONI_STAFF_CACHE_KEY = 'cynthia_convocazioni_staff_cache_v1';
+const CONVOCAZIONI_BY_MATCH_KEY = 'cynthia_convocazioni_by_match_v2';
 
 export const DEFAULT_CONVOCAZIONI_SHEET_ID = '1Jl7i6oD8ip5eHVBMbsC1Qknx2gI-6zogCFNWK-WSUtM';
 export const DEFAULT_CONVOCAZIONI_SHEET_URL =
@@ -149,6 +150,64 @@ export function saveCachedStaff(staff: Record<string, string>): void {
     localStorage.setItem(CONVOCAZIONI_STAFF_CACHE_KEY, JSON.stringify(staff));
   } catch (e) {
     console.warn('Impossibile salvare cache staff', e);
+  }
+}
+
+/**
+ * Carica la mappa di tutti i giocatori convocati memorizzati per gara da localStorage
+ */
+export function loadAllSavedConvocatiByMatch(): Record<string, string[]> {
+  try {
+    const raw = localStorage.getItem(CONVOCAZIONI_BY_MATCH_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Impossibile caricare mappa convocati per gara', e);
+  }
+  return {};
+}
+
+/**
+ * Carica gli ID dei giocatori spuntati per una specifica gara (ritorna null se la gara non è mai stata salvata)
+ */
+export function loadSavedConvocatiForMatch(matchId: string): string[] | null {
+  if (!matchId) return null;
+  const all = loadAllSavedConvocatiByMatch();
+  if (Array.isArray(all[matchId])) {
+    return all[matchId];
+  }
+  return null;
+}
+
+/**
+ * Salva automaticamente in localStorage la lista degli ID dei giocatori spuntati per una specifica gara
+ */
+export function saveConvocatiForMatch(matchId: string, selectedPlayerIds: string[]): void {
+  if (!matchId) return;
+  try {
+    const all = loadAllSavedConvocatiByMatch();
+    all[matchId] = selectedPlayerIds;
+    localStorage.setItem(CONVOCAZIONI_BY_MATCH_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.warn('Impossibile salvare convocati per gara', e);
+  }
+}
+
+/**
+ * Rimuove i dati di convocazione salvati per una specifica gara
+ */
+export function clearConvocatiForMatch(matchId: string): void {
+  if (!matchId) return;
+  try {
+    const all = loadAllSavedConvocatiByMatch();
+    delete all[matchId];
+    localStorage.setItem(CONVOCAZIONI_BY_MATCH_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.warn('Impossibile eliminare convocati salvati per gara', e);
   }
 }
 
@@ -513,18 +572,28 @@ export interface WhatsAppMessageParams {
   targetCategoria?: string; // Squadra di riferimento della gara
 }
 
-export function calculateRitrovoFromOraGara(oraGara: string): string {
-  if (!oraGara || !oraGara.includes(':')) return '';
+export function calculateRitrovoTimeOnly(oraGara: string): string {
+  if (!oraGara || !oraGara.includes(':')) return '14:00';
   const [hStr, mStr] = oraGara.split(':');
   const h = Number(hStr);
   const m = Number(mStr);
-  if (isNaN(h) || isNaN(m)) return '';
+  if (isNaN(h) || isNaN(m)) return '14:00';
   let ritrovoMinutes = h * 60 + m - 90; // 90 minuti prima della gara
   if (ritrovoMinutes < 0) ritrovoMinutes += 24 * 60;
   const rh = Math.floor(ritrovoMinutes / 60);
   const rm = ritrovoMinutes % 60;
-  const ritrovoFormatted = `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
-  return `${ritrovoFormatted} PRESSO IL CAMPO DI GIUOCO`;
+  return `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
+}
+
+export function extractTimeFromRitrovo(ritrovo: string): string {
+  if (!ritrovo) return '14:00';
+  const match = ritrovo.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  return match ? `${match[1].padStart(2, '0')}:${match[2]}` : '14:00';
+}
+
+export function calculateRitrovoFromOraGara(oraGara: string): string {
+  const timeOnly = calculateRitrovoTimeOnly(oraGara);
+  return `${timeOnly} PRESSO IL CAMPO DI GIUOCO`;
 }
 
 export function buildWhatsAppConvocazioniMessage(params: WhatsAppMessageParams): string {

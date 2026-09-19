@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { ConvocazioniPdfOptions } from '../utils/convocazioniPdfGenerator';
 import { CYNTHIA_LOGO_BASE64 } from '../assets/logoBase64';
+import { extractTimeFromRitrovo } from '../services/convocazioniService';
 
 interface ConvocazioniPdfPreviewModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ interface ConvocazioniPdfPreviewModalProps {
   onDownloadPdf: (modalita?: 'tutta_la_rosa' | 'solo_convocati') => void;
   onPrintPdf: (modalita?: 'tutta_la_rosa' | 'solo_convocati') => void;
   onTogglePlayer?: (id: string) => void;
+  onUpdateRitrovoTime?: (newTime: string) => void;
 }
 
 export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalProps> = ({
@@ -35,6 +37,7 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
   onDownloadPdf,
   onPrintPdf,
   onTogglePlayer,
+  onUpdateRitrovoTime,
 }) => {
   const [modalita, setModalita] = useState<'tutta_la_rosa' | 'solo_convocati'>(
     options.modalita || 'tutta_la_rosa'
@@ -158,6 +161,27 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
                 <ZoomIn className="w-4 h-4" />
               </button>
             </div>
+
+            {/* Input Orario Ritrovo Rapido */}
+            {onUpdateRitrovoTime && (
+              <div
+                id="preview-toolbar-ritrovo-box"
+                className="flex items-center gap-1.5 bg-amber-400/15 border border-amber-400/40 px-2 py-1 rounded-xl text-xs"
+              >
+                <Clock className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                <span className="text-amber-200 text-[11px] font-bold hidden sm:inline">
+                  Ritrovo:
+                </span>
+                <input
+                  id="preview-time-input-toolbar"
+                  type="time"
+                  value={extractTimeFromRitrovo(oraRitrovo || '14:00')}
+                  onChange={(e) => onUpdateRitrovoTime(e.target.value)}
+                  className="bg-slate-950 text-amber-300 font-black border border-amber-400/60 rounded-lg px-2 py-0.5 text-xs focus:ring-2 focus:ring-amber-400 focus:outline-hidden cursor-pointer"
+                  title="Modifica l'orario di ritrovo per questa gara"
+                />
+              </div>
+            )}
 
             {/* Pulsante Download PDF */}
             <button
@@ -285,12 +309,37 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
 
                 {/* Colonna 3: ORARIO RITROVO IN EVIDENZA */}
                 <div className="col-span-4 bg-amber-100/90 border-2 border-amber-500 rounded-md p-2.5 flex flex-col justify-center">
-                  <div className="text-[10px] font-black text-amber-800 uppercase tracking-wider flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-amber-700" />
-                    <span>ORARIO RITROVO:</span>
+                  <div className="text-[10px] font-black text-amber-800 uppercase tracking-wider flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-amber-700" />
+                      <span>ORARIO RITROVO:</span>
+                    </span>
+                    {onUpdateRitrovoTime && (
+                      <span className="text-[8.5px] font-extrabold text-amber-800 bg-amber-200/80 px-1 py-0.5 rounded border border-amber-400/60">
+                        DINAMICO
+                      </span>
+                    )}
                   </div>
                   <div className="font-black text-amber-950 text-xs sm:text-sm uppercase tracking-tight leading-snug mt-1">
-                    {(oraRitrovo || '14:00 PRESSO IL CAMPO DI GIUOCO').toUpperCase()}
+                    {onUpdateRitrovoTime ? (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <input
+                          id="input-preview-ora-ritrovo-sheet"
+                          type="time"
+                          value={extractTimeFromRitrovo(oraRitrovo || '14:00')}
+                          onChange={(e) => onUpdateRitrovoTime(e.target.value)}
+                          className="bg-white text-amber-950 border border-amber-500 rounded px-1.5 py-0.5 text-xs sm:text-sm font-black focus:ring-2 focus:ring-amber-600 focus:outline-hidden cursor-pointer shadow-2xs"
+                          title="Clicca per modificare l'orario di ritrovo per questa gara"
+                        />
+                        <span className="text-amber-900 text-[10.5px] font-extrabold uppercase truncate">
+                          {oraRitrovo && oraRitrovo.replace(/^[0-9]{1,2}:[0-9]{2}\s*/, '').trim()
+                            ? oraRitrovo.replace(/^[0-9]{1,2}:[0-9]{2}\s*/, '').trim().toUpperCase()
+                            : 'PRESSO IL CAMPO DI GIUOCO'}
+                        </span>
+                      </div>
+                    ) : (
+                      (oraRitrovo || '14:00 PRESSO IL CAMPO DI GIUOCO').toUpperCase()
+                    )}
                   </div>
                 </div>
               </div>
