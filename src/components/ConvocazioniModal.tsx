@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   X,
   Send,
@@ -106,16 +106,20 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   // Stato anteprima testo WhatsApp modificabile manualmente
   const [editedWhatsAppText, setEditedWhatsAppText] = useState<string | null>(null);
 
-  // Categorie disponibili tra tutti i giocatori registrati
-  const availableCategories = useMemo(() => {
+  // Categorie uniche stabili tra tutti i giocatori registrati (chiave deterministica)
+  const categoriesKey = useMemo(() => {
     const set = new Set<string>();
     giocatori.forEach((g) => {
       if (g.categoria && g.categoria.trim()) {
         set.add(g.categoria.trim());
       }
     });
-    return Array.from(set);
+    return Array.from(set).sort().join(':::');
   }, [giocatori]);
+
+  const availableCategories = useMemo(() => {
+    return categoriesKey ? categoriesKey.split(':::') : [];
+  }, [categoriesKey]);
 
   // Partita corrente
   const currentPartita = useMemo(() => {
@@ -128,54 +132,70 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     return findMatchingCategory(campionato, availableCategories);
   }, [currentPartita, categoriaCustom, availableCategories]);
 
-  // Sincronizza campi gara quando cambia la partita selezionata
+  // Traccia ultima partita sincronizzata e mappa staff per prevenire re-render ciclici
+  const syncedPartitaIdRef = useRef<string | null>(null);
+  const staffMapRef = useRef(staffMap);
+  staffMapRef.current = staffMap;
+
+  // Sincronizza campi gara SOLO quando cambia la partita selezionata
   useEffect(() => {
-    if (!selectedPartitaId) return;
+    if (!isOpen || !selectedPartitaId) {
+      syncedPartitaIdRef.current = null;
+      return;
+    }
+
+    // Evita ri-esecuzione se la partita corrente è già stata sincronizzata
+    if (syncedPartitaIdRef.current === selectedPartitaId) {
+      return;
+    }
+    syncedPartitaIdRef.current = selectedPartitaId;
+
     const p = partite.find((m) => m.id === selectedPartitaId);
-    if (p) {
-      setCategoriaCustom(p.campionato || '');
-      setSquadraCasaCustom(p.squadraCasa || '');
-      setSquadraOspiteCustom(p.squadraOspite || '');
-      setDataGaraCustom(p.data || '');
-      setOraGaraCustom(p.ora || '');
-      setCampoCustom(`${p.campo}${p.tipo ? ` (${p.tipo})` : ''}`);
-      setIndirizzoCustom(`${p.indirizzo}, ${p.comune}`);
-      setLinkMapsCustom(p.lnkMaps !== '#' ? p.lnkMaps : '');
+    if (!p) return;
 
-      // Calcola orario ritrovo stimato (90 minuti prima della gara)
-      if (p.ora) {
-        const calc = calculateRitrovoFromOraGara(p.ora);
-        if (calc) {
-          setOraRitrovo(calc);
-        }
-      }
+    setCategoriaCustom(p.campionato || '');
+    setSquadraCasaCustom(p.squadraCasa || '');
+    setSquadraOspiteCustom(p.squadraOspite || '');
+    setDataGaraCustom(p.data || '');
+    setOraGaraCustom(p.ora || '');
+    setCampoCustom(`${p.campo}${p.tipo ? ` (${p.tipo})` : ''}`);
+    setIndirizzoCustom(`${p.indirizzo}, ${p.comune}`);
+    setLinkMapsCustom(p.lnkMaps !== '#' ? p.lnkMaps : '');
 
-      // Reset modifiche manuali al cambio partita per rigenerare il testo fresco
-      setEditedWhatsAppText(null);
-
-      // Rilevamento automatico squadra corrispondente
-      const matchCat = findMatchingCategory(p.campionato, availableCategories);
-      if (matchCat) {
-        // Imposta il Mister per quella squadra se registrato
-        if (staffMap[matchCat]) {
-          setMisterName(staffMap[matchCat]);
-        }
-
-        // Seleziona automaticamente i giocatori di quella squadra e deseleziona le altre
-        setGiocatori((prev) => {
-          const updated = prev.map((g) => ({
-            ...g,
-            selezionato: isCategoryMatch(g.categoria || '', matchCat),
-          }));
-          saveCachedGiocatori(updated);
-          return updated;
-        });
-
-        // Imposta la vista attiva sulla squadra della partita
-        setSelectedCategoryFilter(matchCat);
+    // Calcola orario ritrovo stimato (90 minuti prima della gara)
+    if (p.ora) {
+      const calc = calculateRitrovoFromOraGara(p.ora);
+      if (calc) {
+        setOraRitrovo(calc);
       }
     }
-  }, [selectedPartitaId, partite, availableCategories, staffMap]);
+
+    // Reset modifiche manuali al cambio partita per rigenerare il testo fresco
+    setEditedWhatsAppText(null);
+
+    // Seleziona automaticamente i giocatori di quella squadra e deseleziona le altre
+    setGiocatori((prev) => {
+      const availableCats = Array.from(
+        new Set(prev.map((g) => g.categoria).filter(Boolean))
+      ) as string[];
+      const matchCat = findMatchingCategory(p.campionato, availableCats);
+
+      if (matchCat) {
+        if (staffMapRef.current[matchCat]) {
+          setMisterName(staffMapRef.current[matchCat]);
+        }
+        setSelectedCategoryFilter(matchCat);
+
+        const updated = prev.map((g) => ({
+          ...g,
+          selezionato: isCategoryMatch(g.categoria || '', matchCat),
+        }));
+        saveCachedGiocatori(updated);
+        return updated;
+      }
+      return prev;
+    });
+  }, [selectedPartitaId, isOpen, partite]);
 
   // Aggiorna staff quando l'utente modifica a mano il nome del Mister
   const handleMisterChange = (name: string) => {
@@ -245,12 +265,18 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     }
   };
 
-  // Carica automaticamente la rosa dal Foglio Google all'apertura se disponibile
+  const hasAutoFetchedRef = useRef(false);
+
+  // Carica automaticamente la rosa dal Foglio Google all'apertura se disponibile (una sola volta per apertura)
   useEffect(() => {
-    if (!isOpen) return;
-    const targetUrl = config.sheetUrl || DEFAULT_CONVOCAZIONI_SHEET_URL;
-    if (targetUrl) {
-      handleFetchSheet(targetUrl, config.tabName);
+    if (isOpen && !hasAutoFetchedRef.current) {
+      hasAutoFetchedRef.current = true;
+      const targetUrl = config.sheetUrl || DEFAULT_CONVOCAZIONI_SHEET_URL;
+      if (targetUrl) {
+        handleFetchSheet(targetUrl, config.tabName);
+      }
+    } else if (!isOpen) {
+      hasAutoFetchedRef.current = false;
     }
   }, [isOpen]);
 
