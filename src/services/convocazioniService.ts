@@ -24,33 +24,33 @@ export const DEFAULT_STAFF_BY_CATEGORY: Record<string, string> = {
 
 export const DEFAULT_SAMPLE_PLAYERS: GiocatoreConvocato[] = [
   // --- PROMOZIONE / PRIMA SQUADRA (Mister Ruotolo Giuseppe - da Foglio Google Ufficiale) ---
-  { id: 'prom_1', nome: 'Amore Bonapasta Flavio', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_2', nome: 'Barone Thomas', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_3', nome: 'Battisti Lorenzo', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_4', nome: 'Bianchi Simone', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_5', nome: 'Borelli Simone', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_6', nome: 'Campoli Diego', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_7', nome: 'Ciavaldini Tiziano', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_8', nome: 'Colagrossi Matteo', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_9', nome: 'De Angelis Tiago (gk)🧤', ruolo: 'P', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_10', nome: 'De Bonis Matteo', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_11', nome: 'Di Felice Alessandro', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_12', nome: 'Drogheo Filippo', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_13', nome: 'Evangelisti Andrea', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_14', nome: 'Fabbri Valerio', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_15', nome: 'Friscioni Leonardo', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_16', nome: 'Laudati Francesco', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_17', nome: 'Leo Alessandro', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_18', nome: 'Lucidi Federico', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_19', nome: 'Mancini Gabriele', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_20', nome: 'Melaranci Roberto (gk)🧤', ruolo: 'P', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_21', nome: 'Mirimich Alessandro', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_22', nome: 'Palumbo Christian', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_23', nome: 'Persia Nicolo', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_24', nome: 'Ruotolo Luigi', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_25', nome: 'Sambucini Lorenzo', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_26', nome: 'Sirignano Ciro Oreste', categoria: 'PROMOZIONE', selezionato: true },
-  { id: 'prom_27', nome: 'Di Costanzo Antonio', categoria: 'PROMOZIONE', selezionato: true },
+  { id: 'prom_1', nome: 'Amore Bonapasta Flavio', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_2', nome: 'Barone Thomas', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_3', nome: 'Battisti Lorenzo', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_4', nome: 'Bianchi Simone', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_5', nome: 'Borelli Simone', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_6', nome: 'Campoli Diego', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_7', nome: 'Ciavaldini Tiziano', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_8', nome: 'Colagrossi Matteo', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_9', nome: 'De Angelis Tiago (gk)🧤', ruolo: 'P', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_10', nome: 'De Bonis Matteo', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_11', nome: 'Di Felice Alessandro', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_12', nome: 'Drogheo Filippo', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_13', nome: 'Evangelisti Andrea', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_14', nome: 'Fabbri Valerio', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_15', nome: 'Friscioni Leonardo', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_16', nome: 'Laudati Francesco', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_17', nome: 'Leo Alessandro', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_18', nome: 'Lucidi Federico', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_19', nome: 'Mancini Gabriele', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_20', nome: 'Melaranci Roberto (gk)🧤', ruolo: 'P', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_21', nome: 'Mirimich Alessandro', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_22', nome: 'Palumbo Christian', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_23', nome: 'Persia Nicolo', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_24', nome: 'Ruotolo Luigi', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_25', nome: 'Sambucini Lorenzo', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_26', nome: 'Sirignano Ciro Oreste', categoria: 'PROMOZIONE', selezionato: false },
+  { id: 'prom_27', nome: 'Di Costanzo Antonio', categoria: 'PROMOZIONE', selezionato: false },
 
   // --- UNDER 19 (Mister Simone Corradini) ---
   { id: 'u19_1', nome: 'Testa Mattia', ruolo: 'P', numero: '1', categoria: 'Under 19', selezionato: false },
@@ -465,11 +465,11 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
       return; // Non inserire come calciatore con maglia
     }
 
-    // Determinazione stato convocazione di default
-    let selezionato = true;
+    // Determinazione stato convocazione di default (lasciati deselezionati per default)
+    let selezionato = false;
     if (stato) {
-      if (['no', 'assente', 'infortunato', 'squalificato', 'non convocato', 'false', '0'].includes(stato)) {
-        selezionato = false;
+      if (['si', 'sì', 'yes', 'convocato', 'true', '1', 'titolare', 'panchina'].includes(stato)) {
+        selezionato = true;
       }
     }
 

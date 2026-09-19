@@ -153,6 +153,7 @@ export function generateWeeklySchedulePdf(partite: Partita[], titleSuffix: strin
       textColor: [30, 41, 59], // slate-800
       valign: 'middle',
       overflow: 'linebreak',
+      fillColor: false, // Trasparente per consentire alla filigrana di trasparire delicatamente
     },
     headStyles: {
       fillColor: [15, 23, 42], // slate-900 (minimale ad alto contrasto)
@@ -162,8 +163,24 @@ export function generateWeeklySchedulePdf(partite: Partita[], titleSuffix: strin
       halign: 'left',
       cellPadding: { top: 2.5, bottom: 2.5, left: 2, right: 2 },
     },
-    alternateRowStyles: {
-      fillColor: [250, 250, 250], // Sfumatura alternata ultra-discreta
+    willDrawPage: function (data) {
+      // Filigrana diagonale tenue 'CYNTHIA 1920' dietro al contenuto della tabella
+      doc.saveGraphicsState();
+      if (typeof (doc as any).GState === 'function') {
+        doc.setGState(new (doc as any).GState({ opacity: 0.07 }));
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(54);
+        doc.setTextColor(12, 74, 110); // Blu navy Cynthia
+      } else {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(54);
+        doc.setTextColor(232, 238, 246);
+      }
+      doc.text('CYNTHIA 1920', pageWidth / 2, pageHeight / 2 + 10, {
+        align: 'center',
+        angle: 30,
+      });
+      doc.restoreGraphicsState();
     },
     // Larghezze calibrate al millimetro: somma esatta = 273mm
     columnStyles: {

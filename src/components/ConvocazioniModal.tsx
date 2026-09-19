@@ -27,10 +27,13 @@ import {
   Printer,
   Download,
   CheckCircle2,
+  Eye,
 } from 'lucide-react';
 import { Partita, GiocatoreConvocato, ConvocazioneConfig } from '../types';
 import { APP_CONFIG } from '../appConfig';
+import { ConvocazioniPdfPreviewModal } from './ConvocazioniPdfPreviewModal';
 import {
+  generateConvocazioniPdf,
   downloadConvocazioniPdf,
   printConvocazioniPdf,
   shareConvocazioniPdf,
@@ -72,9 +75,11 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   const [sheetSuccess, setSheetSuccess] = useState<string | null>(null);
   const [showSheetGuide, setShowSheetGuide] = useState<boolean>(false);
 
-  // Giocatori e Staff per categoria
+  // Giocatori e Staff per categoria (lasciati deselezionati per default)
   const [giocatori, setGiocatori] = useState<GiocatoreConvocato[]>(() => {
-    return loadCachedGiocatori() || DEFAULT_SAMPLE_PLAYERS;
+    const cached = loadCachedGiocatori();
+    const rawList = cached && cached.length > 0 ? cached : DEFAULT_SAMPLE_PLAYERS;
+    return rawList.map((g) => ({ ...g, selezionato: false }));
   });
   const [staffMap, setStaffMap] = useState<Record<string, string>>(() => {
     return loadCachedStaff();
@@ -91,7 +96,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   const [squadraOspiteCustom, setSquadraOspiteCustom] = useState<string>('');
   const [dataGaraCustom, setDataGaraCustom] = useState<string>('');
   const [oraGaraCustom, setOraGaraCustom] = useState<string>('');
-  const [oraRitrovo, setOraRitrovo] = useState<string>('14:30 allo Stadio Abbatini');
+  const [oraRitrovo, setOraRitrovo] = useState<string>('14:00 PRESSO IL CAMPO DI GIUOCO');
   const [campoCustom, setCampoCustom] = useState<string>('');
   const [indirizzoCustom, setIndirizzoCustom] = useState<string>('');
   const [linkMapsCustom, setLinkMapsCustom] = useState<string>('');
@@ -120,6 +125,9 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   const [pdfModalita, setPdfModalita] = useState<'tutta_la_rosa' | 'solo_convocati'>('tutta_la_rosa');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
   const [pdfStatusMessage, setPdfStatusMessage] = useState<string | null>(null);
+
+  // Stato Anteprima Live PDF
+  const [showPdfPreviewModal, setShowPdfPreviewModal] = useState<boolean>(false);
 
   // Categorie uniche stabili tra tutti i giocatori registrati (chiave deterministica)
   const categoriesKey = useMemo(() => {
@@ -188,7 +196,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     // Reset modifiche manuali al cambio partita per rigenerare il testo fresco
     setEditedWhatsAppText(null);
 
-    // Seleziona automaticamente i giocatori di quella squadra e deseleziona le altre
+    // Filtra sulla squadra della partita selezionata e lascia tutti i giocatori deselezionati per default
     setGiocatori((prev) => {
       const availableCats = Array.from(
         new Set(prev.map((g) => g.categoria).filter(Boolean))
@@ -201,9 +209,10 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         }
         setSelectedCategoryFilter(matchCat);
 
+        // Deseleziona tutti per default come richiesto
         const updated = prev.map((g) => ({
           ...g,
-          selezionato: isCategoryMatch(g.categoria || '', matchCat),
+          selezionato: false,
         }));
         saveCachedGiocatori(updated);
         return updated;
@@ -427,14 +436,13 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   // Prepara le opzioni per generare il PDF per il mister
   const getPdfOptions = (modalitaOverride?: 'tutta_la_rosa' | 'solo_convocati'): ConvocazioniPdfOptions => {
     const currentModalita = modalitaOverride || pdfModalita;
+    // Seleziona solo i giocatori della partita selezionata (categoria corrispondente)
     const targetPlayers =
       currentModalita === 'solo_convocati'
-        ? giocatori.filter((g) => g.selezionato)
+        ? giocatori.filter((g) => g.selezionato && (!matchedCategory || isCategoryMatch(g.categoria || '', matchedCategory)))
         : giocatori.filter((g) => {
-            if (g.selezionato) return true;
-            if (matchedCategory && isCategoryMatch(g.categoria || '', matchedCategory)) return true;
-            if (!matchedCategory) return true;
-            return false;
+            if (matchedCategory) return isCategoryMatch(g.categoria || '', matchedCategory);
+            return true;
           });
 
     return {
@@ -444,7 +452,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       squadraOspite: currentPartita?.squadraOspite || squadraOspiteCustom || 'Avversario',
       dataGara: currentPartita?.data || dataGaraCustom || '',
       oraGara: currentPartita?.ora || oraGaraCustom || '',
-      oraRitrovo: oraRitrovo,
+      oraRitrovo: oraRitrovo || '14:00 PRESSO IL CAMPO DI GIUOCO',
       campo: currentPartita?.campo || campoCustom || '',
       indirizzo: currentPartita?.indirizzo || indirizzoCustom || '',
       misterName: misterName,
@@ -453,6 +461,14 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       modalita: currentModalita,
       categoriaTarget: matchedCategory || undefined,
     };
+  };
+
+  // Apre l'anteprima live del PDF
+  const handleOpenPdfPreview = (modalita?: 'tutta_la_rosa' | 'solo_convocati') => {
+    if (modalita) {
+      setPdfModalita(modalita);
+    }
+    setShowPdfPreviewModal(true);
   };
 
   // Scarica PDF Scheda Convocazioni
@@ -582,6 +598,17 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              id="btn-header-preview-pdf-mister"
+              type="button"
+              disabled={isGeneratingPdf}
+              onClick={() => handleOpenPdfPreview()}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 text-xs font-bold transition shadow-xs disabled:opacity-50"
+              title="Visualizza l'anteprima live del PDF prima di generarlo"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Anteprima Live PDF</span>
+            </button>
             <button
               id="btn-header-download-pdf-mister"
               type="button"
@@ -1255,6 +1282,19 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                 )}
               </div>
 
+              {/* Pulsante Anteprima Live PDF */}
+              <button
+                id="btn-preview-pdf-mister-main"
+                type="button"
+                disabled={isGeneratingPdf}
+                onClick={() => handleOpenPdfPreview()}
+                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 active:scale-[0.99] text-slate-950 font-bold text-xs shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50"
+                title="Apri l'anteprima live a schermo intero del PDF prima di generarlo"
+              >
+                <Eye className="w-4 h-4 text-slate-950" />
+                <span>Anteprima Live PDF</span>
+              </button>
+
               {/* Pulsanti Azione PDF */}
               <div className="grid grid-cols-3 gap-2 pt-0.5">
                 {/* 1. Scarica PDF */}
@@ -1366,6 +1406,17 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
+              id="btn-footer-preview-mister-pdf"
+              type="button"
+              disabled={isGeneratingPdf}
+              onClick={() => handleOpenPdfPreview()}
+              className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-semibold text-xs transition flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+              title="Visualizza l'anteprima live del PDF prima di stamparlo o scaricarlo"
+            >
+              <Eye className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+              <span>Anteprima Live PDF</span>
+            </button>
+            <button
               id="btn-footer-print-mister-pdf"
               type="button"
               onClick={() => handlePrintPdf()}
@@ -1385,6 +1436,16 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Modal Finestra di Anteprima Live del PDF */}
+      <ConvocazioniPdfPreviewModal
+        isOpen={showPdfPreviewModal}
+        onClose={() => setShowPdfPreviewModal(false)}
+        options={getPdfOptions()}
+        onDownloadPdf={(m) => handleDownloadPdf(m)}
+        onPrintPdf={(m) => handlePrintPdf(m)}
+        onTogglePlayer={(id) => togglePlayer(id)}
+      />
     </div>
   );
 };
