@@ -211,6 +211,45 @@ export function clearConvocatiForMatch(matchId: string): void {
   }
 }
 
+/**
+ * Calcola quante convocazioni precedenti ha ciascun giocatore nello storico salvato in localStorage.
+ * excludeCurrentMatchId permette di escludere la partita attualmente aperta,
+ * in modo da contare quante volte il giocatore è stato convocato in altre gare salvate.
+ */
+export function getConvocazioniHistoryStats(excludeCurrentMatchId?: string): Record<string, number> {
+  const all = loadAllSavedConvocatiByMatch();
+  const counts: Record<string, number> = {};
+  for (const [matchId, playerIds] of Object.entries(all)) {
+    if (excludeCurrentMatchId && matchId === excludeCurrentMatchId) continue;
+    if (Array.isArray(playerIds)) {
+      for (const pId of playerIds) {
+        counts[pId] = (counts[pId] || 0) + 1;
+      }
+    }
+  }
+  return counts;
+}
+
+export interface PlayerHistoryInfo {
+  count: number;
+  hasPreviousConvocazione: boolean;
+}
+
+/**
+ * Restituisce le statistiche di presenza storica per un giocatore
+ */
+export function getPlayerHistoricalConvocazioni(
+  playerId: string,
+  excludeCurrentMatchId?: string
+): PlayerHistoryInfo {
+  const stats = getConvocazioniHistoryStats(excludeCurrentMatchId);
+  const count = stats[playerId] || 0;
+  return {
+    count,
+    hasPreviousConvocazione: count > 0,
+  };
+}
+
 function normalizeHeader(h: string): string {
   return h
     .toLowerCase()

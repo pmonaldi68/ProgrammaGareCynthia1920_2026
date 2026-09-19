@@ -31,6 +31,8 @@ import {
   CheckSquare,
   Square,
   UserCheck,
+  History,
+  FileDown,
 } from 'lucide-react';
 import { Partita, GiocatoreConvocato, ConvocazioneConfig } from '../types';
 import { APP_CONFIG } from '../appConfig';
@@ -56,6 +58,7 @@ import {
   loadSavedConvocatiForMatch,
   saveConvocatiForMatch,
   clearConvocatiForMatch,
+  getConvocazioniHistoryStats,
   fetchGiocatoriFromSheet,
   findMatchingCategory,
   isCategoryMatch,
@@ -126,11 +129,15 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   const [searchPlayer, setSearchPlayer] = useState<string>('');
   const [filterRuolo, setFilterRuolo] = useState<string>('ALL');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('AUTO');
+  const [filterOnlyWithHistory, setFilterOnlyWithHistory] = useState<boolean>(false);
   const [isAddingPlayer, setIsAddingPlayer] = useState<boolean>(false);
   const [newPlayerName, setNewPlayerName] = useState<string>('');
   const [newPlayerRuolo, setNewPlayerRuolo] = useState<string>('');
   const [newPlayerNumero, setNewPlayerNumero] = useState<string>('');
   const [newPlayerCategoria, setNewPlayerCategoria] = useState<string>('');
+
+  // Messaggio successo esportazione JSON
+  const [exportSuccessMessage, setExportSuccessMessage] = useState<string | null>(null);
 
   // Stato copia
   const [copied, setCopied] = useState<boolean>(false);
@@ -650,19 +657,27 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     }
   };
 
-  // Conteggio convocati totali e aggregati da altre squadre
-  const convocatiCount = useMemo(() => {
-    return giocatori.filter((g) => g.selezionato).length;
+  // Storico presenze/convocazioni precedenti salvate in localStorage per ciascun giocatore (escludendo la gara corrente)
+  const historicalConvocazioniStats = useMemo(() => {
+    return getConvocazioniHistoryStats(selectedPartitaId);
+  }, [selectedPartitaId, giocatori, isOpen]);
+
+  // Giocatori convocati spuntati
+  const convocati = useMemo(() => {
+    return giocatori.filter((g) => g.selezionato);
   }, [giocatori]);
+
+  // Conteggio convocati totali e aggregati da altre squadre
+  const convocatiCount = convocati.length;
 
   const convocatiAggregati = useMemo(() => {
     if (!matchedCategory) return [];
-    return giocatori.filter(
-      (g) => g.selezionato && g.categoria && !isCategoryMatch(g.categoria, matchedCategory)
+    return convocati.filter(
+      (g) => g.categoria && !isCategoryMatch(g.categoria, matchedCategory)
     );
-  }, [giocatori, matchedCategory]);
+  }, [convocati, matchedCategory]);
 
-  // Giocatori filtrati nella lista UI in base a categoria, ruolo e ricerca
+  // Giocatori filtrati nella lista UI in base a categoria, ruolo, ricerca e storico
   const filteredGiocatori = useMemo(() => {
     return giocatori.filter((g) => {
       // 1. Filtro Categoria
@@ -688,9 +703,98 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         filterRuolo === 'ALL' ||
         (g.ruolo && g.ruolo.toUpperCase() === filterRuolo.toUpperCase());
 
-      return matchSearch && matchRuolo;
+      // 4. Filtro solo con storico precedente
+      const matchHistory =
+        !filterOnlyWithHistory || (historicalConvocazioniStats[g.id] || 0) > 0;
+
+      return matchSearch && matchRuolo && matchHistory;
     });
-  }, [giocatori, selectedCategoryFilter, matchedCategory, searchPlayer, filterRuolo]);
+  }, [giocatori, selectedCategoryFilter, matchedCategory, searchPlayer, filterRuolo, filterOnlyWithHistory, historicalConvocazioniStats]);
+
+  // Numero di atleti nella lista filtrata che hanno già convocazioni registrate nello storico
+  const playersWithHistoryCount = useMemo(() => {
+    return filteredGiocatori.filter((g) => (historicalConvocazioniStats[g.id] || 0) > 0).length;
+  }, [filteredGiocatori, historicalConvocazioniStats]);
+
+  // Esporta i dati dei convocati e le note della gara in formato JSON
+  const handleExportConvocatiJson = () => {
+    const dataPartitaEffettiva = currentPartita?.data || dataGaraCustom || '';
+    const oraGaraEffettiva = currentPartita?.ora || oraGaraCustom || '';
+    const categoriaEffettiva = currentPartita?.campionato || matchedCategory || categoriaCustom || 'ASD Cynthia 1920';
+    const squadraCasaEffettiva = currentPartita?.squadraCasa || squadraCasaCustom || 'Cynthia 1920';
+    const squadraTrasfertaEffettiva = currentPartita?.squadraOspite || squadraOspiteCustom || 'Avversario';
+    const avversarioEffettivo = currentPartita?.avversario || squadraTrasfertaEffettiva;
+
+    const exportData = {
+      applicazione: 'ASD Cynthia 1920 - Gestione Convocazioni',
+      versione: '1.0',
+      dataEsportazione: new Date().toISOString(),
+      partita: {
+        id: currentPartita?.id || selectedPartitaId || 'gara_personalizzata',
+        categoria: categoriaEffettiva,
+        campionato: currentPartita?.campionato || categoriaEffettiva,
+        squadraCasa: squadraCasaEffettiva,
+        squadraTrasferta: squadraTrasfertaEffettiva,
+        avversario: avversarioEffettivo,
+        tipo: currentPartita?.tipo || 'Campionato',
+        data: dataPartitaEffettiva,
+        oraGara: oraGaraEffettiva,
+        ritrovo: {
+          orario: currentRitrovoTime,
+          luogo: ritrovoLuogo,
+          indicazioneCompleta: oraRitrovo || `${currentRitrovoTime} ${ritrovoLuogo.trim()}`,
+        },
+        campo: currentPartita?.campo || campoCustom || '',
+        indirizzo: currentPartita?.indirizzo || indirizzoCustom || '',
+        linkMaps: currentPartita?.linkMaps || linkMapsCustom || '',
+      },
+      staff: {
+        mister: misterName,
+      },
+      noteGara: noteMister,
+      totaleConvocati: convocati.length,
+      totaleRosaCategoria: filteredGiocatori.length,
+      giocatoriConvocati: convocati.map((g, idx) => ({
+        ordine: idx + 1,
+        id: g.id,
+        numero: g.numero || '',
+        nome: g.nome,
+        cognome: g.cognome || '',
+        ruolo: g.ruolo || '',
+        categoria: g.categoria || categoriaEffettiva,
+        aggregatoDa:
+          g.categoria && matchedCategory && !isCategoryMatch(g.categoria, matchedCategory)
+            ? g.categoria
+            : undefined,
+        note: g.note || '',
+        convocazioniPrecedentiSalvate: historicalConvocazioniStats[g.id] || 0,
+      })),
+      anteprimaMessaggioWhatsApp: activeWhatsAppText,
+    };
+
+    try {
+      const jsonString = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+
+      const cleanDate = (dataPartitaEffettiva || new Date().toISOString().slice(0, 10)).replace(/[^0-9a-zA-Z]/g, '-');
+      const cleanOpponent = avversarioEffettivo.replace(/[^0-9a-zA-Z]/g, '_').toLowerCase();
+      const cleanCat = categoriaEffettiva.replace(/[^0-9a-zA-Z]/g, '_').toLowerCase();
+
+      link.href = url;
+      link.download = `convocazioni_${cleanCat}_vs_${cleanOpponent}_${cleanDate}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setExportSuccessMessage(`File JSON scaricato con successo (${convocati.length} convocati e note di gara)!`);
+      setTimeout(() => setExportSuccessMessage(null), 4500);
+    } catch (err) {
+      console.error("Errore durante l'esportazione JSON", err);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -1283,7 +1387,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                 id="convocati-actions-bar-above-list"
                 className="flex flex-wrap items-center justify-between gap-2 p-2 mb-2 rounded-lg bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs shadow-2xs"
               >
-                {/* Tasti Seleziona tutti e Deseleziona tutti */}
+                {/* Tasti Seleziona tutti, Deseleziona tutti, Esporta Dati Convocati e Filtro Storico */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     id="btn-convocazioni-select-all"
@@ -1305,6 +1409,32 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                   >
                     <Square className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                     <span>Deseleziona tutti</span>
+                  </button>
+
+                  <button
+                    id="btn-export-convocati-json"
+                    type="button"
+                    onClick={handleExportConvocatiJson}
+                    className="px-2.5 py-1.5 rounded-md bg-amber-500/15 hover:bg-amber-500/25 active:scale-95 text-amber-900 dark:text-amber-200 border border-amber-300/80 dark:border-amber-700/70 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition"
+                    title="Scarica un file JSON con l'elenco dei giocatori selezionati e le note della gara per archiviarli su altri dispositivi"
+                  >
+                    <FileDown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>Esporta Dati Convocati</span>
+                  </button>
+
+                  <button
+                    id="btn-filter-history"
+                    type="button"
+                    onClick={() => setFilterOnlyWithHistory(!filterOnlyWithHistory)}
+                    className={`px-2 py-1.5 rounded-md text-[11px] font-semibold transition flex items-center gap-1 border active:scale-95 ${
+                      filterOnlyWithHistory
+                        ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                        : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+                    }`}
+                    title="Filtra e mostra solo i giocatori con convocazioni registrate nello storico delle altre gare"
+                  >
+                    <History className="w-3 h-3" />
+                    <span>Solo già convocati ({playersWithHistoryCount})</span>
                   </button>
                 </div>
 
@@ -1331,6 +1461,26 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                 </div>
               </div>
 
+              {/* Banner notifica successo esportazione JSON */}
+              {exportSuccessMessage && (
+                <div
+                  id="alert-export-convocati-success"
+                  className="p-2 mb-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-semibold flex items-center justify-between gap-2 animate-in fade-in"
+                >
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>{exportSuccessMessage}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setExportSuccessMessage(null)}
+                    className="text-emerald-700 hover:text-emerald-900 dark:text-emerald-300 text-xs underline font-normal"
+                  >
+                    Chiudi
+                  </button>
+                </div>
+              )}
+
               {/* Lista Scrollabile Atleti */}
               <div className="max-h-64 overflow-y-auto divide-y divide-slate-200 dark:divide-slate-700 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80">
                 {filteredGiocatori.length === 0 ? (
@@ -1343,6 +1493,9 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                       matchedCategory &&
                       g.categoria &&
                       !isCategoryMatch(g.categoria, matchedCategory);
+
+                    const prevConvocazioniCount = historicalConvocazioniStats[g.id] || 0;
+                    const hasPreviousConvocazione = prevConvocazioniCount > 0;
 
                     return (
                       <div
@@ -1359,7 +1512,16 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                             type="checkbox"
                             checked={g.selezionato}
                             onChange={() => {}} // gestito da onClick contenitore
-                            className="w-4 h-4 rounded-sm text-sky-600 focus:ring-sky-500 cursor-pointer"
+                            className={`w-4 h-4 rounded-sm cursor-pointer transition ${
+                              hasPreviousConvocazione
+                                ? 'accent-emerald-600 text-emerald-600 focus:ring-emerald-500 ring-1 ring-emerald-500/40'
+                                : 'accent-sky-600 text-sky-600 focus:ring-sky-500'
+                            }`}
+                            title={
+                              hasPreviousConvocazione
+                                ? `Giocatore già convocato in precedenza (${prevConvocazioniCount} gare nello storico)`
+                                : 'Nessuna convocazione registrata nelle gare precedenti'
+                            }
                           />
                           {g.numero && (
                             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-sm bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold min-w-[20px] text-center">
@@ -1370,6 +1532,24 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                           {g.ruolo && (
                             <span className="text-[10px] px-1.5 py-0.2 rounded-sm bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-300 font-bold">
                               {g.ruolo}
+                            </span>
+                          )}
+
+                          {/* Indicatore visivo storico convocazioni precedenti richiamato da localStorage */}
+                          {hasPreviousConvocazione ? (
+                            <span
+                              className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-700/60 flex items-center gap-1 shadow-2xs"
+                              title={`Giocatore già convocato in ${prevConvocazioniCount} ${prevConvocazioniCount === 1 ? 'altra gara' : 'altre gare'} salvate`}
+                            >
+                              <History className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                              <span>Storico: {prevConvocazioniCount} {prevConvocazioniCount === 1 ? 'gara' : 'gare'}</span>
+                            </span>
+                          ) : (
+                            <span
+                              className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700/70 flex items-center gap-0.5"
+                              title="Nessuna convocazione registrata nelle altre gare archiviate"
+                            >
+                              <span>1ª conv.</span>
                             </span>
                           )}
 
@@ -1673,32 +1853,42 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
             <Info className="w-3.5 h-3.5 text-sky-600" />
             <span>I convocati e l'elenco delle rose rimangono salvati per le prossime partite.</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <button
+              id="btn-footer-export-convocati-json"
+              type="button"
+              onClick={handleExportConvocatiJson}
+              className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-semibold text-xs transition flex items-center gap-1.5 active:scale-95"
+              title="Scarica un file JSON con l'elenco dei convocati e le note della gara per archiviarli su altri dispositivi"
+            >
+              <FileDown className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+              <span>Esporta Dati Convocati</span>
+            </button>
             <button
               id="btn-footer-preview-mister-pdf"
               type="button"
               disabled={isGeneratingPdf}
               onClick={() => handleOpenPdfPreview()}
-              className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-semibold text-xs transition flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+              className="px-3 py-2 rounded-xl bg-sky-100 hover:bg-sky-200 dark:bg-sky-950 dark:hover:bg-sky-900 text-sky-800 dark:text-sky-200 border border-sky-300 dark:border-sky-700 font-semibold text-xs transition flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
               title="Visualizza l'anteprima live del PDF prima di stamparlo o scaricarlo"
             >
-              <Eye className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+              <Eye className="w-3.5 h-3.5 text-sky-700 dark:text-sky-400" />
               <span>Anteprima Live PDF</span>
             </button>
             <button
               id="btn-footer-print-mister-pdf"
               type="button"
               onClick={() => handlePrintPdf()}
-              className="px-3 py-2 rounded-xl bg-sky-100 hover:bg-sky-200 dark:bg-sky-950 dark:hover:bg-sky-900 text-sky-800 dark:text-sky-200 border border-sky-300 dark:border-sky-700 font-semibold text-xs transition flex items-center gap-1.5 active:scale-95"
+              className="px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 font-semibold text-xs transition flex items-center gap-1.5 active:scale-95"
               title="Stampa subito il foglio convocazioni per il mister"
             >
-              <Printer className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+              <Printer className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
               <span>Stampa Scheda Mister</span>
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-semibold text-xs transition"
+              className="px-4 py-2 rounded-xl bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-900 dark:text-slate-100 font-bold text-xs transition"
             >
               Chiudi
             </button>
