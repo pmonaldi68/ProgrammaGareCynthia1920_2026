@@ -29,7 +29,7 @@ import { PdfExportModal } from './components/PdfExportModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ConvocazioniModal } from './components/ConvocazioniModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
-import { AlertCircle, ExternalLink, FileCode, BellRing, X, Palette, Users } from 'lucide-react';
+import { AlertCircle, FileCode, BellRing, X, Palette } from 'lucide-react';
 
 export default function App() {
   const [config, setConfig] = useState<SheetConfig>(loadStoredConfig);
@@ -216,6 +216,7 @@ export default function App() {
         onOpenNotifications={() => setIsNotificationModalOpen(true)}
         onOpenPdfExport={() => setIsPdfModalOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
+        onOpenConvocazioni={() => setIsConvocazioniModalOpen(true)}
         hasFollowedCategories={hasFollowed}
       />
 
@@ -375,24 +376,6 @@ export default function App() {
               <Palette className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
               Impostazioni & Tema
             </button>
-            <span className="text-slate-300 dark:text-slate-700">•</span>
-            <button
-              type="button"
-              onClick={() => setIsConvocazioniModalOpen(true)}
-              className="text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition flex items-center gap-1 font-semibold"
-            >
-              <Users className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              Convocazioni WhatsApp
-            </button>
-            <span className="text-slate-300 dark:text-slate-700">•</span>
-            <a
-              href="https://github.com/pmonaldi68/ProgrammaGareCynthia1920_2026"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 transition flex items-center gap-1"
-            >
-              Repository GitHub <ExternalLink className="w-3 h-3" />
-            </a>
             <span className="text-slate-300 dark:text-slate-700">•</span>
             <a
               href="./standalone.html"

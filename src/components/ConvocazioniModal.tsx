@@ -23,9 +23,19 @@ import {
   Clipboard,
   RotateCcw,
   Edit3,
+  FileText,
+  Printer,
+  Download,
+  CheckCircle2,
 } from 'lucide-react';
 import { Partita, GiocatoreConvocato, ConvocazioneConfig } from '../types';
 import { APP_CONFIG } from '../appConfig';
+import {
+  downloadConvocazioniPdf,
+  printConvocazioniPdf,
+  shareConvocazioniPdf,
+  ConvocazioniPdfOptions,
+} from '../utils/pdfGenerator';
 import {
   DEFAULT_SAMPLE_PLAYERS,
   DEFAULT_STAFF_BY_CATEGORY,
@@ -105,6 +115,11 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
 
   // Stato anteprima testo WhatsApp modificabile manualmente
   const [editedWhatsAppText, setEditedWhatsAppText] = useState<string | null>(null);
+
+  // Stato generazione PDF per il Mister (spunta manuale a penna o distinta ufficiale)
+  const [pdfModalita, setPdfModalita] = useState<'tutta_la_rosa' | 'solo_convocati'>('tutta_la_rosa');
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
+  const [pdfStatusMessage, setPdfStatusMessage] = useState<string | null>(null);
 
   // Categorie uniche stabili tra tutti i giocatori registrati (chiave deterministica)
   const categoriesKey = useMemo(() => {
@@ -409,6 +424,89 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
   };
 
+  // Prepara le opzioni per generare il PDF per il mister
+  const getPdfOptions = (modalitaOverride?: 'tutta_la_rosa' | 'solo_convocati'): ConvocazioniPdfOptions => {
+    const currentModalita = modalitaOverride || pdfModalita;
+    const targetPlayers =
+      currentModalita === 'solo_convocati'
+        ? giocatori.filter((g) => g.selezionato)
+        : giocatori.filter((g) => {
+            if (g.selezionato) return true;
+            if (matchedCategory && isCategoryMatch(g.categoria || '', matchedCategory)) return true;
+            if (!matchedCategory) return true;
+            return false;
+          });
+
+    return {
+      partita: currentPartita,
+      campionato: currentPartita?.campionato || categoriaCustom || 'Campionato Regionale',
+      squadraCasa: currentPartita?.squadraCasa || squadraCasaCustom || 'Cynthia 1920',
+      squadraOspite: currentPartita?.squadraOspite || squadraOspiteCustom || 'Avversario',
+      dataGara: currentPartita?.data || dataGaraCustom || '',
+      oraGara: currentPartita?.ora || oraGaraCustom || '',
+      oraRitrovo: oraRitrovo,
+      campo: currentPartita?.campo || campoCustom || '',
+      indirizzo: currentPartita?.indirizzo || indirizzoCustom || '',
+      misterName: misterName,
+      noteMister: noteMister,
+      giocatori: targetPlayers,
+      modalita: currentModalita,
+      categoriaTarget: matchedCategory || undefined,
+    };
+  };
+
+  // Scarica PDF Scheda Convocazioni
+  const handleDownloadPdf = (modalita?: 'tutta_la_rosa' | 'solo_convocati') => {
+    setIsGeneratingPdf(true);
+    try {
+      const options = getPdfOptions(modalita);
+      downloadConvocazioniPdf(options);
+      setPdfStatusMessage('PDF scaricato con successo!');
+      setTimeout(() => setPdfStatusMessage(null), 3500);
+    } catch (err) {
+      console.error('Errore download PDF convocazioni:', err);
+      setPdfStatusMessage('Errore nella generazione del PDF');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  // Stampa diretta Scheda Convocazioni
+  const handlePrintPdf = (modalita?: 'tutta_la_rosa' | 'solo_convocati') => {
+    setIsGeneratingPdf(true);
+    try {
+      const options = getPdfOptions(modalita);
+      printConvocazioniPdf(options);
+      setPdfStatusMessage('Finestra di stampa aperta!');
+      setTimeout(() => setPdfStatusMessage(null), 3500);
+    } catch (err) {
+      console.error('Errore stampa PDF convocazioni:', err);
+      setPdfStatusMessage('Errore durante la stampa');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  // Condividi PDF con il mister (WhatsApp, Telegram, Email tramite Web Share o download)
+  const handleSharePdf = async (modalita?: 'tutta_la_rosa' | 'solo_convocati') => {
+    setIsGeneratingPdf(true);
+    try {
+      const options = getPdfOptions(modalita);
+      const res = await shareConvocazioniPdf(options);
+      if (res.sharedViaFile) {
+        setPdfStatusMessage('Scheda PDF condivisa con successo!');
+      } else {
+        setPdfStatusMessage('PDF scaricato per l\'invio al mister!');
+      }
+      setTimeout(() => setPdfStatusMessage(null), 3500);
+    } catch (err) {
+      console.error('Errore condivisione PDF convocazioni:', err);
+      setPdfStatusMessage('Errore nella condivisione');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   // Conteggio convocati totali e aggregati da altre squadre
   const convocatiCount = useMemo(() => {
     return giocatori.filter((g) => g.selezionato).length;
@@ -483,15 +581,27 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            id="btn-close-convocazioni-modal"
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition"
-            title="Chiudi"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              id="btn-header-download-pdf-mister"
+              type="button"
+              onClick={() => handleDownloadPdf()}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white text-xs font-semibold border border-white/20 transition shadow-xs"
+              title="Scarica la scheda PDF per il mister con caselle di spunta manuale"
+            >
+              <FileText className="w-3.5 h-3.5 text-amber-300" />
+              <span>Scheda PDF Mister</span>
+            </button>
+            <button
+              id="btn-close-convocazioni-modal"
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition"
+              title="Chiudi"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Body a due colonne */}
@@ -1080,6 +1190,121 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
               </div>
             </div>
 
+            {/* SEZIONE SPECIALE: SCHEDA PDF PER IL MISTER (SPUNTA MANUALE & STAMPA) */}
+            <div className="p-4 rounded-xl bg-gradient-to-br from-sky-50 to-blue-50/70 dark:from-sky-950/40 dark:to-slate-800/80 border border-sky-200 dark:border-sky-800/80 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-sky-600 dark:bg-sky-500 text-white flex items-center justify-center shadow-xs">
+                    <FileText className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                      Scheda PDF per il Mister
+                      <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-sm bg-sky-200 dark:bg-sky-900 text-sky-800 dark:text-sky-200">
+                        Stampa & Spunta
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      File con caselle di spunta [ ] per spuntare a penna o distinta ufficiale
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Selettore Modalità PDF */}
+              <div className="grid grid-cols-2 gap-1.5 p-1 rounded-lg bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs">
+                <button
+                  id="btn-pdf-mode-all"
+                  type="button"
+                  onClick={() => setPdfModalita('tutta_la_rosa')}
+                  className={`py-1.5 px-2 rounded-md font-semibold text-[11px] transition flex items-center justify-center gap-1.5 ${
+                    pdfModalita === 'tutta_la_rosa'
+                      ? 'bg-sky-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                  title="Include tutta la rosa con quadratini vuoti per spuntare a penna prima della gara"
+                >
+                  <Clipboard className="w-3.5 h-3.5" />
+                  <span>Foglio di Lavoro [ ]</span>
+                </button>
+                <button
+                  id="btn-pdf-mode-selected"
+                  type="button"
+                  onClick={() => setPdfModalita('solo_convocati')}
+                  className={`py-1.5 px-2 rounded-md font-semibold text-[11px] transition flex items-center justify-center gap-1.5 ${
+                    pdfModalita === 'solo_convocati'
+                      ? 'bg-sky-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                  title="Include solo i calciatori già contrassegnati come convocati"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Solo Convocati ({convocatiCount})</span>
+                </button>
+              </div>
+
+              <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-sky-100/50 dark:bg-sky-900/30 p-2 rounded-lg border border-sky-200/60 dark:border-sky-800/40">
+                {pdfModalita === 'tutta_la_rosa' ? (
+                  <span>
+                    📋 <strong>Foglio di Lavoro:</strong> tutta la rosa con caselle <code>[ ]</code> per la spunta manuale con penna da parte del mister + righe vuote per aggregati dell'ultimo minuto.
+                  </span>
+                ) : (
+                  <span>
+                    ✓ <strong>Distinta Ufficiale:</strong> solo i <strong>{convocatiCount}</strong> calciatori attualmente selezionati, formattati per la distinta di gara ufficiale.
+                  </span>
+                )}
+              </div>
+
+              {/* Pulsanti Azione PDF */}
+              <div className="grid grid-cols-3 gap-2 pt-0.5">
+                {/* 1. Scarica PDF */}
+                <button
+                  id="btn-download-pdf-mister"
+                  type="button"
+                  disabled={isGeneratingPdf}
+                  onClick={() => handleDownloadPdf()}
+                  className="py-2.5 px-2 rounded-xl bg-sky-700 hover:bg-sky-800 active:scale-95 text-white font-bold text-xs shadow-xs transition flex flex-col items-center justify-center gap-1 disabled:opacity-50"
+                  title="Scarica il file PDF per il mister"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Scarica PDF</span>
+                </button>
+
+                {/* 2. Stampa Diretta */}
+                <button
+                  id="btn-print-pdf-mister"
+                  type="button"
+                  disabled={isGeneratingPdf}
+                  onClick={() => handlePrintPdf()}
+                  className="py-2.5 px-2 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 active:scale-95 text-slate-800 dark:text-slate-100 font-semibold text-xs shadow-2xs transition flex flex-col items-center justify-center gap-1 disabled:opacity-50"
+                  title="Stampa subito il foglio convocazioni da spuntare a penna"
+                >
+                  <Printer className="w-4 h-4 text-slate-700 dark:text-slate-200" />
+                  <span>Stampa Foglio</span>
+                </button>
+
+                {/* 3. Invia al Mister */}
+                <button
+                  id="btn-share-pdf-mister"
+                  type="button"
+                  disabled={isGeneratingPdf}
+                  onClick={() => handleSharePdf()}
+                  className="py-2.5 px-2 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 active:scale-95 text-slate-800 dark:text-slate-100 font-semibold text-xs shadow-2xs transition flex flex-col items-center justify-center gap-1 disabled:opacity-50"
+                  title="Invia il file PDF al mister tramite WhatsApp o condivisione nativa"
+                >
+                  <Share2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>Invia al Mister</span>
+                </button>
+              </div>
+
+              {pdfStatusMessage && (
+                <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 p-2 rounded-lg border border-emerald-300 dark:border-emerald-800 flex items-center justify-center gap-1.5 animate-in fade-in">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>{pdfStatusMessage}</span>
+                </div>
+              )}
+            </div>
+
             {/* Pulsanti Azione WhatsApp & Condivisione */}
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 shadow-2xs space-y-2.5">
               {/* 1. Pulsante Principale Invia su WhatsApp */}
@@ -1139,13 +1364,25 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
             <Info className="w-3.5 h-3.5 text-sky-600" />
             <span>I convocati e l'elenco delle rose rimangono salvati per le prossime partite.</span>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-semibold text-xs transition"
-          >
-            Chiudi
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              id="btn-footer-print-mister-pdf"
+              type="button"
+              onClick={() => handlePrintPdf()}
+              className="px-3 py-2 rounded-xl bg-sky-100 hover:bg-sky-200 dark:bg-sky-950 dark:hover:bg-sky-900 text-sky-800 dark:text-sky-200 border border-sky-300 dark:border-sky-700 font-semibold text-xs transition flex items-center gap-1.5 active:scale-95"
+              title="Stampa subito il foglio convocazioni per il mister"
+            >
+              <Printer className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+              <span>Stampa Scheda Mister</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-semibold text-xs transition"
+            >
+              Chiudi
+            </button>
+          </div>
         </div>
       </div>
     </div>

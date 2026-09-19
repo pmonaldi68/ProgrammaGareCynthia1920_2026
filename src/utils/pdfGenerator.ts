@@ -294,3 +294,12 @@ export function generateWhatsAppWeeklySummary(partite: Partita[]): string {
   msg += `Forza Cynthia 1920!`;
   return msg;
 }
+
+// Esporta anche le funzioni e i tipi per la generazione della scheda convocazioni per il mister
+export {
+  generateConvocazioniPdf,
+  downloadConvocazioniPdf,
+  printConvocazioniPdf,
+  shareConvocazioniPdf,
+  type ConvocazioniPdfOptions,
+} from './convocazioniPdfGenerator';
