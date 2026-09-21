@@ -28,6 +28,7 @@ interface ConvocazioniPdfPreviewModalProps {
   onPrintPdf: (modalita?: 'tutta_la_rosa' | 'solo_convocati') => void;
   onTogglePlayer?: (id: string) => void;
   onUpdateRitrovoTime?: (newTime: string) => void;
+  onUpdateMisterName?: (newName: string) => void;
 }
 
 export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalProps> = ({
@@ -38,6 +39,7 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
   onPrintPdf,
   onTogglePlayer,
   onUpdateRitrovoTime,
+  onUpdateMisterName,
 }) => {
   const [modalita, setModalita] = useState<'tutta_la_rosa' | 'solo_convocati'>(
     options.modalita || 'tutta_la_rosa'
@@ -59,11 +61,13 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
     giocatori,
   } = options;
 
-  // Filtra i giocatori per l'anteprima in base alla modalità selezionata
+  // Filtra i giocatori per l'anteprima in base alla modalità selezionata:
+  // - 'solo_convocati': considerati i calciatori selezionati fino a massimo 25
+  // - 'tutta_la_rosa': tutti i calciatori in rosa con casella vuota [ ] per la spunta a penna
   const displayedPlayers =
     modalita === 'solo_convocati'
-      ? giocatori.filter((g) => g.selezionato)
-      : giocatori;
+      ? giocatori.filter((g) => g.selezionato).slice(0, 25)
+      : giocatori.map((g) => ({ ...g, selezionato: false }));
 
   const convocatiCount = giocatori.filter((g) => g.selezionato).length;
   const totalCount = giocatori.length;
@@ -302,8 +306,21 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
                     {campo ? `${campo}${indirizzo ? ` (${indirizzo})` : ''}` : 'PRESSO IL CAMPO DI GIUOCO'}
                   </div>
 
-                  <div className="text-[9px] font-bold text-sky-700 uppercase tracking-wider mt-1.5">
-                    MISTER: <span className="font-extrabold text-slate-900">{(misterName || 'DA ASSEGNARE').toUpperCase()}</span>
+                  <div className="text-[9px] font-bold text-sky-700 uppercase tracking-wider mt-1.5 flex items-center gap-1">
+                    <span>MISTER:</span>
+                    {onUpdateMisterName ? (
+                      <input
+                        id="input-preview-mister-name"
+                        type="text"
+                        value={misterName || ''}
+                        onChange={(e) => onUpdateMisterName(e.target.value)}
+                        placeholder="Nome del Mister"
+                        className="font-extrabold text-slate-900 bg-sky-50 border border-sky-300 rounded px-1.5 py-0.5 text-[10px] uppercase focus:ring-1 focus:ring-sky-500 w-full"
+                        title="Modifica il nome del Mister per questa gara"
+                      />
+                    ) : (
+                      <span className="font-extrabold text-slate-900">{(misterName || 'DA ASSEGNARE').toUpperCase()}</span>
+                    )}
                   </div>
                 </div>
 
@@ -368,7 +385,9 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
                         N°
                       </th>
                       <th className="py-2 px-3 border-r border-sky-800">
-                        CALCIATORE (COGNOME E NOME)
+                        {modalita === 'solo_convocati'
+                          ? 'CALCIATORE (COGNOME E NOME) - CONVOCATI UFFICIALI (MAX 25)'
+                          : 'CALCIATORE (COGNOME E NOME) - ROSA COMPLETA SPUNTA A PENNA'}
                       </th>
                       <th className="py-2 px-3 w-48">
                         NOTE MISTER
@@ -413,9 +432,33 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
                               {g.numero || idx + 1}
                             </td>
 
-                            {/* Nominativo */}
+                            {/* Nominativo con Ruolo e Società */}
                             <td className="py-1.5 px-3 font-bold text-slate-900 border-r border-slate-200 uppercase text-[11px] tracking-wide">
-                              {g.nome}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span>{g.nome}</span>
+                                {g.ruolo && (
+                                  <span className="text-[9.5px] px-1 py-0.2 rounded bg-sky-100 text-sky-800 font-bold">
+                                    {g.ruolo}
+                                  </span>
+                                )}
+                                {g.squadra && (
+                                  <span
+                                    className={`text-[9px] px-1 py-0.2 rounded font-bold ${
+                                      g.squadra.toUpperCase().includes('ALBA')
+                                        ? 'bg-purple-100 text-purple-800'
+                                        : g.squadra.toUpperCase().includes('ACADEMY')
+                                        ? 'bg-cyan-100 text-cyan-800'
+                                        : 'bg-slate-100 text-slate-700'
+                                    }`}
+                                  >
+                                    {g.squadra.toUpperCase().includes('ALBA')
+                                      ? 'ALBACYNTHIA'
+                                      : g.squadra.toUpperCase().includes('ACADEMY')
+                                      ? 'ACADEMY'
+                                      : 'CYNTHIA'}
+                                  </span>
+                                )}
+                              </div>
                             </td>
 
                             {/* Note Mister */}
@@ -427,25 +470,28 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
                       })
                     )}
 
-                    {/* 4 Righe aggiuntive vuote per la compilazione a penna dell'ultimo minuto */}
-                    {modalita === 'tutta_la_rosa' && (
+                    {/* Righe aggiuntive vuote per la compilazione a penna dell'ultimo minuto (fino a max 25 complessivi) */}
+                    {modalita === 'tutta_la_rosa' && displayedPlayers.length < 25 && (
                       <>
-                        {[1, 2, 3, 4].map((emptyRowIdx) => (
-                          <tr key={`empty-${emptyRowIdx}`} className="bg-transparent border-t border-slate-200">
-                            <td className="py-2 px-2 text-center border-r border-slate-200">
-                              <div className="w-5 h-5 border-2 border-slate-300 bg-white rounded-sm mx-auto" />
-                            </td>
-                            <td className="py-2 px-2 text-center text-slate-300 font-bold border-r border-slate-200 text-[11px]">
-                              {displayedPlayers.length + emptyRowIdx}
-                            </td>
-                            <td className="py-2 px-3 border-r border-slate-200 text-slate-300 italic text-[11px]">
-                              ................................................................................
-                            </td>
-                            <td className="py-2 px-3 text-slate-300 italic text-[10px]">
-                              ................................................
-                            </td>
-                          </tr>
-                        ))}
+                        {Array.from({ length: Math.min(3, 25 - displayedPlayers.length) }).map((_, emptyIdx) => {
+                          const emptyRowIdx = emptyIdx + 1;
+                          return (
+                            <tr key={`empty-${emptyRowIdx}`} className="bg-transparent border-t border-slate-200">
+                              <td className="py-2 px-2 text-center border-r border-slate-200">
+                                <div className="w-5 h-5 border-2 border-slate-300 bg-white rounded-sm mx-auto" />
+                              </td>
+                              <td className="py-2 px-2 text-center text-slate-300 font-bold border-r border-slate-200 text-[11px]">
+                                {displayedPlayers.length + emptyRowIdx}
+                              </td>
+                              <td className="py-2 px-3 border-r border-slate-200 text-slate-300 italic text-[11px]">
+                                ................................................................................
+                              </td>
+                              <td className="py-2 px-3 text-slate-300 italic text-[10px]">
+                                ................................................
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </>
                     )}
                   </tbody>

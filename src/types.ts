@@ -57,6 +57,7 @@ export interface GiocatoreConvocato {
   ruolo?: string;
   numero?: string;
   categoria?: string;
+  squadra?: string; // 'CYNTHIA 1920' | 'ACADEMY CYNTHIA GENZANO' | 'ALBACYNTHIA'
   selezionato: boolean;
   note?: string;
 }

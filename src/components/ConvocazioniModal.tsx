@@ -66,6 +66,12 @@ import {
   calculateRitrovoFromOraGara,
   calculateRitrovoTimeOnly,
   extractTimeFromRitrovo,
+  ensureFullCynthiaRosters,
+  detectCynthiaClub,
+  resolveMisterForMatch,
+  saveMisterForMatch,
+  loadSavedMisterForMatch,
+  OFFICIAL_CYNTHIA_COACHES,
 } from '../services/convocazioniService';
 
 interface ConvocazioniModalProps {
@@ -79,6 +85,9 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   onClose,
   partite,
 }) => {
+  // Limite massimo ufficiale di convocati consentiti a referto/distinta
+  const MAX_CONVOCATI_LIMIT = 25;
+
   // Configurazione Foglio Google Convocati
   const [config, setConfig] = useState<ConvocazioneConfig>(loadConvocazioniConfig);
   const [isFetchingSheet, setIsFetchingSheet] = useState<boolean>(false);
@@ -91,10 +100,10 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     return partite.length > 0 ? partite[0].id : '';
   });
 
-  // Giocatori e Staff per categoria (ripristina automaticamente i convocati salvati per la gara)
+  // Giocatori e Staff per categoria (ripristina automaticamente i convocati salvati per la gara e garantisce rose complete delle 3 società)
   const [giocatori, setGiocatori] = useState<GiocatoreConvocato[]>(() => {
     const cached = loadCachedGiocatori();
-    const rawList = cached && cached.length > 0 ? cached : DEFAULT_SAMPLE_PLAYERS;
+    const rawList = ensureFullCynthiaRosters(cached && cached.length > 0 ? cached : DEFAULT_SAMPLE_PLAYERS);
     const initialMatchId = partite.length > 0 ? partite[0].id : '';
     const savedIds = initialMatchId ? loadSavedConvocatiForMatch(initialMatchId) : null;
     if (savedIds !== null) {
@@ -129,12 +138,17 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   const [searchPlayer, setSearchPlayer] = useState<string>('');
   const [filterRuolo, setFilterRuolo] = useState<string>('ALL');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('AUTO');
+  // Filtro Società: CYNTHIA 1920, ACADEMY CYNTHIA GENZANO, ALBACYNTHIA
+  const [selectedClubFilter, setSelectedClubFilter] = useState<'ALL' | 'CYNTHIA 1920' | 'ACADEMY CYNTHIA GENZANO' | 'ALBACYNTHIA'>('ALL');
   const [filterOnlyWithHistory, setFilterOnlyWithHistory] = useState<boolean>(false);
+  const [convocatiLimitWarning, setConvocatiLimitWarning] = useState<string | null>(null);
+
   const [isAddingPlayer, setIsAddingPlayer] = useState<boolean>(false);
   const [newPlayerName, setNewPlayerName] = useState<string>('');
   const [newPlayerRuolo, setNewPlayerRuolo] = useState<string>('');
   const [newPlayerNumero, setNewPlayerNumero] = useState<string>('');
   const [newPlayerCategoria, setNewPlayerCategoria] = useState<string>('');
+  const [newPlayerSquadra, setNewPlayerSquadra] = useState<string>('CYNTHIA 1920');
 
   // Messaggio successo esportazione JSON
   const [exportSuccessMessage, setExportSuccessMessage] = useState<string | null>(null);
@@ -221,23 +235,26 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     const savedSelectedIds = loadSavedConvocatiForMatch(p.id);
     const savedIdSet = savedSelectedIds !== null ? new Set(savedSelectedIds) : null;
 
-    // Filtra sulla squadra della partita selezionata e ripristina la selezione salvata per questa gara
+    // Filtra sulla squadra della partita selezionata e ripristina la selezione salvata per questa gara,
+    // assicurando che le rose di tutte e 3 le società siano sempre caricate indipendentemente da chi gioca in casa
     setGiocatori((prev) => {
+      const fullList = ensureFullCynthiaRosters(prev);
       const availableCats = Array.from(
-        new Set(prev.map((g) => g.categoria).filter(Boolean))
+        new Set(fullList.map((g) => g.categoria).filter(Boolean))
       ) as string[];
       const matchCat = findMatchingCategory(p.campionato, availableCats);
 
+      // Determina il mister corretto per questa gara (solo Cynthia 1920, Academy Cynthia o Albacynthia, o personalizzato)
+      const correctMister = resolveMisterForMatch(p, p.campionato);
+      setMisterName(correctMister);
+
       if (matchCat) {
-        if (staffMapRef.current[matchCat]) {
-          setMisterName(staffMapRef.current[matchCat]);
-        }
         setSelectedCategoryFilter(matchCat);
       }
 
       // Se esistono convocati salvati in precedenza per questa specifica gara, ripristinali!
       // Altrimenti, per una gara non ancora compilata, lascia tutti deselezionati
-      const updated = prev.map((g) => ({
+      const updated = fullList.map((g) => ({
         ...g,
         selezionato: savedIdSet ? savedIdSet.has(g.id) : false,
       }));
@@ -249,11 +266,38 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   // Aggiorna staff quando l'utente modifica a mano il nome del Mister
   const handleMisterChange = (name: string) => {
     setMisterName(name);
+    if (selectedPartitaId) {
+      saveMisterForMatch(selectedPartitaId, name);
+    }
     if (matchedCategory) {
       const updated = { ...staffMap, [matchedCategory]: name };
       setStaffMap(updated);
       saveCachedStaff(updated);
     }
+    setEditedWhatsAppText(null);
+  };
+
+  // Reimposta il mister ufficiale calcolato in base a squadra e categoria
+  const handleResetOfficialMister = () => {
+    if (!currentPartita) return;
+    try {
+      const raw = localStorage.getItem('cynthia_mister_by_match_v1');
+      if (raw) {
+        const map = JSON.parse(raw);
+        delete map[currentPartita.id];
+        localStorage.setItem('cynthia_mister_by_match_v1', JSON.stringify(map));
+      }
+    } catch (e) {
+      console.warn('Errore reset mister per gara', e);
+    }
+    const defaultMister = resolveMisterForMatch({ ...currentPartita, id: '' }, currentPartita.campionato);
+    setMisterName(defaultMister);
+    if (matchedCategory) {
+      const updated = { ...staffMap, [matchedCategory]: defaultMister };
+      setStaffMap(updated);
+      saveCachedStaff(updated);
+    }
+    setEditedWhatsAppText(null);
   };
 
   // Caricamento da Google Sheet
@@ -280,7 +324,8 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       const matchIdToUse = selectedPartitaId || 'custom_match';
       const savedMatchIds = loadSavedConvocatiForMatch(matchIdToUse);
       const savedSet = savedMatchIds !== null ? new Set(savedMatchIds) : null;
-      const playersWithPreserved = parsed.giocatori.map((g) => ({
+      const fullRosterList = ensureFullCynthiaRosters(parsed.giocatori);
+      const playersWithPreserved = fullRosterList.map((g) => ({
         ...g,
         selezionato: savedSet ? savedSet.has(g.id) : false,
       }));
@@ -344,9 +389,23 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     saveConvocatiForMatch(matchIdToSave, selectedIds);
   };
 
-  // Toggle selezione singolo atleta con salvataggio automatico per la gara
+  // Toggle selezione singolo atleta con limite a 25 e salvataggio automatico per la gara
   const togglePlayer = (id: string) => {
     setGiocatori((prev) => {
+      const target = prev.find((g) => g.id === id);
+      if (!target) return prev;
+
+      // Se si sta provando a selezionare e si è già raggiunto il limite di 25
+      if (!target.selezionato) {
+        const currentlySelectedCount = prev.filter((g) => g.selezionato).length;
+        if (currentlySelectedCount >= MAX_CONVOCATI_LIMIT) {
+          setConvocatiLimitWarning(`Limite massimo di ${MAX_CONVOCATI_LIMIT} convocati raggiunto per la distinta di gara.`);
+          setTimeout(() => setConvocatiLimitWarning(null), 4500);
+          return prev;
+        }
+      }
+
+      setConvocatiLimitWarning(null);
       const updated = prev.map((g) => (g.id === id ? { ...g, selezionato: !g.selezionato } : g));
       saveCachedGiocatori(updated);
       persistCurrentMatchConvocati(updated);
@@ -354,11 +413,28 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     });
   };
 
-  // Seleziona tutti i giocatori visibili nell'elenco (con salvataggio automatico)
+  // Seleziona tutti i giocatori visibili nell'elenco (fino al limite massimo di 25 convocati)
   const handleSelectAll = () => {
     setGiocatori((prev) => {
-      const visibleIds = new Set(filteredGiocatori.map((g) => g.id));
-      const updated = prev.map((g) => (visibleIds.has(g.id) ? { ...g, selezionato: true } : g));
+      const visible = filteredGiocatori;
+      const alreadySelectedNonVisible = prev.filter((g) => g.selezionato && !visible.some((v) => v.id === g.id));
+      const availableSlots = Math.max(0, MAX_CONVOCATI_LIMIT - alreadySelectedNonVisible.length);
+
+      const toSelectIds = new Set(visible.slice(0, availableSlots).map((g) => g.id));
+
+      if (visible.length > availableSlots) {
+        setConvocatiLimitWarning(`Selezionati ${toSelectIds.size} atleti: raggiunto il limite massimo ufficiale di ${MAX_CONVOCATI_LIMIT} convocati.`);
+        setTimeout(() => setConvocatiLimitWarning(null), 5000);
+      } else {
+        setConvocatiLimitWarning(null);
+      }
+
+      const updated = prev.map((g) => {
+        if (toSelectIds.has(g.id)) return { ...g, selezionato: true };
+        if (visible.some((v) => v.id === g.id)) return { ...g, selezionato: false };
+        return g;
+      });
+
       saveCachedGiocatori(updated);
       persistCurrentMatchConvocati(updated);
       return updated;
@@ -367,6 +443,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
 
   // Deseleziona tutti i giocatori (con salvataggio automatico)
   const handleDeselectAll = () => {
+    setConvocatiLimitWarning(null);
     setGiocatori((prev) => {
       const visibleIds = new Set(filteredGiocatori.map((g) => g.id));
       const isFiltered = filteredGiocatori.length < prev.length;
@@ -384,6 +461,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
 
   // Azzera tutti i convocati in assoluto
   const handleResetAllSelections = () => {
+    setConvocatiLimitWarning(null);
     setGiocatori((prev) => {
       const updated = prev.map((g) => ({ ...g, selezionato: false }));
       saveCachedGiocatori(updated);
@@ -407,6 +485,13 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     if (!newPlayerName.trim()) return;
 
     const cat = newPlayerCategoria.trim() || matchedCategory || 'Prima Squadra';
+    const currentCount = giocatori.filter((g) => g.selezionato).length;
+    const canSelect = currentCount < MAX_CONVOCATI_LIMIT;
+
+    if (!canSelect) {
+      setConvocatiLimitWarning(`Atleta aggiunto alla rosa ma non selezionato: raggiunto il limite di ${MAX_CONVOCATI_LIMIT} convocati.`);
+      setTimeout(() => setConvocatiLimitWarning(null), 4500);
+    }
 
     const newG: GiocatoreConvocato = {
       id: `manual_${Date.now()}`,
@@ -414,7 +499,8 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       ruolo: newPlayerRuolo.trim().toUpperCase() || undefined,
       numero: newPlayerNumero.trim() || undefined,
       categoria: cat,
-      selezionato: true,
+      squadra: newPlayerSquadra || 'CYNTHIA 1920',
+      selezionato: canSelect,
     };
 
     setGiocatori((prev) => {
@@ -568,14 +654,21 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   // Prepara le opzioni per generare il PDF per il mister
   const getPdfOptions = (modalitaOverride?: 'tutta_la_rosa' | 'solo_convocati'): ConvocazioniPdfOptions => {
     const currentModalita = modalitaOverride || pdfModalita;
-    // Seleziona solo i giocatori della partita selezionata (categoria corrispondente)
-    const targetPlayers =
-      currentModalita === 'solo_convocati'
-        ? giocatori.filter((g) => g.selezionato && (!matchedCategory || isCategoryMatch(g.categoria || '', matchedCategory)))
-        : giocatori.filter((g) => {
-            if (matchedCategory) return isCategoryMatch(g.categoria || '', matchedCategory);
-            return true;
-          });
+
+    // Regola utente:
+    // - Foglio di spunta da dare al mister ('tutta_la_rosa'): tutti i giocatori in rosa deselezionati [ ] per spunta a penna
+    // - Distinta definitiva ('solo_convocati'): solo i giocatori selezionati fino al limite massimo di 25
+    let targetPlayers: GiocatoreConvocato[];
+    if (currentModalita === 'solo_convocati') {
+      targetPlayers = giocatori.filter((g) => g.selezionato).slice(0, MAX_CONVOCATI_LIMIT);
+    } else {
+      const categoryPlayers = giocatori.filter((g) => {
+        if (matchedCategory) return isCategoryMatch(g.categoria || '', matchedCategory);
+        return true;
+      });
+      const baseList = categoryPlayers.length > 0 ? categoryPlayers : giocatori;
+      targetPlayers = baseList.map((g) => ({ ...g, selezionato: false }));
+    }
 
     const fullRitrovoToUse = oraRitrovo || `${currentRitrovoTime} ${ritrovoLuogo.trim()}`;
 
@@ -677,7 +770,12 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     );
   }, [convocati, matchedCategory]);
 
-  // Giocatori filtrati nella lista UI in base a categoria, ruolo, ricerca e storico
+  // Società del Cynthia identificata per la gara corrente (casa o trasferta)
+  const detectedClub = useMemo(() => {
+    return detectCynthiaClub(currentPartita);
+  }, [currentPartita]);
+
+  // Giocatori filtrati nella lista UI in base a categoria, società, ruolo, ricerca e storico
   const filteredGiocatori = useMemo(() => {
     return giocatori.filter((g) => {
       // 1. Filtro Categoria
@@ -690,26 +788,39 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         }
       }
 
-      // 2. Filtro Ricerca
+      // 2. Filtro Società (CYNTHIA 1920, ACADEMY CYNTHIA GENZANO, ALBACYNTHIA)
+      if (selectedClubFilter !== 'ALL') {
+        const club = (g.squadra || '').toUpperCase();
+        if (selectedClubFilter === 'CYNTHIA 1920') {
+          if (!club.includes('CYNTHIA') || club.includes('ACADEMY') || club.includes('ALBA')) return false;
+        } else if (selectedClubFilter === 'ACADEMY CYNTHIA GENZANO') {
+          if (!club.includes('ACADEMY')) return false;
+        } else if (selectedClubFilter === 'ALBACYNTHIA') {
+          if (!club.includes('ALBA')) return false;
+        }
+      }
+
+      // 3. Filtro Ricerca
       const matchSearch =
         !searchPlayer.trim() ||
         g.nome.toLowerCase().includes(searchPlayer.toLowerCase()) ||
         (g.ruolo && g.ruolo.toLowerCase().includes(searchPlayer.toLowerCase())) ||
         (g.numero && g.numero.includes(searchPlayer)) ||
-        (g.categoria && g.categoria.toLowerCase().includes(searchPlayer.toLowerCase()));
+        (g.categoria && g.categoria.toLowerCase().includes(searchPlayer.toLowerCase())) ||
+        (g.squadra && g.squadra.toLowerCase().includes(searchPlayer.toLowerCase()));
 
-      // 3. Filtro Ruolo
+      // 4. Filtro Ruolo
       const matchRuolo =
         filterRuolo === 'ALL' ||
         (g.ruolo && g.ruolo.toUpperCase() === filterRuolo.toUpperCase());
 
-      // 4. Filtro solo con storico precedente
+      // 5. Filtro solo con storico precedente
       const matchHistory =
         !filterOnlyWithHistory || (historicalConvocazioniStats[g.id] || 0) > 0;
 
       return matchSearch && matchRuolo && matchHistory;
     });
-  }, [giocatori, selectedCategoryFilter, matchedCategory, searchPlayer, filterRuolo, filterOnlyWithHistory, historicalConvocazioniStats]);
+  }, [giocatori, selectedCategoryFilter, selectedClubFilter, matchedCategory, searchPlayer, filterRuolo, filterOnlyWithHistory, historicalConvocazioniStats]);
 
   // Numero di atleti nella lista filtrata che hanno già convocazioni registrate nello storico
   const playersWithHistoryCount = useMemo(() => {
@@ -729,6 +840,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       applicazione: 'ASD Cynthia 1920 - Gestione Convocazioni',
       versione: '1.0',
       dataEsportazione: new Date().toISOString(),
+      societaRiferimentoGara: detectedClub || 'CYNTHIA 1920',
       partita: {
         id: currentPartita?.id || selectedPartitaId || 'gara_personalizzata',
         categoria: categoriaEffettiva,
@@ -753,6 +865,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       },
       noteGara: noteMister,
       totaleConvocati: convocati.length,
+      limiteMassimoConvocati: MAX_CONVOCATI_LIMIT,
       totaleRosaCategoria: filteredGiocatori.length,
       giocatoriConvocati: convocati.map((g, idx) => ({
         ordine: idx + 1,
@@ -762,6 +875,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         cognome: g.cognome || '',
         ruolo: g.ruolo || '',
         categoria: g.categoria || categoriaEffettiva,
+        squadra: g.squadra || 'CYNTHIA 1920',
         aggregatoDa:
           g.categoria && matchedCategory && !isCategoryMatch(g.categoria, matchedCategory)
             ? g.categoria
@@ -895,6 +1009,22 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                       </option>
                     ))}
                   </select>
+
+                  {/* Informazione Rose Multi-Club Convocabili */}
+                  <div className="mt-2 p-2 rounded-lg bg-sky-50/80 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/60 text-[11px] text-sky-900 dark:text-sky-200 flex items-center justify-between flex-wrap gap-1">
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <Shield className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                      <span>Rose sempre disponibili:</span>
+                      <span className="font-bold text-slate-900 dark:text-white">CYNTHIA 1920</span> •{' '}
+                      <span className="font-bold text-slate-900 dark:text-white">ACADEMY CYNTHIA GENZANO</span> •{' '}
+                      <span className="font-bold text-slate-900 dark:text-white">ALBACYNTHIA</span>
+                    </div>
+                    {detectedClub && (
+                      <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-bold border border-amber-300 dark:border-amber-700 text-[10px]">
+                        Società gara: {detectedClub} ({currentPartita?.isCynthiaCasa ? 'Casa' : 'Trasferta'})
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -965,20 +1095,88 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
 
                 <div className="bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                      <Shield className="w-3.5 h-3.5 text-sky-500" />
-                      Mister ({matchedCategory || 'Squadra'}):
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label
+                        htmlFor="input-convocazioni-mister-name"
+                        className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1"
+                      >
+                        <Shield className="w-3.5 h-3.5 text-sky-500" />
+                        <span>Mister ({detectedClub}):</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleResetOfficialMister}
+                        className="text-[10px] font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 hover:underline flex items-center gap-0.5 cursor-pointer"
+                        title="Reimposta il mister predefinito per questa gara"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Predefinito</span>
+                      </button>
+                    </div>
+
+                    {/* Campo Modifica Libera Nome del Mister */}
                     <input
+                      id="input-convocazioni-mister-name"
                       type="text"
                       value={misterName}
                       onChange={(e) => handleMisterChange(e.target.value)}
-                      placeholder="es. Ruotolo Giuseppe"
-                      className="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:outline-hidden font-medium"
+                      placeholder="es. Mister Ruotolo Giuseppe"
+                      className="w-full text-xs p-2 rounded-lg border-2 border-sky-400/60 dark:border-sky-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:outline-hidden font-bold mb-1.5 shadow-2xs"
+                      title="Puoi modificare liberamente il nome del mister che apparirà nel PDF e su WhatsApp"
                     />
+
+                    {/* Selezione Rapida tra i Mister Ufficiali delle 3 Società */}
+                    <div className="mt-1">
+                      <label
+                        htmlFor="select-official-cynthia-coach"
+                        className="block text-[10px] font-medium text-slate-500 dark:text-slate-400 mb-0.5"
+                      >
+                        Oppure seleziona tra i mister ufficiali delle 3 società:
+                      </label>
+                      <select
+                        id="select-official-cynthia-coach"
+                        value={
+                          OFFICIAL_CYNTHIA_COACHES.find(
+                            (c) => c.displayName === misterName || c.nome === misterName
+                          )?.id || ''
+                        }
+                        onChange={(e) => {
+                          const coach = OFFICIAL_CYNTHIA_COACHES.find((c) => c.id === e.target.value);
+                          if (coach) {
+                            handleMisterChange(coach.displayName);
+                          }
+                        }}
+                        className="w-full text-[11px] p-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-hidden font-medium cursor-pointer"
+                      >
+                        <option value="">-- Seleziona Mister / Istruttore --</option>
+                        <optgroup label="CYNTHIA 1920">
+                          {OFFICIAL_CYNTHIA_COACHES.filter((c) => c.societa === 'CYNTHIA 1920').map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.displayName} ({c.ruoloDescrizione})
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="ACADEMY CYNTHIA GENZANO">
+                          {OFFICIAL_CYNTHIA_COACHES.filter(
+                            (c) => c.societa === 'ACADEMY CYNTHIA GENZANO'
+                          ).map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.displayName} ({c.ruoloDescrizione})
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="ALBACYNTHIA">
+                          {OFFICIAL_CYNTHIA_COACHES.filter((c) => c.societa === 'ALBACYNTHIA').map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.displayName} ({c.ruoloDescrizione})
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    </div>
                   </div>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-2">
-                    L'orario e il mister compaiono in evidenza nel PDF e nel messaggio WhatsApp.
+                    Il nome del mister è modificabile e viene memorizzato per questa gara sul PDF e sul messaggio WhatsApp.
                   </div>
                 </div>
               </div>
@@ -1245,12 +1443,84 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                 </div>
               </div>
 
+              {/* Selettore Società Convocabili: CYNTHIA 1920, ACADEMY CYNTHIA GENZANO, ALBACYNTHIA */}
+              <div className="mb-3 p-2.5 rounded-xl bg-gradient-to-r from-sky-50 via-slate-50 to-indigo-50 dark:from-sky-950/40 dark:via-slate-850 dark:to-indigo-950/40 border border-sky-200/80 dark:border-sky-800/60 shadow-2xs">
+                <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-between flex-wrap gap-1">
+                  <span className="flex items-center gap-1.5 text-sky-800 dark:text-sky-300">
+                    <Shield className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                    Rose Convocabili per la Categoria:
+                  </span>
+                  {detectedClub && (
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-200 dark:bg-amber-900/70 text-amber-900 dark:text-amber-200 border border-amber-400/60 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                      Gara: {detectedClub} ({currentPartita?.isCynthiaCasa ? 'In Casa' : currentPartita?.isCynthiaOspite ? 'In Trasferta' : 'Calendario'})
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    id="filter-club-all"
+                    type="button"
+                    onClick={() => setSelectedClubFilter('ALL')}
+                    className={`text-xs px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1.5 ${
+                      selectedClubFilter === 'ALL'
+                        ? 'bg-sky-700 text-white shadow-2xs'
+                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
+                    }`}
+                  >
+                    <span>Tutte e 3 le Società</span>
+                    <span className="text-[10px] opacity-80 font-normal">
+                      (Cynthia, Academy, Albacynthia)
+                    </span>
+                  </button>
+                  <button
+                    id="filter-club-cynthia"
+                    type="button"
+                    onClick={() => setSelectedClubFilter('CYNTHIA 1920')}
+                    className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition flex items-center gap-1.5 ${
+                      selectedClubFilter === 'CYNTHIA 1920'
+                        ? 'bg-slate-900 text-white shadow-2xs font-bold ring-1 ring-sky-400'
+                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-sky-500 inline-block" />
+                    CYNTHIA 1920
+                  </button>
+                  <button
+                    id="filter-club-academy"
+                    type="button"
+                    onClick={() => setSelectedClubFilter('ACADEMY CYNTHIA GENZANO')}
+                    className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition flex items-center gap-1.5 ${
+                      selectedClubFilter === 'ACADEMY CYNTHIA GENZANO'
+                        ? 'bg-sky-600 text-white shadow-2xs font-bold ring-1 ring-cyan-300'
+                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block" />
+                    ACADEMY CYNTHIA
+                  </button>
+                  <button
+                    id="filter-club-albacynthia"
+                    type="button"
+                    onClick={() => setSelectedClubFilter('ALBACYNTHIA')}
+                    className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition flex items-center gap-1.5 ${
+                      selectedClubFilter === 'ALBACYNTHIA'
+                        ? 'bg-indigo-700 text-white shadow-2xs font-bold ring-1 ring-purple-300'
+                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
+                    ALBACYNTHIA
+                  </button>
+                </div>
+              </div>
+
               {/* Barra Categorie Squadre (permette di pescare giocatori da qualsiasi squadra) */}
               <div className="mb-3">
                 <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1.5 flex items-center justify-between">
                   <span className="flex items-center gap-1">
                     <Filter className="w-3 h-3 text-sky-500" />
-                    Filtra Rosa / Pesca da altre squadre:
+                    Filtra Categoria / Aggregati da altre leve:
                   </span>
                   {matchedCategory && (
                     <span className="text-[10px] text-sky-600 dark:text-sky-400 font-semibold">
@@ -1283,7 +1553,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                         : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
                     }`}
                   >
-                    Tutte le Rose ({giocatori.length})
+                    Tutte le Categorie ({giocatori.length})
                   </button>
 
                   {availableCategories
@@ -1323,16 +1593,25 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                     onChange={(e) => setNewPlayerName(e.target.value)}
                     className="flex-1 min-w-[140px] text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700"
                   />
+                  <select
+                    value={newPlayerSquadra}
+                    onChange={(e) => setNewPlayerSquadra(e.target.value)}
+                    className="text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 font-semibold"
+                  >
+                    <option value="CYNTHIA 1920">CYNTHIA 1920</option>
+                    <option value="ACADEMY CYNTHIA GENZANO">ACADEMY CYNTHIA</option>
+                    <option value="ALBACYNTHIA">ALBACYNTHIA</option>
+                  </select>
                   <input
                     type="text"
-                    placeholder="Squadra (es. Under 19)"
+                    placeholder="Categoria (es. Under 14)"
                     value={newPlayerCategoria}
                     onChange={(e) => setNewPlayerCategoria(e.target.value)}
                     className="w-32 text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700"
                   />
                   <input
                     type="text"
-                    placeholder="Ruolo"
+                    placeholder="Ruolo (P, D, C, A)"
                     value={newPlayerRuolo}
                     onChange={(e) => setNewPlayerRuolo(e.target.value)}
                     className="w-20 text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700"
@@ -1438,28 +1717,53 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                   </button>
                 </div>
 
-                {/* Indicatore Visuale 'Convocati: X/Y' che si aggiorna in tempo reale */}
+                {/* Indicatore Visuale 'Convocati: X/25 max' che si aggiorna in tempo reale con limite fissato a 25 */}
                 <div className="flex items-center gap-2">
                   <div
                     id="indicatore-visuale-convocati-counter"
                     className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-black transition-all ${
-                      convocatiCount >= 18 && convocatiCount <= 22
+                      convocatiCount === MAX_CONVOCATI_LIMIT
+                        ? 'bg-amber-600 text-white ring-2 ring-amber-400'
+                        : convocatiCount >= 18 && convocatiCount < MAX_CONVOCATI_LIMIT
                         ? 'bg-emerald-600 text-white ring-1 ring-emerald-400/40'
-                        : convocatiCount > 22
-                        ? 'bg-amber-600 text-white'
                         : convocatiCount > 0
                         ? 'bg-sky-600 text-white'
                         : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                     }`}
-                    title="Numero atleti attualmente spuntati rispetto al totale in elenco"
+                    title={`Numero atleti convocati per la gara (limite ufficiale PDF: ${MAX_CONVOCATI_LIMIT})`}
                   >
                     <UserCheck className="w-3.5 h-3.5" />
                     <span>
-                      Convocati: {convocatiCount}/{filteredGiocatori.length}
+                      Convocati: {convocatiCount}/{MAX_CONVOCATI_LIMIT} max
                     </span>
                   </div>
+                  {convocatiCount === MAX_CONVOCATI_LIMIT && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                      Limite 25 raggiunto
+                    </span>
+                  )}
                 </div>
               </div>
+
+              {/* Banner notifica limite massimo 25 convocati */}
+              {convocatiLimitWarning && (
+                <div
+                  id="alert-convocati-limit-warning"
+                  className="p-2.5 mb-2 rounded-lg bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center justify-between gap-2 shadow-xs animate-in fade-in"
+                >
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>{convocatiLimitWarning}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setConvocatiLimitWarning(null)}
+                    className="text-amber-800 dark:text-amber-300 hover:text-amber-950 text-xs font-bold underline cursor-pointer"
+                  >
+                    OK
+                  </button>
+                </div>
+              )}
 
               {/* Banner notifica successo esportazione JSON */}
               {exportSuccessMessage && (
@@ -1497,6 +1801,10 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                     const prevConvocazioniCount = historicalConvocazioniStats[g.id] || 0;
                     const hasPreviousConvocazione = prevConvocazioniCount > 0;
 
+                    const squad = (g.squadra || 'CYNTHIA 1920').toUpperCase();
+                    const isAlba = squad.includes('ALBA');
+                    const isAcademy = squad.includes('ACADEMY');
+
                     return (
                       <div
                         key={g.id}
@@ -1528,12 +1836,30 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                               {g.numero}
                             </span>
                           )}
-                          <span className="text-xs">{g.nome}</span>
+                          <span className="text-xs font-medium text-slate-900 dark:text-slate-100">{g.nome}</span>
                           {g.ruolo && (
                             <span className="text-[10px] px-1.5 py-0.2 rounded-sm bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-300 font-bold">
                               {g.ruolo}
                             </span>
                           )}
+
+                          {/* Badge Società (CYNTHIA 1920, ACADEMY CYNTHIA, ALBACYNTHIA) */}
+                          <span
+                            className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded-md ${
+                              isAlba
+                                ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700/60'
+                                : isAcademy
+                                ? 'bg-cyan-100 dark:bg-cyan-950/60 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700/60'
+                                : 'bg-slate-100 dark:bg-slate-700/70 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600'
+                            }`}
+                            title={`Società di appartenenza: ${g.squadra || 'CYNTHIA 1920'}`}
+                          >
+                            {isAlba
+                              ? 'ALBACYNTHIA'
+                              : isAcademy
+                              ? 'ACADEMY CYNTHIA'
+                              : 'CYNTHIA 1920'}
+                          </span>
 
                           {/* Indicatore visivo storico convocazioni precedenti richiamato da localStorage */}
                           {hasPreviousConvocazione ? (
@@ -1553,7 +1879,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                             </span>
                           )}
 
-                          {/* Badge se appartiene ad un'altra squadra (aggregato) */}
+                          {/* Badge se appartiene ad un'altra categoria (aggregato) */}
                           {isFromOtherTeam && (
                             <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60">
                               da {g.categoria}
@@ -1670,10 +1996,10 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                       ? 'bg-sky-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
-                  title="Include tutta la rosa con quadratini vuoti per spuntare a penna prima della gara"
+                  title="Foglio di spunta per il mister con tutti i giocatori della rosa deselezionati per la spunta a penna"
                 >
                   <Clipboard className="w-3.5 h-3.5" />
-                  <span>Foglio di Lavoro [ ]</span>
+                  <span>Foglio di Spunta Rosa [ ]</span>
                 </button>
                 <button
                   id="btn-pdf-mode-selected"
@@ -1684,21 +2010,21 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                       ? 'bg-sky-600 text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
-                  title="Include solo i calciatori già contrassegnati come convocati"
+                  title="Distinta ufficiale definitiva con i soli giocatori selezionati (max 25)"
                 >
                   <Check className="w-3.5 h-3.5" />
-                  <span>Solo Convocati ({convocatiCount})</span>
+                  <span>Distinta Convocati ({convocatiCount}/25)</span>
                 </button>
               </div>
 
               <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-sky-100/50 dark:bg-sky-900/30 p-2 rounded-lg border border-sky-200/60 dark:border-sky-800/40">
                 {pdfModalita === 'tutta_la_rosa' ? (
                   <span>
-                    📋 <strong>Foglio di Lavoro:</strong> tutta la rosa con caselle <code>[ ]</code> per la spunta manuale con penna da parte del mister + righe vuote per aggregati dell'ultimo minuto.
+                    📋 <strong>Foglio di Spunta Mister:</strong> include <strong>tutti i giocatori in rosa</strong> con caselle vuote <code>[ ]</code> deselezionate per la spunta manuale a penna.
                   </span>
                 ) : (
                   <span>
-                    ✓ <strong>Distinta Ufficiale:</strong> solo i <strong>{convocatiCount}</strong> calciatori attualmente selezionati, formattati per la distinta di gara ufficiale.
+                    ✓ <strong>Distinta Convocati Definitiva:</strong> include solo i <strong>{convocatiCount}</strong> calciatori attualmente selezionati (limite massimo di 25 atleti a referto).
                   </span>
                 )}
               </div>
@@ -1905,6 +2231,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         onPrintPdf={(m) => handlePrintPdf(m)}
         onTogglePlayer={(id) => togglePlayer(id)}
         onUpdateRitrovoTime={(newTime) => handleRitrovoTimeChange(newTime)}
+        onUpdateMisterName={(newMister) => handleMisterChange(newMister)}
       />
     </div>
   );

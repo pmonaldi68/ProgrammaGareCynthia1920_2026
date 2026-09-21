@@ -12,74 +12,485 @@ export const DEFAULT_CONVOCAZIONI_SHEET_URL =
   APP_CONFIG.defaultConvocazioniSheetUrl ||
   'https://docs.google.com/spreadsheets/d/1Jl7i6oD8ip5eHVBMbsC1Qknx2gI-6zogCFNWK-WSUtM/edit';
 
+export const CYNTHIA_SOCIETA = [
+  'CYNTHIA 1920',
+  'ACADEMY CYNTHIA GENZANO',
+  'ALBACYNTHIA',
+] as const;
+
+export type CynthiaSocieta = typeof CYNTHIA_SOCIETA[number];
+
+const CONVOCAZIONI_MISTER_BY_MATCH_KEY = 'cynthia_mister_by_match_v1';
+
+export interface CynthiaCoach {
+  id: string;
+  nome: string;
+  titolo: string; // 'Mister' | 'Istruttore'
+  societa: CynthiaSocieta;
+  ruoloDescrizione: string;
+  displayName: string;
+}
+
+/**
+ * Elenco ufficiale dei soli Mister e Istruttori delle 3 società
+ * (CYNTHIA 1920, ACADEMY CYNTHIA GENZANO, ALBACYNTHIA)
+ */
+export const OFFICIAL_CYNTHIA_COACHES: CynthiaCoach[] = [
+  // --- CYNTHIA 1920 ---
+  {
+    id: 'c1920_ruotolo',
+    nome: 'Ruotolo Giuseppe',
+    titolo: 'Mister',
+    societa: 'CYNTHIA 1920',
+    ruoloDescrizione: 'Promozione / Prima Squadra',
+    displayName: 'Mister Ruotolo Giuseppe (Cynthia 1920)',
+  },
+  {
+    id: 'c1920_corradini',
+    nome: 'Simone Corradini',
+    titolo: 'Mister',
+    societa: 'CYNTHIA 1920',
+    ruoloDescrizione: 'Under 19 / Juniores',
+    displayName: 'Mister Simone Corradini (Cynthia 1920)',
+  },
+  {
+    id: 'c1920_bianchi',
+    nome: 'Marco Bianchi',
+    titolo: 'Mister',
+    societa: 'CYNTHIA 1920',
+    ruoloDescrizione: 'Under 18',
+    displayName: 'Mister Marco Bianchi (Cynthia 1920)',
+  },
+
+  // --- ACADEMY CYNTHIA GENZANO ---
+  {
+    id: 'acad_conti',
+    nome: 'Alessandro Conti',
+    titolo: 'Mister',
+    societa: 'ACADEMY CYNTHIA GENZANO',
+    ruoloDescrizione: 'Under 17',
+    displayName: 'Mister Alessandro Conti (Academy Cynthia Genzano)',
+  },
+  {
+    id: 'acad_desantis',
+    nome: 'Luca De Santis',
+    titolo: 'Mister',
+    societa: 'ACADEMY CYNTHIA GENZANO',
+    ruoloDescrizione: 'Under 16',
+    displayName: 'Mister Luca De Santis (Academy Cynthia Genzano)',
+  },
+  {
+    id: 'acad_vichi',
+    nome: 'Roberto Vichi',
+    titolo: 'Mister',
+    societa: 'ACADEMY CYNTHIA GENZANO',
+    ruoloDescrizione: 'Under 15 / Under 15 Elite',
+    displayName: 'Mister Roberto Vichi (Academy Cynthia Genzano)',
+  },
+  {
+    id: 'acad_ferri',
+    nome: 'Marco Ferri',
+    titolo: 'Mister',
+    societa: 'ACADEMY CYNTHIA GENZANO',
+    ruoloDescrizione: 'Under 14 / Under 14 Elite',
+    displayName: 'Mister Marco Ferri (Academy Cynthia Genzano)',
+  },
+  {
+    id: 'acad_mancini',
+    nome: 'Matteo Mancini',
+    titolo: 'Mister',
+    societa: 'ACADEMY CYNTHIA GENZANO',
+    ruoloDescrizione: 'Under 14 Regionali',
+    displayName: 'Mister Matteo Mancini (Academy Cynthia Genzano)',
+  },
+  {
+    id: 'acad_galli',
+    nome: 'Andrea Galli',
+    titolo: 'Istruttore',
+    societa: 'ACADEMY CYNTHIA GENZANO',
+    ruoloDescrizione: 'Under 13 / Esordienti',
+    displayName: 'Istruttore Andrea Galli (Academy Cynthia Genzano)',
+  },
+
+  // --- ALBACYNTHIA ---
+  {
+    id: 'alba_albano',
+    nome: 'Fabio Albano',
+    titolo: 'Mister',
+    societa: 'ALBACYNTHIA',
+    ruoloDescrizione: 'Under 14 Provinciali / Under 14',
+    displayName: 'Mister Fabio Albano (Albacynthia)',
+  },
+  {
+    id: 'alba_fabi',
+    nome: 'Cristian Fabi',
+    titolo: 'Istruttore',
+    societa: 'ALBACYNTHIA',
+    ruoloDescrizione: 'Under 13 / Scuola Calcio',
+    displayName: 'Istruttore Cristian Fabi (Albacynthia)',
+  },
+];
+
+/** Limite massimo ufficiale di calciatori convocabili per gara */
+export const MAX_CONVOCATI_LIMIT = 25;
+
+/**
+ * Identifica quale delle tre società Cynthia (CYNTHIA 1920, ACADEMY CYNTHIA GENZANO, ALBACYNTHIA)
+ * è coinvolta nella partita, indipendentemente dal fatto che giochi in casa o fuori casa.
+ */
+export function detectCynthiaClub(partita?: Partita | null): CynthiaSocieta {
+  if (!partita) return 'CYNTHIA 1920';
+  const casa = (partita.squadraCasa || '').toUpperCase();
+  const ospite = (partita.squadraOspite || '').toUpperCase();
+  const camp = (partita.campionato || '').toUpperCase();
+
+  if (casa.includes('ALBACYNTHIA') || ospite.includes('ALBACYNTHIA') || camp.includes('ALBACYNTHIA')) {
+    return 'ALBACYNTHIA';
+  }
+  if (casa.includes('ACADEMY') || ospite.includes('ACADEMY') || camp.includes('ACADEMY')) {
+    return 'ACADEMY CYNTHIA GENZANO';
+  }
+  if (casa.includes('CYNTHIA') || ospite.includes('CYNTHIA')) {
+    return 'CYNTHIA 1920';
+  }
+  return 'CYNTHIA 1920';
+}
+
+/**
+ * Carica il mister salvato specificamente per una gara da localStorage
+ */
+export function loadSavedMisterForMatch(matchId: string): string | null {
+  try {
+    const raw = localStorage.getItem(CONVOCAZIONI_MISTER_BY_MATCH_KEY);
+    if (raw) {
+      const map = JSON.parse(raw);
+      if (map && typeof map === 'object' && map[matchId]) {
+        return String(map[matchId]);
+      }
+    }
+  } catch (e) {
+    console.warn('Errore lettura mister salvato per gara', e);
+  }
+  return null;
+}
+
+/**
+ * Salva la personalizzazione manuale del mister per una specifica gara
+ */
+export function saveMisterForMatch(matchId: string, misterName: string): void {
+  try {
+    const raw = localStorage.getItem(CONVOCAZIONI_MISTER_BY_MATCH_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    map[matchId] = misterName;
+    localStorage.setItem(CONVOCAZIONI_MISTER_BY_MATCH_KEY, JSON.stringify(map));
+  } catch (e) {
+    console.warn('Errore salvataggio mister per gara', e);
+  }
+}
+
+/**
+ * Determina il mister corretto assegnato alla gara assicurando che appartenga
+ * esclusivamente a una delle tre società (CYNTHIA 1920, ACADEMY CYNTHIA GENZANO, ALBACYNTHIA).
+ */
+export function resolveMisterForMatch(
+  partita: Partita | null | undefined,
+  campionatoCustom?: string
+): string {
+  // 1. Se l'utente ha salvato un mister personalizzato per questa specifica gara, usalo sempre
+  if (partita && partita.id) {
+    const saved = loadSavedMisterForMatch(partita.id);
+    if (saved && saved.trim()) {
+      return saved.trim();
+    }
+  }
+
+  const club = detectCynthiaClub(partita);
+  const camp = (partita?.campionato || campionatoCustom || '').toUpperCase();
+
+  // 2. Club ALBACYNTHIA
+  if (club === 'ALBACYNTHIA') {
+    if (camp.includes('13') || camp.includes('ESORDIENTI') || camp.includes('PULCINI')) {
+      return 'Istruttore Cristian Fabi (Albacynthia)';
+    }
+    return 'Mister Fabio Albano (Albacynthia)';
+  }
+
+  // 3. Club ACADEMY CYNTHIA GENZANO
+  if (club === 'ACADEMY CYNTHIA GENZANO') {
+    if (camp.includes('17') || camp.includes('ALLIEVI')) {
+      return 'Mister Alessandro Conti (Academy Cynthia Genzano)';
+    }
+    if (camp.includes('16')) {
+      return 'Mister Luca De Santis (Academy Cynthia Genzano)';
+    }
+    if (camp.includes('15') || camp.includes('GIOVANISSIMI')) {
+      return 'Mister Roberto Vichi (Academy Cynthia Genzano)';
+    }
+    if (camp.includes('14 REG') || camp.includes('14 REGIONALI')) {
+      return 'Mister Matteo Mancini (Academy Cynthia Genzano)';
+    }
+    if (camp.includes('14')) {
+      return 'Mister Marco Ferri (Academy Cynthia Genzano)';
+    }
+    if (camp.includes('13') || camp.includes('ESORDIENTI') || camp.includes('PULCINI')) {
+      return 'Istruttore Andrea Galli (Academy Cynthia Genzano)';
+    }
+    return 'Mister Alessandro Conti (Academy Cynthia Genzano)';
+  }
+
+  // 4. Club CYNTHIA 1920 (Promozione, Under 19, Under 18)
+  if (camp.includes('19') || camp.includes('JUNIORES')) {
+    return 'Mister Simone Corradini (Cynthia 1920)';
+  }
+  if (camp.includes('18')) {
+    return 'Mister Marco Bianchi (Cynthia 1920)';
+  }
+  if (
+    camp.includes('PROMOZIONE') ||
+    camp.includes('PRIMA') ||
+    camp.includes('SERIE D') ||
+    camp.includes('ECCELLENZA')
+  ) {
+    return 'Mister Ruotolo Giuseppe (Cynthia 1920)';
+  }
+
+  // Se è una gara giovanile ma etichettata Cynthia:
+  if (camp.includes('17') || camp.includes('ALLIEVI')) {
+    return 'Mister Alessandro Conti (Academy Cynthia Genzano)';
+  }
+  if (camp.includes('16')) {
+    return 'Mister Luca De Santis (Academy Cynthia Genzano)';
+  }
+  if (camp.includes('15') || camp.includes('GIOVANISSIMI')) {
+    return 'Mister Roberto Vichi (Academy Cynthia Genzano)';
+  }
+  if (camp.includes('14')) {
+    return 'Mister Marco Ferri (Academy Cynthia Genzano)';
+  }
+  if (camp.includes('13')) {
+    return 'Istruttore Andrea Galli (Academy Cynthia Genzano)';
+  }
+
+  // Default Cynthia 1920
+  return 'Mister Ruotolo Giuseppe (Cynthia 1920)';
+}
+
 export const DEFAULT_STAFF_BY_CATEGORY: Record<string, string> = {
-  'PROMOZIONE': 'Mister Ruotolo Giuseppe',
-  'Promozione': 'Mister Ruotolo Giuseppe',
-  'Prima Squadra': 'Mister Ruotolo Giuseppe',
-  'Under 19': 'Mister Simone Corradini',
-  'Under 17': 'Mister Alessandro Conti',
-  'Under 15': 'Mister Roberto Vichi',
-  'Under 14': 'Mister Marco Ferri',
+  'PROMOZIONE': 'Mister Ruotolo Giuseppe (Cynthia 1920)',
+  'Promozione': 'Mister Ruotolo Giuseppe (Cynthia 1920)',
+  'Prima Squadra': 'Mister Ruotolo Giuseppe (Cynthia 1920)',
+  'UNDER 19': 'Mister Simone Corradini (Cynthia 1920)',
+  'Under 19': 'Mister Simone Corradini (Cynthia 1920)',
+  'UNDER 18': 'Mister Marco Bianchi (Cynthia 1920)',
+  'Under 18': 'Mister Marco Bianchi (Cynthia 1920)',
+  'UNDER 17': 'Mister Alessandro Conti (Academy Cynthia Genzano)',
+  'Under 17': 'Mister Alessandro Conti (Academy Cynthia Genzano)',
+  'UNDER 16': 'Mister Luca De Santis (Academy Cynthia Genzano)',
+  'Under 16': 'Mister Luca De Santis (Academy Cynthia Genzano)',
+  'UNDER 15': 'Mister Roberto Vichi (Academy Cynthia Genzano)',
+  'Under 15': 'Mister Roberto Vichi (Academy Cynthia Genzano)',
+  'UNDER 15 ELITE': 'Mister Roberto Vichi (Academy Cynthia Genzano)',
+  'UNDER 14 ELITE': 'Mister Marco Ferri (Academy Cynthia Genzano)',
+  'UNDER 14 REG': 'Mister Matteo Mancini (Academy Cynthia Genzano)',
+  'UNDER 14 PROV': 'Mister Fabio Albano (Albacynthia)',
+  'UNDER 14': 'Mister Marco Ferri (Academy Cynthia Genzano)',
+  'Under 14': 'Mister Marco Ferri (Academy Cynthia Genzano)',
+  'UNDER 13': 'Istruttore Andrea Galli (Academy Cynthia Genzano)',
+  'Under 13': 'Istruttore Andrea Galli (Academy Cynthia Genzano)',
   'Esordienti': 'Istruttore Andrea Galli',
+  'Pulcini': 'Istruttore Paolo Neri',
 };
 
 export const DEFAULT_SAMPLE_PLAYERS: GiocatoreConvocato[] = [
-  // --- PROMOZIONE / PRIMA SQUADRA (Mister Ruotolo Giuseppe - da Foglio Google Ufficiale) ---
-  { id: 'prom_1', nome: 'Amore Bonapasta Flavio', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_2', nome: 'Barone Thomas', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_3', nome: 'Battisti Lorenzo', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_4', nome: 'Bianchi Simone', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_5', nome: 'Borelli Simone', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_6', nome: 'Campoli Diego', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_7', nome: 'Ciavaldini Tiziano', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_8', nome: 'Colagrossi Matteo', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_9', nome: 'De Angelis Tiago (gk)🧤', ruolo: 'P', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_10', nome: 'De Bonis Matteo', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_11', nome: 'Di Felice Alessandro', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_12', nome: 'Drogheo Filippo', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_13', nome: 'Evangelisti Andrea', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_14', nome: 'Fabbri Valerio', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_15', nome: 'Friscioni Leonardo', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_16', nome: 'Laudati Francesco', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_17', nome: 'Leo Alessandro', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_18', nome: 'Lucidi Federico', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_19', nome: 'Mancini Gabriele', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_20', nome: 'Melaranci Roberto (gk)🧤', ruolo: 'P', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_21', nome: 'Mirimich Alessandro', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_22', nome: 'Palumbo Christian', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_23', nome: 'Persia Nicolo', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_24', nome: 'Ruotolo Luigi', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_25', nome: 'Sambucini Lorenzo', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_26', nome: 'Sirignano Ciro Oreste', categoria: 'PROMOZIONE', selezionato: false },
-  { id: 'prom_27', nome: 'Di Costanzo Antonio', categoria: 'PROMOZIONE', selezionato: false },
+  // =========================================================================
+  // 1. CYNTHIA 1920
+  // =========================================================================
 
-  // --- UNDER 19 (Mister Simone Corradini) ---
-  { id: 'u19_1', nome: 'Testa Mattia', ruolo: 'P', numero: '1', categoria: 'Under 19', selezionato: false },
-  { id: 'u19_2', nome: 'Rossi Christian', ruolo: 'D', numero: '2', categoria: 'Under 19', selezionato: false },
-  { id: 'u19_3', nome: 'D\'Amico Tommaso', ruolo: 'D', numero: '3', categoria: 'Under 19', selezionato: false },
-  { id: 'u19_4', nome: 'Bernardi Luca', ruolo: 'C', numero: '4', categoria: 'Under 19', selezionato: false },
-  { id: 'u19_5', nome: 'Costantini Matteo', ruolo: 'C', numero: '8', categoria: 'Under 19', selezionato: false },
-  { id: 'u19_6', nome: 'Carbone Samuele', ruolo: 'A', numero: '9', categoria: 'Under 19', selezionato: false },
-  { id: 'u19_7', nome: 'Santoro Jacopo', ruolo: 'A', numero: '11', categoria: 'Under 19', selezionato: false },
-  { id: 'u19_8', nome: 'Marchetti Leonardo', ruolo: 'D', numero: '13', categoria: 'Under 19', selezionato: false },
-  { id: 'u19_9', nome: 'Rinaldi Mattia', ruolo: 'C', numero: '14', categoria: 'Under 19', selezionato: false },
-  { id: 'u19_10', nome: 'Fiorini Andrea', ruolo: 'A', numero: '18', categoria: 'Under 19', selezionato: false, note: 'Diffidato' },
+  // --- CYNTHIA 1920 - PROMOZIONE / PRIMA SQUADRA (Mister Ruotolo Giuseppe) ---
+  { id: 'c1920_prom_1', nome: 'Amore Bonapasta Flavio', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_2', nome: 'Barone Thomas', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_3', nome: 'Battisti Lorenzo', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_4', nome: 'Bianchi Simone', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_5', nome: 'Borelli Simone', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_6', nome: 'Campoli Diego', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_7', nome: 'Ciavaldini Tiziano', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_8', nome: 'Colagrossi Matteo', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_9', nome: 'De Angelis Tiago (gk)🧤', ruolo: 'P', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_10', nome: 'De Bonis Matteo', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_11', nome: 'Di Felice Alessandro', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_12', nome: 'Drogheo Filippo', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_13', nome: 'Evangelisti Andrea', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_14', nome: 'Fabbri Valerio', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_15', nome: 'Friscioni Leonardo', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_16', nome: 'Laudati Francesco', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_17', nome: 'Leo Alessandro', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_18', nome: 'Lucidi Federico', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_19', nome: 'Mancini Gabriele', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_20', nome: 'Melaranci Roberto (gk)🧤', ruolo: 'P', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_21', nome: 'Mirimich Alessandro', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_22', nome: 'Palumbo Christian', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_23', nome: 'Persia Nicolo', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_24', nome: 'Ruotolo Luigi', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_25', nome: 'Sambucini Lorenzo', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_26', nome: 'Sirignano Ciro Oreste', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_prom_27', nome: 'Di Costanzo Antonio', categoria: 'PROMOZIONE', squadra: 'CYNTHIA 1920', selezionato: false },
 
-  // --- UNDER 17 (Mister Alessandro Conti) ---
-  { id: 'u17_1', nome: 'Colasanti Valerio', ruolo: 'P', numero: '1', categoria: 'Under 17', selezionato: false },
-  { id: 'u17_2', nome: 'Giacomini Filippo', ruolo: 'D', numero: '3', categoria: 'Under 17', selezionato: false },
-  { id: 'u17_3', nome: 'Capanna Lorenzo', ruolo: 'D', numero: '5', categoria: 'Under 17', selezionato: false },
-  { id: 'u17_4', nome: 'Mancini Alessio', ruolo: 'C', numero: '7', categoria: 'Under 17', selezionato: false },
-  { id: 'u17_5', nome: 'Spaziani Federico', ruolo: 'C', numero: '10', categoria: 'Under 17', selezionato: false },
-  { id: 'u17_6', nome: 'Nardi Thomas', ruolo: 'A', numero: '9', categoria: 'Under 17', selezionato: false },
-  { id: 'u17_7', nome: 'Tedeschi Samuele', ruolo: 'A', numero: '11', categoria: 'Under 17', selezionato: false },
+  // --- CYNTHIA 1920 - UNDER 19 (Mister Simone Corradini) ---
+  { id: 'c1920_u19_1', nome: 'Testa Mattia', ruolo: 'P', numero: '1', categoria: 'Under 19', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u19_2', nome: 'Rossi Christian', ruolo: 'D', numero: '2', categoria: 'Under 19', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u19_3', nome: 'D\'Amico Tommaso', ruolo: 'D', numero: '3', categoria: 'Under 19', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u19_4', nome: 'Bernardi Luca', ruolo: 'C', numero: '4', categoria: 'Under 19', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u19_5', nome: 'Costantini Matteo', ruolo: 'C', numero: '8', categoria: 'Under 19', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u19_6', nome: 'Carbone Samuele', ruolo: 'A', numero: '9', categoria: 'Under 19', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u19_7', nome: 'Santoro Jacopo', ruolo: 'A', numero: '11', categoria: 'Under 19', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u19_8', nome: 'Marchetti Leonardo', ruolo: 'D', numero: '13', categoria: 'Under 19', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u19_9', nome: 'Rinaldi Mattia', ruolo: 'C', numero: '14', categoria: 'Under 19', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u19_10', nome: 'Fiorini Andrea', ruolo: 'A', numero: '18', categoria: 'Under 19', squadra: 'CYNTHIA 1920', selezionato: false, note: 'Diffidato' },
+  { id: 'c1920_u19_11', nome: 'Gentili Valerio', ruolo: 'C', numero: '16', categoria: 'Under 19', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u19_12', nome: 'Lombardi Federico', ruolo: 'D', numero: '5', categoria: 'Under 19', squadra: 'CYNTHIA 1920', selezionato: false },
 
-  // --- UNDER 15 (Mister Roberto Vichi) ---
-  { id: 'u15_1', nome: 'Ferretti Diego', ruolo: 'P', numero: '1', categoria: 'Under 15', selezionato: false },
-  { id: 'u15_2', nome: 'Bianchi Cristian', ruolo: 'D', numero: '4', categoria: 'Under 15', selezionato: false },
-  { id: 'u15_3', nome: 'Ricci Tommaso', ruolo: 'C', numero: '8', categoria: 'Under 15', selezionato: false },
-  { id: 'u15_4', nome: 'Cipriani Gabriele', ruolo: 'A', numero: '9', categoria: 'Under 15', selezionato: false },
+  // --- CYNTHIA 1920 - UNDER 18 (Mister Marco Bianchi) ---
+  { id: 'c1920_u18_1', nome: 'Paglia Alessandro', ruolo: 'P', numero: '1', categoria: 'Under 18', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u18_2', nome: 'Proietti Samuele', ruolo: 'D', numero: '2', categoria: 'Under 18', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u18_3', nome: 'Tofani Lorenzo', ruolo: 'D', numero: '3', categoria: 'Under 18', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u18_4', nome: 'Sabatini Leonardo', ruolo: 'C', numero: '4', categoria: 'Under 18', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u18_5', nome: 'Romani Diego', ruolo: 'C', numero: '6', categoria: 'Under 18', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u18_6', nome: 'Caprara Francesco', ruolo: 'A', numero: '9', categoria: 'Under 18', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u18_7', nome: 'Cianfanelli Jacopo', ruolo: 'A', numero: '10', categoria: 'Under 18', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u18_8', nome: 'Bassi Cristian', ruolo: 'D', numero: '5', categoria: 'Under 18', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u18_9', nome: 'Marino Edoardo', ruolo: 'C', numero: '8', categoria: 'Under 18', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u18_10', nome: 'De Silvestri Gabriele', ruolo: 'A', numero: '11', categoria: 'Under 18', squadra: 'CYNTHIA 1920', selezionato: false },
+
+  // --- CYNTHIA 1920 - UNDER 17 ---
+  { id: 'c1920_u17_1', nome: 'Silvestri Daniele', ruolo: 'P', numero: '1', categoria: 'Under 17', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u17_2', nome: 'Corsi Valerio', ruolo: 'D', numero: '3', categoria: 'Under 17', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u17_3', nome: 'Morelli Simone', ruolo: 'C', numero: '8', categoria: 'Under 17', squadra: 'CYNTHIA 1920', selezionato: false },
+  { id: 'c1920_u17_4', nome: 'Galli Filippo', ruolo: 'A', numero: '9', categoria: 'Under 17', squadra: 'CYNTHIA 1920', selezionato: false },
+
+  // =========================================================================
+  // 2. ACADEMY CYNTHIA GENZANO
+  // =========================================================================
+
+  // --- ACADEMY CYNTHIA GENZANO - UNDER 17 (Mister Alessandro Conti) ---
+  { id: 'acad_u17_1', nome: 'Colasanti Valerio', ruolo: 'P', numero: '1', categoria: 'Under 17', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u17_2', nome: 'Giacomini Filippo', ruolo: 'D', numero: '2', categoria: 'Under 17', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u17_3', nome: 'Capanna Lorenzo', ruolo: 'D', numero: '3', categoria: 'Under 17', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u17_4', nome: 'Mancini Alessio', ruolo: 'C', numero: '4', categoria: 'Under 17', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u17_5', nome: 'Spaziani Federico', ruolo: 'C', numero: '8', categoria: 'Under 17', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u17_6', nome: 'Nardi Thomas', ruolo: 'A', numero: '9', categoria: 'Under 17', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u17_7', nome: 'Tedeschi Samuele', ruolo: 'A', numero: '10', categoria: 'Under 17', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u17_8', nome: 'Pellegrini Davide', ruolo: 'D', numero: '5', categoria: 'Under 17', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u17_9', nome: 'Fontana Christian', ruolo: 'C', numero: '7', categoria: 'Under 17', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u17_10', nome: 'Santucci Matteo', ruolo: 'A', numero: '11', categoria: 'Under 17', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u17_11', nome: 'Bolognesi Tommaso', ruolo: 'P', numero: '12', categoria: 'Under 17', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+
+  // --- ACADEMY CYNTHIA GENZANO - UNDER 16 (Mister Luca De Santis) ---
+  { id: 'acad_u16_1', nome: 'Mariani Riccardo', ruolo: 'P', numero: '1', categoria: 'Under 16', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u16_2', nome: 'Castellani Giulio', ruolo: 'D', numero: '2', categoria: 'Under 16', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u16_3', nome: 'Ferrari Tommaso', ruolo: 'D', numero: '3', categoria: 'Under 16', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u16_4', nome: 'Lupi Emanuele', ruolo: 'C', numero: '4', categoria: 'Under 16', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u16_5', nome: 'Rocchi Federico', ruolo: 'C', numero: '8', categoria: 'Under 16', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u16_6', nome: 'Costanzo Leonardo', ruolo: 'A', numero: '9', categoria: 'Under 16', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u16_7', nome: 'Di Palma Lorenzo', ruolo: 'A', numero: '10', categoria: 'Under 16', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u16_8', nome: 'Valenti Samuele', ruolo: 'D', numero: '5', categoria: 'Under 16', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u16_9', nome: 'Gentili Mattia', ruolo: 'C', numero: '7', categoria: 'Under 16', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u16_10', nome: 'Caporali Diego', ruolo: 'A', numero: '11', categoria: 'Under 16', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+
+  // --- ACADEMY CYNTHIA GENZANO - UNDER 15 & UNDER 15 ELITE (Mister Roberto Vichi) ---
+  { id: 'acad_u15_1', nome: 'Ferretti Diego', ruolo: 'P', numero: '1', categoria: 'Under 15', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u15_2', nome: 'Bianchi Cristian', ruolo: 'D', numero: '2', categoria: 'Under 15', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u15_3', nome: 'Ricci Tommaso', ruolo: 'C', numero: '8', categoria: 'Under 15', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u15_4', nome: 'Cipriani Gabriele', ruolo: 'A', numero: '9', categoria: 'Under 15', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u15_5', nome: 'Palmieri Luca', ruolo: 'D', numero: '3', categoria: 'Under 15', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u15_6', nome: 'Taddei Francesco', ruolo: 'C', numero: '4', categoria: 'Under 15', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u15_7', nome: 'Vagnoni Alessio', ruolo: 'A', numero: '11', categoria: 'Under 15', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u15_8', nome: 'Giammatteo Andrea', ruolo: 'D', numero: '5', categoria: 'Under 15', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u15_9', nome: 'Capuani Edoardo', ruolo: 'C', numero: '7', categoria: 'Under 15', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u15_10', nome: 'Marani Jacopo', ruolo: 'A', numero: '10', categoria: 'Under 15', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+
+  // --- ACADEMY CYNTHIA GENZANO - UNDER 14, ELITE & REG (Mister Marco Ferri) ---
+  { id: 'acad_u14_1', nome: 'Parisi Giorgio', ruolo: 'P', numero: '1', categoria: 'Under 14', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u14_2', nome: 'Sestili Jacopo', ruolo: 'D', numero: '2', categoria: 'Under 14', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u14_3', nome: 'Del Monaco Samuele', ruolo: 'D', numero: '3', categoria: 'Under 14', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u14_4', nome: 'Testa Christian', ruolo: 'C', numero: '4', categoria: 'Under 14', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u14_5', nome: 'Barbaro Matteo', ruolo: 'C', numero: '8', categoria: 'Under 14', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u14_6', nome: 'Festa Nicolo', ruolo: 'A', numero: '9', categoria: 'Under 14', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u14_7', nome: 'Galli Valerio', ruolo: 'A', numero: '10', categoria: 'Under 14', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u14_8', nome: 'Rosati Filippo', ruolo: 'D', numero: '5', categoria: 'Under 14', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u14_9', nome: 'Di Girolamo Luca', ruolo: 'C', numero: '7', categoria: 'Under 14', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u14_10', nome: 'Ceccarelli Leonardo', ruolo: 'A', numero: '11', categoria: 'Under 14', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+
+  // --- ACADEMY CYNTHIA GENZANO - UNDER 13 (Istruttore Andrea Galli) ---
+  { id: 'acad_u13_1', nome: 'Mastrogirolamo Filippo', ruolo: 'P', numero: '1', categoria: 'Under 13', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u13_2', nome: 'Carbone Diego', ruolo: 'D', numero: '2', categoria: 'Under 13', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u13_3', nome: 'Scarpetti Cristian', ruolo: 'D', numero: '3', categoria: 'Under 13', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u13_4', nome: 'Lombardo Mattia', ruolo: 'C', numero: '4', categoria: 'Under 13', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u13_5', nome: 'D\'Amato Tommaso', ruolo: 'C', numero: '8', categoria: 'Under 13', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u13_6', nome: 'Zaccagnini Lorenzo', ruolo: 'A', numero: '9', categoria: 'Under 13', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u13_7', nome: 'Ferri Samuele', ruolo: 'A', numero: '10', categoria: 'Under 13', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u13_8', nome: 'Nardini Jacopo', ruolo: 'D', numero: '5', categoria: 'Under 13', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u13_9', nome: 'Boccali Edoardo', ruolo: 'C', numero: '7', categoria: 'Under 13', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+  { id: 'acad_u13_10', nome: 'Santoro Gabriele', ruolo: 'A', numero: '11', categoria: 'Under 13', squadra: 'ACADEMY CYNTHIA GENZANO', selezionato: false },
+
+  // =========================================================================
+  // 3. ALBACYNTHIA
+  // =========================================================================
+
+  // --- ALBACYNTHIA - UNDER 14 & UNDER 14 PROV (Mister Fabio Albano) ---
+  { id: 'alba_u14_1', nome: 'Bernabei Alessandro', ruolo: 'P', numero: '1', categoria: 'Under 14', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u14_2', nome: 'Capuozzo Riccardo', ruolo: 'D', numero: '2', categoria: 'Under 14', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u14_3', nome: 'De Santis Valerio', ruolo: 'D', numero: '3', categoria: 'Under 14', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u14_4', nome: 'Fiore Francesco', ruolo: 'C', numero: '4', categoria: 'Under 14', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u14_5', nome: 'Gentili Jacopo', ruolo: 'C', numero: '8', categoria: 'Under 14', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u14_6', nome: 'Iacovelli Samuele', ruolo: 'A', numero: '9', categoria: 'Under 14', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u14_7', nome: 'Leoni Edoardo', ruolo: 'A', numero: '10', categoria: 'Under 14', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u14_8', nome: 'Mancinelli Cristian', ruolo: 'D', numero: '5', categoria: 'Under 14', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u14_9', nome: 'Nazzaro Tommaso', ruolo: 'C', numero: '7', categoria: 'Under 14', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u14_10', nome: 'Orlandi Matteo', ruolo: 'A', numero: '11', categoria: 'Under 14', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u14_11', nome: 'Pannozzo Lorenzo', ruolo: 'D', numero: '6', categoria: 'Under 14', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u14_12', nome: 'Quattrini Gabriele', ruolo: 'C', numero: '14', categoria: 'Under 14', squadra: 'ALBACYNTHIA', selezionato: false },
+
+  // --- ALBACYNTHIA - UNDER 15 ---
+  { id: 'alba_u15_1', nome: 'Riggi Filippo', ruolo: 'P', numero: '1', categoria: 'Under 15', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u15_2', nome: 'Salustri Leonardo', ruolo: 'D', numero: '2', categoria: 'Under 15', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u15_3', nome: 'Trecca Diego', ruolo: 'D', numero: '3', categoria: 'Under 15', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u15_4', nome: 'Valente Cristian', ruolo: 'C', numero: '8', categoria: 'Under 15', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u15_5', nome: 'Zannoni Mattia', ruolo: 'A', numero: '9', categoria: 'Under 15', squadra: 'ALBACYNTHIA', selezionato: false },
+
+  // --- ALBACYNTHIA - UNDER 16 ---
+  { id: 'alba_u16_1', nome: 'Baroncini Alessio', ruolo: 'P', numero: '1', categoria: 'Under 16', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u16_2', nome: 'Castellucci Simone', ruolo: 'D', numero: '2', categoria: 'Under 16', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u16_3', nome: 'Donati Valerio', ruolo: 'C', numero: '4', categoria: 'Under 16', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u16_4', nome: 'Esposito Tommaso', ruolo: 'A', numero: '9', categoria: 'Under 16', squadra: 'ALBACYNTHIA', selezionato: false },
+
+  // --- ALBACYNTHIA - UNDER 13 ---
+  { id: 'alba_u13_1', nome: 'Fabi Cristian', ruolo: 'P', numero: '1', categoria: 'Under 13', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u13_2', nome: 'Galli Leonardo', ruolo: 'D', numero: '2', categoria: 'Under 13', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u13_3', nome: 'Latini Federico', ruolo: 'C', numero: '8', categoria: 'Under 13', squadra: 'ALBACYNTHIA', selezionato: false },
+  { id: 'alba_u13_4', nome: 'Mazzoni Samuele', ruolo: 'A', numero: '9', categoria: 'Under 13', squadra: 'ALBACYNTHIA', selezionato: false },
 ];
+
+/**
+ * Assicura che la lista atleti includa sempre le rose complete di tutte e tre le società
+ * (CYNTHIA 1920, ACADEMY CYNTHIA GENZANO, ALBACYNTHIA) preservando le convocazioni salvate.
+ */
+export function ensureFullCynthiaRosters(players: GiocatoreConvocato[]): GiocatoreConvocato[] {
+  if (!players || players.length === 0) {
+    return DEFAULT_SAMPLE_PLAYERS;
+  }
+
+  const hasAcademy = players.some((p) => (p.squadra || '').toUpperCase().includes('ACADEMY'));
+  const hasAlba = players.some((p) => (p.squadra || '').toUpperCase().includes('ALBA'));
+
+  if (hasAcademy && hasAlba) {
+    return players;
+  }
+
+  // Unisce gli atleti mancanti delle altre società
+  const existingIds = new Set(players.map((p) => p.id));
+  const missing = DEFAULT_SAMPLE_PLAYERS.filter((p) => !existingIds.has(p.id));
+  return [...players, ...missing];
+}
 
 export function loadConvocazioniConfig(): ConvocazioneConfig {
   try {
@@ -113,13 +524,13 @@ export function loadCachedGiocatori(): GiocatoreConvocato[] | null {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return ensureFullCynthiaRosters(parsed);
       }
     }
   } catch (e) {
     console.warn('Impossibile caricare cache giocatori', e);
   }
-  return null;
+  return DEFAULT_SAMPLE_PLAYERS;
 }
 
 export function saveCachedGiocatori(players: GiocatoreConvocato[]): void {
@@ -259,7 +670,7 @@ function normalizeHeader(h: string): string {
 }
 
 /**
- * Confronta in modo flessibile due categorie (es. "Under 19" e "JUNIORES U19")
+ * Confronta in modo flessibile due categorie (es. "Under 19" e "JUNIORES U19", "UNDER14PROV" e "Under 14")
  */
 export function isCategoryMatch(catA: string, catB: string): boolean {
   if (!catA || !catB) return false;
@@ -271,12 +682,25 @@ export function isCategoryMatch(catA: string, catB: string): boolean {
   const cleanB = b.replace(/[^A-Z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
   if (cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA)) return true;
 
-  // Numeri (19, 18, 17, 16, 15, 14, 13, 2012, ecc.)
-  const numsA = cleanA.match(/\b(19|18|17|16|15|14|13|12|11|10|201[0-9]|202[0-9])\b/g);
-  const numsB = cleanB.match(/\b(19|18|17|16|15|14|13|12|11|10|201[0-9]|202[0-9])\b/g);
-  if (numsA && numsB) {
-    return numsA.some(num => numsB.includes(num));
+  // Estrae numeri di categoria (19, 18, 17, 16, 15, 14, 13, 12, 11, 10, ecc.)
+  // anche se attaccati a stringhe composte come UNDER14PROV, U15ELITE, UNDER16
+  const extractCatNumbers = (str: string): string[] => {
+    const matches = str.match(/(?:19|18|17|16|15|14|13|12|11|10|201[0-9]|202[0-9])/g);
+    return matches ? Array.from(new Set(matches)) : [];
+  };
+
+  const numsA = extractCatNumbers(cleanA);
+  const numsB = extractCatNumbers(cleanB);
+  if (numsA.length > 0 && numsB.length > 0) {
+    if (numsA.some((num) => numsB.includes(num))) {
+      return true;
+    }
   }
+
+  // Promozione / Prima squadra
+  const isPromoA = cleanA.includes('PROMOZIONE') || cleanA.includes('PRIMA') || cleanA.includes('SERIE D') || cleanA.includes('ECCELLENZA');
+  const isPromoB = cleanB.includes('PROMOZIONE') || cleanB.includes('PRIMA') || cleanB.includes('SERIE D') || cleanB.includes('ECCELLENZA');
+  if (isPromoA && isPromoB) return true;
 
   return false;
 }
@@ -318,37 +742,38 @@ export function findMatchingCategory(
     if (found) return found;
   }
 
-  if (normMatch.includes('JUNIORES') || normMatch.includes('U19') || normMatch.includes('UNDER 19')) {
-    const found = availableCategories.find(c => {
-      const up = c.toUpperCase();
-      return up.includes('19') || up.includes('JUNIORES');
-    });
+  if (normMatch.includes('19') || normMatch.includes('JUNIORES')) {
+    const found = availableCategories.find(c => c.toUpperCase().includes('19') || c.toUpperCase().includes('JUNIORES'));
     if (found) return found;
   }
 
-  if (normMatch.includes('ALLIEVI') || normMatch.includes('U17') || normMatch.includes('UNDER 17')) {
-    const found = availableCategories.find(c => {
-      const up = c.toUpperCase();
-      return up.includes('17') || up.includes('ALLIEVI');
-    });
+  if (normMatch.includes('18')) {
+    const found = availableCategories.find(c => c.toUpperCase().includes('18'));
     if (found) return found;
   }
 
-  if (normMatch.includes('U16') || normMatch.includes('UNDER 16')) {
+  if (normMatch.includes('17') || normMatch.includes('ALLIEVI')) {
+    const found = availableCategories.find(c => c.toUpperCase().includes('17') || c.toUpperCase().includes('ALLIEVI'));
+    if (found) return found;
+  }
+
+  if (normMatch.includes('16')) {
     const found = availableCategories.find(c => c.toUpperCase().includes('16'));
     if (found) return found;
   }
 
-  if (normMatch.includes('GIOVANISSIMI') || normMatch.includes('U15') || normMatch.includes('UNDER 15')) {
-    const found = availableCategories.find(c => {
-      const up = c.toUpperCase();
-      return up.includes('15') || up.includes('GIOVANISSIMI');
-    });
+  if (normMatch.includes('15') || normMatch.includes('GIOVANISSIMI')) {
+    const found = availableCategories.find(c => c.toUpperCase().includes('15') || c.toUpperCase().includes('GIOVANISSIMI'));
     if (found) return found;
   }
 
-  if (normMatch.includes('U14') || normMatch.includes('UNDER 14')) {
+  if (normMatch.includes('14')) {
     const found = availableCategories.find(c => c.toUpperCase().includes('14'));
+    if (found) return found;
+  }
+
+  if (normMatch.includes('13')) {
+    const found = availableCategories.find(c => c.toUpperCase().includes('13'));
     if (found) return found;
   }
 
@@ -501,6 +926,10 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
     idxNote = normalizedFirst.findIndex(h =>
       ['note', 'annotazioni', 'dettagli'].some(k => h.includes(k))
     );
+    const idxSquadra = normalizedFirst.findIndex(h =>
+      ['societa', 'club', 'entita', 'polisportiva'].some(k => h === k || h.includes(k)) ||
+      (h.includes('squadra') && !h.includes('casa') && !h.includes('ospite') && normalizedFirst.some(o => ['categoria', 'cat', 'leva', 'annata'].some(k => o.includes(k))))
+    );
   } else {
     dataRows = rows;
     idxNome = 0;
@@ -512,6 +941,13 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
       }
     }
   }
+
+  const idxSquadra = typeof (normalizedFirst as any) !== 'undefined'
+    ? normalizedFirst.findIndex(h =>
+        ['societa', 'club', 'entita', 'polisportiva'].some(k => h === k || h.includes(k)) ||
+        (h.includes('squadra') && !h.includes('casa') && !h.includes('ospite'))
+      )
+    : -1;
 
   const giocatori: GiocatoreConvocato[] = [];
   const staffByCategoria: Record<string, string> = { ...DEFAULT_STAFF_BY_CATEGORY };
@@ -547,6 +983,18 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
     const note = idxNote !== -1 ? (row[idxNote] || '').trim() : '';
     const misterCell = idxMister !== -1 ? (row[idxMister] || '').trim() : '';
 
+    let squadra = idxSquadra !== -1 ? (row[idxSquadra] || '').trim() : '';
+    if (!squadra) {
+      const combined = `${rawCategoria} ${fullName}`.toUpperCase();
+      if (combined.includes('ALBACYNTHIA')) {
+        squadra = 'ALBACYNTHIA';
+      } else if (combined.includes('ACADEMY')) {
+        squadra = 'ACADEMY CYNTHIA GENZANO';
+      } else if (combined.includes('CYNTHIA')) {
+        squadra = 'CYNTHIA 1920';
+      }
+    }
+
     if (categoria) {
       categoriesSet.add(categoria);
     }
@@ -577,6 +1025,7 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
       ruolo: ruolo || undefined,
       numero: numero || undefined,
       categoria: categoria,
+      squadra: squadra || undefined,
       selezionato,
       note: note || (stato && !selezionato ? stato.toUpperCase() : undefined),
     });
