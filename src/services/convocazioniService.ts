@@ -104,6 +104,14 @@ export const OFFICIAL_CYNTHIA_COACHES: CynthiaCoach[] = [
     displayName: 'Mister Matteo Mancini (Academy Cynthia Genzano)',
   },
   {
+    id: 'acad_carioti',
+    nome: 'Marco Carioti',
+    titolo: 'Mister',
+    societa: 'ACADEMY CYNTHIA GENZANO',
+    ruoloDescrizione: 'Under 14 Regionali',
+    displayName: 'Mister Marco Carioti (Academy Cynthia Genzano)',
+  },
+  {
     id: 'acad_galli',
     nome: 'Andrea Galli',
     titolo: 'Istruttore',
@@ -291,7 +299,9 @@ export const DEFAULT_STAFF_BY_CATEGORY: Record<string, string> = {
   'Under 15': 'Mister Roberto Vichi (Academy Cynthia Genzano)',
   'UNDER 15 ELITE': 'Mister Roberto Vichi (Academy Cynthia Genzano)',
   'UNDER 14 ELITE': 'Mister Marco Ferri (Academy Cynthia Genzano)',
-  'UNDER 14 REG': 'Mister Matteo Mancini (Academy Cynthia Genzano)',
+  'UNDER 14 REG': 'Mister Marco Carioti (Academy Cynthia Genzano)',
+  'UNDER14 REG': 'Mister Marco Carioti (Academy Cynthia Genzano)',
+  'Under 14 Regionali': 'Mister Marco Carioti (Academy Cynthia Genzano)',
   'UNDER 14 PROV': 'Mister Fabio Albano (Albacynthia)',
   'UNDER 14': 'Mister Marco Ferri (Academy Cynthia Genzano)',
   'Under 14': 'Mister Marco Ferri (Academy Cynthia Genzano)',
@@ -471,25 +481,50 @@ export const DEFAULT_SAMPLE_PLAYERS: GiocatoreConvocato[] = [
 ];
 
 /**
- * Assicura che la lista atleti includa sempre le rose complete di tutte e tre le società
- * (CYNTHIA 1920, ACADEMY CYNTHIA GENZANO, ALBACYNTHIA) preservando le convocazioni salvate.
+ * Rimuove atleti duplicati e righe di intestazione involontarie preservando l'ordine
+ */
+export function deduplicateGiocatori(players: GiocatoreConvocato[]): GiocatoreConvocato[] {
+  if (!players || !Array.isArray(players)) return [];
+  const seen = new Set<string>();
+  const result: GiocatoreConvocato[] = [];
+
+  for (const p of players) {
+    if (!p || !p.nome) continue;
+    const cleanName = p.nome.trim().toUpperCase().replace(/\s+/g, ' ');
+    if (!cleanName || cleanName.length < 2) continue;
+
+    // Ignora intestazioni ripetute
+    if (
+      [
+        'COGNOME E NOME', 'NOME E COGNOME', 'COGNOME NOME', 'NOME COGNOME',
+        'NOMINATIVO', 'GIOCATORE', 'CALCIATORE', 'ATLETA', 'MISTER', 'ALLENATORE', 'SQUADRA', 'CATEGORIA'
+      ].includes(cleanName)
+    ) {
+      continue;
+    }
+
+    const cleanCat = (p.categoria || '').trim().toUpperCase();
+    const cleanSq = (p.squadra || '').trim().toUpperCase();
+    const key = `${cleanName}__${cleanCat}__${cleanSq}`;
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(p);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Assicura che la lista atleti non contenga duplicati o intestazioni spurie.
+ * Rispetta rigorosamente il file delle rose: nessuna iniezione di squadre o atleti non presenti nel file.
  */
 export function ensureFullCynthiaRosters(players: GiocatoreConvocato[]): GiocatoreConvocato[] {
-  if (!players || players.length === 0) {
-    return DEFAULT_SAMPLE_PLAYERS;
+  if (!players || !Array.isArray(players) || players.length === 0) {
+    return [];
   }
-
-  const hasAcademy = players.some((p) => (p.squadra || '').toUpperCase().includes('ACADEMY'));
-  const hasAlba = players.some((p) => (p.squadra || '').toUpperCase().includes('ALBA'));
-
-  if (hasAcademy && hasAlba) {
-    return players;
-  }
-
-  // Unisce gli atleti mancanti delle altre società
-  const existingIds = new Set(players.map((p) => p.id));
-  const missing = DEFAULT_SAMPLE_PLAYERS.filter((p) => !existingIds.has(p.id));
-  return [...players, ...missing];
+  return deduplicateGiocatori(players);
 }
 
 export function loadConvocazioniConfig(): ConvocazioneConfig {
@@ -518,19 +553,24 @@ export function saveConvocazioniConfig(config: ConvocazioneConfig): void {
   }
 }
 
-export function loadCachedGiocatori(): GiocatoreConvocato[] | null {
+export function loadCachedGiocatori(): GiocatoreConvocato[] {
   try {
     const raw = localStorage.getItem(CONVOCAZIONI_PLAYERS_CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return ensureFullCynthiaRosters(parsed);
+        // Rimuove eventuali atleti fantoccio mock iniettati dalle vecchie versioni
+        const realPlayers = parsed.filter(
+          (p) => p && p.id && !p.id.startsWith('c1920_') && !p.id.startsWith('acad_') && !p.id.startsWith('alba_')
+        );
+        const toDedupe = realPlayers.length > 0 ? realPlayers : parsed.filter(p => p && p.id && !p.id.startsWith('c1920_') && !p.id.startsWith('alba_'));
+        return deduplicateGiocatori(toDedupe);
       }
     }
   } catch (e) {
     console.warn('Impossibile caricare cache giocatori', e);
   }
-  return DEFAULT_SAMPLE_PLAYERS;
+  return [];
 }
 
 export function saveCachedGiocatori(players: GiocatoreConvocato[]): void {
@@ -796,8 +836,23 @@ export interface ParsedSheetConvocazioni {
   availableCategories: string[];
 }
 
+export function formatMisterDisplayName(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  if (/^(mister|all\.|allenatore|istruttore|tecnico)\s+/i.test(trimmed)) {
+    return trimmed;
+  }
+  const titleCase = trimmed
+    .toLowerCase()
+    .split(/\s+/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+  return `Mister ${titleCase}`;
+}
+
 /**
- * Scarica e analizza l'elenco dei giocatori e dello staff da un foglio Google o CSV
+ * Scarica e analizza l'elenco dei giocatori e dello staff da un foglio Google o CSV.
+ * Se non ci sono squadre o giocatori nel file delle rose, non carica nulla.
  */
 export async function fetchGiocatoriFromSheet(
   sheetUrlOrId: string,
@@ -841,17 +896,18 @@ export async function fetchGiocatoriFromSheet(
 
   const rows = parseCSV(csvText);
   if (rows.length === 0) {
-    throw new Error('Il foglio Google è vuoto.');
+    return { giocatori: [], staffByCategoria: {}, availableCategories: [] };
   }
 
   return parseCsvConvocazioni(rows);
 }
 
 /**
- * Mappa flessibile delle righe CSV nell'elenco GiocatoreConvocato e Staff per Categoria
+ * Mappa flessibile delle righe CSV nell'elenco GiocatoreConvocato e Staff per Categoria.
+ * Rispetta rigorosamente i contenuti del file: non inietta squadre o atleti non presenti.
  */
 export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni {
-  if (rows.length === 0) {
+  if (!rows || rows.length === 0) {
     return { giocatori: [], staffByCategoria: {}, availableCategories: [] };
   }
 
@@ -874,14 +930,24 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
   let idxConvocato = -1;
   let idxNote = -1;
   let idxMister = -1;
+  let idxSquadra = -1;
 
   if (hasHeaderKeywords) {
     dataRows = rows.slice(1);
 
     // Rileva colonna Squadra / Categoria
     idxCategoria = normalizedFirst.findIndex(h =>
-      ['squadra', 'categoria', 'leva', 'annata', 'gruppo', 'team'].some(k => h === k || h.includes(k))
+      ['squadra', 'categoria', 'cat', 'leva', 'annata', 'gruppo', 'team'].some(k => h === k || h.includes(k))
     );
+
+    // Rileva colonna distinta per Società / Club (se diversa da Squadra/Categoria)
+    const distinctSocietaIdx = normalizedFirst.findIndex((h, idx) =>
+      idx !== idxCategoria &&
+      ['societa', 'club', 'entita', 'polisportiva'].some(k => h === k || h.includes(k))
+    );
+    if (distinctSocietaIdx !== -1) {
+      idxSquadra = distinctSocietaIdx;
+    }
 
     // Rileva colonna Mister / Allenatore
     idxMister = normalizedFirst.findIndex(h =>
@@ -913,7 +979,7 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
       idxCognome = normalizedFirst.findIndex(h => h.includes('cognome') && h !== normalizedFirst[idxNome]);
     }
 
-    // Colonne opzionali (non obbligatorie)
+    // Colonne opzionali
     idxRuolo = normalizedFirst.findIndex(h =>
       ['ruolo', 'pos', 'posizione', 'role'].some(k => h.includes(k)) || h === 'r'
     );
@@ -925,10 +991,6 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
     );
     idxNote = normalizedFirst.findIndex(h =>
       ['note', 'annotazioni', 'dettagli'].some(k => h.includes(k))
-    );
-    const idxSquadra = normalizedFirst.findIndex(h =>
-      ['societa', 'club', 'entita', 'polisportiva'].some(k => h === k || h.includes(k)) ||
-      (h.includes('squadra') && !h.includes('casa') && !h.includes('ospite') && normalizedFirst.some(o => ['categoria', 'cat', 'leva', 'annata'].some(k => o.includes(k))))
     );
   } else {
     dataRows = rows;
@@ -942,18 +1004,12 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
     }
   }
 
-  const idxSquadra = typeof (normalizedFirst as any) !== 'undefined'
-    ? normalizedFirst.findIndex(h =>
-        ['societa', 'club', 'entita', 'polisportiva'].some(k => h === k || h.includes(k)) ||
-        (h.includes('squadra') && !h.includes('casa') && !h.includes('ospite'))
-      )
-    : -1;
-
   const giocatori: GiocatoreConvocato[] = [];
-  const staffByCategoria: Record<string, string> = { ...DEFAULT_STAFF_BY_CATEGORY };
+  const staffByCategoria: Record<string, string> = {};
   const categoriesSet = new Set<string>();
+  const seenPlayerKeys = new Set<string>();
 
-  dataRows.forEach((row, index) => {
+  dataRows.forEach((row) => {
     if (!row || row.length === 0) return;
 
     let fullName = '';
@@ -967,15 +1023,32 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
       fullName = (row[0] || '').trim();
     }
 
-    if (!fullName) return;
+    if (!fullName || fullName.length < 2) return;
 
+    const upperName = fullName.toUpperCase();
+    // Salta righe di intestazione ripetute all'interno dei dati
+    if (
+      [
+        'COGNOME E NOME', 'NOME E COGNOME', 'COGNOME NOME', 'NOME COGNOME',
+        'NOMINATIVO', 'GIOCATORE', 'CALCIATORE', 'ATLETA', 'MISTER', 'ALLENATORE', 'SQUADRA', 'CATEGORIA'
+      ].includes(upperName)
+    ) {
+      return;
+    }
+
+    // Estrazione ruolo ed eventuale indicazione portiere presente nel nome (es. "(P)", "(gk)", "🧤")
     let ruolo = idxRuolo !== -1 ? (row[idxRuolo] || '').trim() : '';
     if (!ruolo) {
-      const lowerName = fullName.toLowerCase();
-      if (lowerName.includes('(gk)') || lowerName.includes('🧤') || lowerName.includes('(p)')) {
+      if (/\((?:P|p|GK|gk|portiere)\)/i.test(fullName) || /[🧤🥅]/.test(fullName)) {
         ruolo = 'P';
       }
     }
+    // Pulisce il nome dell'atleta rimuovendo suffissi di ruolo come "(P)" o emoji per una visualizzazione pulita
+    const cleanFullName = fullName
+      .replace(/\s*\((?:P|p|GK|gk|portiere)\)\s*/gi, ' ')
+      .replace(/[🧤🥅]/g, '')
+      .trim();
+
     const numero = idxNumero !== -1 ? (row[idxNumero] || '').trim() : '';
     const rawCategoria = idxCategoria !== -1 ? (row[idxCategoria] || '').trim() : '';
     const categoria = rawCategoria || 'Prima Squadra';
@@ -985,12 +1058,30 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
 
     let squadra = idxSquadra !== -1 ? (row[idxSquadra] || '').trim() : '';
     if (!squadra) {
-      const combined = `${rawCategoria} ${fullName}`.toUpperCase();
-      if (combined.includes('ALBACYNTHIA')) {
+      const combined = `${categoria} ${cleanFullName}`.toUpperCase();
+      if (combined.includes('ALBA')) {
         squadra = 'ALBACYNTHIA';
       } else if (combined.includes('ACADEMY')) {
         squadra = 'ACADEMY CYNTHIA GENZANO';
-      } else if (combined.includes('CYNTHIA')) {
+      } else if (
+        combined.includes('PROMOZIONE') ||
+        combined.includes('PRIMA SQUADRA') ||
+        combined.includes('JUNIORES') ||
+        combined.includes('19') ||
+        combined.includes('18')
+      ) {
+        squadra = 'CYNTHIA 1920';
+      } else if (
+        combined.includes('17') ||
+        combined.includes('16') ||
+        combined.includes('15') ||
+        combined.includes('14') ||
+        combined.includes('13') ||
+        combined.includes('ESORDIENTI') ||
+        combined.includes('PULCINI')
+      ) {
+        squadra = 'ACADEMY CYNTHIA GENZANO';
+      } else {
         squadra = 'CYNTHIA 1920';
       }
     }
@@ -999,19 +1090,31 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
       categoriesSet.add(categoria);
     }
 
-    // Se c'è una colonna Mister esplicita e valorizzata
+    // Se c'è una colonna Mister esplicita e valorizzata per la categoria
     if (misterCell && categoria) {
-      staffByCategoria[categoria] = misterCell;
+      staffByCategoria[categoria] = formatMisterDisplayName(misterCell);
     }
 
     // Se la riga rappresenta direttamente un allenatore/mister (Ruolo = Mister / Allenatore)
-    const normRuolo = ruolo.toLowerCase();
+    const normRuolo = (ruolo || '').toLowerCase();
     if (normRuolo.includes('mister') || normRuolo.includes('allenatore') || normRuolo.includes('tecnico')) {
-      staffByCategoria[categoria] = fullName;
-      return; // Non inserire come calciatore con maglia
+      staffByCategoria[categoria] = formatMisterDisplayName(cleanFullName);
+      return; // Non inserire come calciatore
     }
 
-    // Determinazione stato convocazione di default (lasciati deselezionati per default)
+    // Deduplicazione: evita atleti duplicati con lo stesso nome nella stessa categoria
+    const dedupeKey = `${cleanFullName.toUpperCase()}__${categoria.toUpperCase()}__${squadra.toUpperCase()}`;
+    if (seenPlayerKeys.has(dedupeKey)) {
+      return;
+    }
+    seenPlayerKeys.add(dedupeKey);
+
+    // ID univoco deterministico
+    const normName = cleanFullName.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+    const normCat = categoria.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+    const playerId = `p_${normCat}_${normName}`;
+
+    // Determinazione stato convocazione di default (deselezionati per default)
     let selezionato = false;
     if (stato) {
       if (['si', 'sì', 'yes', 'convocato', 'true', '1', 'titolare', 'panchina'].includes(stato)) {
@@ -1020,8 +1123,8 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
     }
 
     giocatori.push({
-      id: `player_${index + 1}_${fullName.replace(/\s+/g, '_')}`,
-      nome: fullName,
+      id: playerId,
+      nome: cleanFullName,
       ruolo: ruolo || undefined,
       numero: numero || undefined,
       categoria: categoria,

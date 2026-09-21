@@ -33,9 +33,11 @@ import {
   UserCheck,
   History,
   FileDown,
+  Upload,
 } from 'lucide-react';
 import { Partita, GiocatoreConvocato, ConvocazioneConfig } from '../types';
 import { APP_CONFIG } from '../appConfig';
+import { parseCSV } from '../services/sheetService';
 import { ConvocazioniPdfPreviewModal } from './ConvocazioniPdfPreviewModal';
 import {
   generateConvocazioniPdf,
@@ -45,7 +47,6 @@ import {
   ConvocazioniPdfOptions,
 } from '../utils/pdfGenerator';
 import {
-  DEFAULT_SAMPLE_PLAYERS,
   DEFAULT_STAFF_BY_CATEGORY,
   DEFAULT_CONVOCAZIONI_SHEET_ID,
   DEFAULT_CONVOCAZIONI_SHEET_URL,
@@ -60,6 +61,8 @@ import {
   clearConvocatiForMatch,
   getConvocazioniHistoryStats,
   fetchGiocatoriFromSheet,
+  parseCsvConvocazioni,
+  deduplicateGiocatori,
   findMatchingCategory,
   isCategoryMatch,
   buildWhatsAppConvocazioniMessage,
@@ -100,17 +103,20 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     return partite.length > 0 ? partite[0].id : '';
   });
 
-  // Giocatori e Staff per categoria (ripristina automaticamente i convocati salvati per la gara e garantisce rose complete delle 3 società)
+  // Giocatori e Staff per categoria: se non ci sono squadre e giocatori nel file delle rose, non carica nulla
   const [giocatori, setGiocatori] = useState<GiocatoreConvocato[]>(() => {
     const cached = loadCachedGiocatori();
-    const rawList = ensureFullCynthiaRosters(cached && cached.length > 0 ? cached : DEFAULT_SAMPLE_PLAYERS);
+    if (!cached || cached.length === 0) {
+      return [];
+    }
+    const cleanList = deduplicateGiocatori(cached);
     const initialMatchId = partite.length > 0 ? partite[0].id : '';
     const savedIds = initialMatchId ? loadSavedConvocatiForMatch(initialMatchId) : null;
     if (savedIds !== null) {
       const idSet = new Set(savedIds);
-      return rawList.map((g) => ({ ...g, selezionato: idSet.has(g.id) }));
+      return cleanList.map((g) => ({ ...g, selezionato: idSet.has(g.id) }));
     }
-    return rawList.map((g) => ({ ...g, selezionato: false }));
+    return cleanList.map((g) => ({ ...g, selezionato: false }));
   });
   const [staffMap, setStaffMap] = useState<Record<string, string>>(() => {
     return loadCachedStaff();
@@ -236,25 +242,32 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     const savedIdSet = savedSelectedIds !== null ? new Set(savedSelectedIds) : null;
 
     // Filtra sulla squadra della partita selezionata e ripristina la selezione salvata per questa gara,
-    // assicurando che le rose di tutte e 3 le società siano sempre caricate indipendentemente da chi gioca in casa
+    // rispettando rigorosamente gli atleti caricati dal file senza aggiunte fittizie
     setGiocatori((prev) => {
-      const fullList = ensureFullCynthiaRosters(prev);
+      const cleanList = deduplicateGiocatori(prev);
       const availableCats = Array.from(
-        new Set(fullList.map((g) => g.categoria).filter(Boolean))
+        new Set(cleanList.map((g) => g.categoria).filter(Boolean))
       ) as string[];
       const matchCat = findMatchingCategory(p.campionato, availableCats);
 
-      // Determina il mister corretto per questa gara (solo Cynthia 1920, Academy Cynthia o Albacynthia, o personalizzato)
-      const correctMister = resolveMisterForMatch(p, p.campionato);
+      // Determina il mister per questa gara: prima verifica se è definito nel file, altrimenti usa l'ufficiale
+      let correctMister = '';
+      if (matchCat && staffMap[matchCat]) {
+        correctMister = staffMap[matchCat];
+      } else {
+        correctMister = resolveMisterForMatch(p, p.campionato);
+      }
       setMisterName(correctMister);
 
       if (matchCat) {
         setSelectedCategoryFilter(matchCat);
+      } else if (availableCats.length > 0) {
+        setSelectedCategoryFilter('ALL');
       }
 
       // Se esistono convocati salvati in precedenza per questa specifica gara, ripristinali!
       // Altrimenti, per una gara non ancora compilata, lascia tutti deselezionati
-      const updated = fullList.map((g) => ({
+      const updated = cleanList.map((g) => ({
         ...g,
         selezionato: savedIdSet ? savedIdSet.has(g.id) : false,
       }));
@@ -317,15 +330,20 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
 
     try {
       const parsed = await fetchGiocatoriFromSheet(urlToUse, tabToUse);
-      if (parsed.giocatori.length === 0) {
-        throw new Error('Nessun giocatore trovato nel foglio. Verifica che contenga righe con nomi.');
+      if (!parsed.giocatori || parsed.giocatori.length === 0) {
+        // Se non ci sono squadre e giocatori nel file delle rose, non caricare nulla
+        setGiocatori([]);
+        saveCachedGiocatori([]);
+        setSheetSuccess('Nessun giocatore o squadra presente nel file delle rose. Nessun dato caricato.');
+        setSheetError(null);
+        return;
       }
 
       const matchIdToUse = selectedPartitaId || 'custom_match';
       const savedMatchIds = loadSavedConvocatiForMatch(matchIdToUse);
       const savedSet = savedMatchIds !== null ? new Set(savedMatchIds) : null;
-      const fullRosterList = ensureFullCynthiaRosters(parsed.giocatori);
-      const playersWithPreserved = fullRosterList.map((g) => ({
+      const cleanList = deduplicateGiocatori(parsed.giocatori);
+      const playersWithPreserved = cleanList.map((g) => ({
         ...g,
         selezionato: savedSet ? savedSet.has(g.id) : false,
       }));
@@ -356,7 +374,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       saveConvocazioniConfig(updatedConfig);
 
       setSheetSuccess(
-        `Caricati ${parsed.giocatori.length} atleti e ${parsed.availableCategories.length} squadre/rose dal foglio Google!`
+        `Caricati ${cleanList.length} atleti e ${parsed.availableCategories.length} squadre/rose dal foglio!`
       );
     } catch (err: unknown) {
       console.error('Errore importazione convocati:', err);
@@ -365,6 +383,75 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     } finally {
       setIsFetchingSheet(false);
     }
+  };
+
+  // Caricamento da file CSV locale
+  const handleUploadLocalCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        if (!text || !text.trim()) {
+          setGiocatori([]);
+          saveCachedGiocatori([]);
+          setSheetSuccess('Il file selezionato è vuoto. Nessun atleta o squadra caricata.');
+          setSheetError(null);
+          return;
+        }
+
+        const rows = parseCSV(text);
+        if (rows.length === 0) {
+          setGiocatori([]);
+          saveCachedGiocatori([]);
+          setSheetSuccess('Nessun dato trovato nel file. Nessun atleta caricato.');
+          setSheetError(null);
+          return;
+        }
+
+        const parsed = parseCsvConvocazioni(rows);
+        if (!parsed.giocatori || parsed.giocatori.length === 0) {
+          setGiocatori([]);
+          saveCachedGiocatori([]);
+          setSheetSuccess('Nessun giocatore o squadra trovato nel file CSV.');
+          setSheetError(null);
+          return;
+        }
+
+        const cleanList = deduplicateGiocatori(parsed.giocatori);
+        const matchIdToUse = selectedPartitaId || 'custom_match';
+        const savedMatchIds = loadSavedConvocatiForMatch(matchIdToUse);
+        const savedSet = savedMatchIds !== null ? new Set(savedMatchIds) : null;
+        const playersWithPreserved = cleanList.map((g) => ({
+          ...g,
+          selezionato: savedSet ? savedSet.has(g.id) : false,
+        }));
+
+        setGiocatori(playersWithPreserved);
+        saveCachedGiocatori(playersWithPreserved);
+
+        if (Object.keys(parsed.staffByCategoria).length > 0) {
+          const mergedStaff = { ...staffMap, ...parsed.staffByCategoria };
+          setStaffMap(mergedStaff);
+          saveCachedStaff(mergedStaff);
+          const curCat = currentPartita?.campionato || categoriaCustom;
+          const matched = findMatchingCategory(curCat, parsed.availableCategories);
+          if (matched && mergedStaff[matched]) {
+            setMisterName(mergedStaff[matched]);
+          }
+        }
+
+        setSheetSuccess(`Caricati con successo ${cleanList.length} atleti dal file "${file.name}"!`);
+        setSheetError(null);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Errore durante la lettura del file CSV.';
+        setSheetError(msg);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   const hasAutoFetchedRef = useRef(false);
@@ -1348,6 +1435,22 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                   <RefreshCw className={`w-3.5 h-3.5 ${isFetchingSheet ? 'animate-spin' : ''}`} />
                   <span>{isFetchingSheet ? 'Caricamento...' : 'Carica Rose'}</span>
                 </button>
+
+                <label
+                  htmlFor="input-local-roster-file"
+                  className="px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white hover:bg-slate-100 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95 transition"
+                  title="Carica un file CSV delle rose direttamente dal tuo dispositivo"
+                >
+                  <Upload className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+                  <span>Carica CSV</span>
+                  <input
+                    id="input-local-roster-file"
+                    type="file"
+                    accept=".csv,.txt"
+                    className="sr-only"
+                    onChange={handleUploadLocalCsv}
+                  />
+                </label>
               </div>
 
               {/* Indicatore Foglio Ufficiale e Ripristino Rapido */}
@@ -1787,7 +1890,15 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
 
               {/* Lista Scrollabile Atleti */}
               <div className="max-h-64 overflow-y-auto divide-y divide-slate-200 dark:divide-slate-700 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80">
-                {filteredGiocatori.length === 0 ? (
+                {giocatori.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center gap-2">
+                    <Users className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">Nessuna rosa caricata</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-sm">
+                      Nel file delle rose non sono presenti giocatori o squadre. Inserisci il link al foglio o carica un file CSV per popolare la rosa.
+                    </p>
+                  </div>
+                ) : filteredGiocatori.length === 0 ? (
                   <div className="p-4 text-center text-xs text-slate-400">
                     Nessun giocatore corrisponde ai filtri selezionati.
                   </div>
