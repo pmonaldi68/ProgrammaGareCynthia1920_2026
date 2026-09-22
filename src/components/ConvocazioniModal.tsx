@@ -204,18 +204,20 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   const staffMapRef = useRef(staffMap);
   staffMapRef.current = staffMap;
 
-  // Sincronizza campi gara SOLO quando cambia la partita selezionata
+  // Assicura che una partita valida sia sempre selezionata non appena partite diventa disponibile
+  useEffect(() => {
+    if (partite.length > 0) {
+      if (!selectedPartitaId || !partite.some((m) => m.id === selectedPartitaId)) {
+        setSelectedPartitaId(partite[0].id);
+      }
+    }
+  }, [partite, selectedPartitaId]);
+
+  // Sincronizza i dati della gara e il Mister dal file delle rose quando cambia la partita o lo staff
   useEffect(() => {
     if (!isOpen || !selectedPartitaId) {
-      syncedPartitaIdRef.current = null;
       return;
     }
-
-    // Evita ri-esecuzione se la partita corrente è già stata sincronizzata
-    if (syncedPartitaIdRef.current === selectedPartitaId) {
-      return;
-    }
-    syncedPartitaIdRef.current = selectedPartitaId;
 
     const p = partite.find((m) => m.id === selectedPartitaId);
     if (!p) return;
@@ -225,29 +227,46 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     setSquadraOspiteCustom(p.squadraOspite || '');
     setDataGaraCustom(p.data || '');
     setOraGaraCustom(p.ora || '');
-    setCampoCustom(`${p.campo}${p.tipo ? ` (${p.tipo})` : ''}`);
-    setIndirizzoCustom(`${p.indirizzo}, ${p.comune}`);
-    setLinkMapsCustom(p.lnkMaps !== '#' ? p.lnkMaps : '');
+    setCampoCustom(`${p.campo || ''}${p.tipo ? ` (${p.tipo})` : ''}`.trim());
+    const fullIndirizzo = [p.indirizzo, p.comune].filter(Boolean).join(', ');
+    setIndirizzoCustom(fullIndirizzo);
+    setLinkMapsCustom(p.lnkMaps !== '#' ? (p.lnkMaps || '') : '');
 
-    // Calcola orario ritrovo per questa partita specifica
+    // Calcola orario ritrovo per questa gara: RIGOROSAMENTE 90 minuti prima della gara
     const savedTime = ritrovoTimeByPartita[p.id];
-    const targetTime = savedTime || (p.ora ? calculateRitrovoTimeOnly(p.ora) : '14:00');
+    const targetTime = savedTime || (p.ora ? calculateRitrovoTimeOnly(p.ora, 90) : '14:00');
     setOraRitrovo(`${targetTime} ${ritrovoLuogo.trim()}`);
-
-    // Reset modifiche manuali al cambio partita per rigenerare il testo fresco
-    setEditedWhatsAppText(null);
 
     // Determina il mister per questa gara: carica SOLO i mister presenti nel file delle rose
     const currentStaff = (staffMap && Object.keys(staffMap).length > 0) ? staffMap : loadCachedStaff();
     const correctMister = resolveMisterForMatch(p, p.campionato, currentStaff);
-    setMisterName(correctMister);
+    if (correctMister) {
+      setMisterName(correctMister);
+    }
+
+    // Reset modifiche manuali WhatsApp per rigenerare il messaggio fresco
+    setEditedWhatsAppText(null);
+  }, [selectedPartitaId, isOpen, partite, staffMap]);
+
+  // Sincronizza atleti e selezione salvata SOLO al cambio effettivo di partita selezionata
+  useEffect(() => {
+    if (!isOpen || !selectedPartitaId) {
+      syncedPartitaIdRef.current = null;
+      return;
+    }
+
+    if (syncedPartitaIdRef.current === selectedPartitaId) {
+      return;
+    }
+    syncedPartitaIdRef.current = selectedPartitaId;
+
+    const p = partite.find((m) => m.id === selectedPartitaId);
+    if (!p) return;
 
     // Carica la lista dei convocati salvati in localStorage per questa specifica gara
     const savedSelectedIds = loadSavedConvocatiForMatch(p.id);
     const savedIdSet = savedSelectedIds !== null ? new Set(savedSelectedIds) : null;
 
-    // Filtra sulla squadra della partita selezionata e ripristina la selezione salvata per questa gara,
-    // rispettando rigorosamente gli atleti caricati dal file senza aggiunte fittizie
     setGiocatori((prev) => {
       const cleanList = deduplicateGiocatori(prev);
       const availableCats = Array.from(
@@ -270,7 +289,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       saveCachedGiocatori(updated);
       return updated;
     });
-  }, [selectedPartitaId, isOpen, partite, staffMap]);
+  }, [selectedPartitaId, isOpen, partite]);
 
   // Aggiorna staff quando l'utente modifica a mano il nome del Mister
   const handleMisterChange = (name: string) => {
@@ -698,28 +717,34 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
   };
 
-  // Calcolo dinamico dell'orario di ritrovo (formato "HH:MM") per la partita attiva
+  // Calcolo dinamico dell'orario di ritrovo (formato "HH:MM") per la partita attiva (90 minuti prima della gara)
   const currentRitrovoTime = useMemo(() => {
-    if (ritrovoTimeByPartita[selectedPartitaId]) {
+    // 1. Se l'utente ha modificato manualmente l'orario per questa specifica partita
+    if (selectedPartitaId && ritrovoTimeByPartita[selectedPartitaId]) {
       return ritrovoTimeByPartita[selectedPartitaId];
     }
+    // 2. Se c'è un orario gara valido per la partita selezionata, calcola esattamente 90 minuti prima
+    const matchOra = currentPartita?.ora || oraGaraCustom;
+    if (matchOra) {
+      return calculateRitrovoTimeOnly(matchOra, 90);
+    }
+    // 3. Fallback da stringa ritrovo
     if (oraRitrovo) {
       const extracted = extractTimeFromRitrovo(oraRitrovo);
       if (extracted) return extracted;
     }
-    if (currentPartita?.ora) {
-      return calculateRitrovoTimeOnly(currentPartita.ora);
-    }
     return '14:00';
-  }, [ritrovoTimeByPartita, selectedPartitaId, currentPartita, oraRitrovo]);
+  }, [ritrovoTimeByPartita, selectedPartitaId, currentPartita, oraGaraCustom, oraRitrovo]);
 
   // Gestione modifica orario di ritrovo specifico per la partita corrente
   const handleRitrovoTimeChange = (newTime: string) => {
     if (!newTime) return;
-    setRitrovoTimeByPartita((prev) => ({
-      ...prev,
-      [selectedPartitaId]: newTime,
-    }));
+    if (selectedPartitaId) {
+      setRitrovoTimeByPartita((prev) => ({
+        ...prev,
+        [selectedPartitaId]: newTime,
+      }));
+    }
     const updatedFull = `${newTime} ${ritrovoLuogo.trim()}`;
     setOraRitrovo(updatedFull);
     // Reset modifiche manuali WhatsApp per sincronizzare subito il nuovo orario
@@ -737,16 +762,8 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   // Preset rapidi minuti prima del fischio d'inizio (es. -90m, -75m, -60m)
   const handleApplyPresetMinutesBefore = (minutes: number) => {
     const oraGaraToUse = currentPartita?.ora || oraGaraCustom;
-    if (!oraGaraToUse || !oraGaraToUse.includes(':')) return;
-    const [hStr, mStr] = oraGaraToUse.split(':');
-    const h = Number(hStr);
-    const m = Number(mStr);
-    if (isNaN(h) || isNaN(m)) return;
-    let ritrovoMinutes = h * 60 + m - minutes;
-    if (ritrovoMinutes < 0) ritrovoMinutes += 24 * 60;
-    const rh = Math.floor(ritrovoMinutes / 60);
-    const rm = ritrovoMinutes % 60;
-    const formatted = `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
+    if (!oraGaraToUse) return;
+    const formatted = calculateRitrovoTimeOnly(oraGaraToUse, minutes);
     handleRitrovoTimeChange(formatted);
   };
 
@@ -757,7 +774,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     const catGara = matchedCategory || findMatchingCategory(campionatoGara, availableCategories);
 
     // 1. Filtra i giocatori che appartengono specificamente alla squadra/categoria della gara selezionata
-    const rosterOfTeam = giocatori.filter((g) => {
+    let rosterOfTeam = giocatori.filter((g) => {
       // Verifica categoria
       const catMatches = catGara
         ? isCategoryMatch(g.categoria || '', catGara)
@@ -781,6 +798,26 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       return true;
     });
 
+    // Se il filtro non ha trovato atleti, prova a matchare per categoria senza restrizione stretta di società
+    if (rosterOfTeam.length === 0 && (catGara || campionatoGara)) {
+      rosterOfTeam = giocatori.filter((g) => {
+        if (catGara && isCategoryMatch(g.categoria || '', catGara)) return true;
+        if (campionatoGara && isCategoryMatch(g.categoria || '', campionatoGara)) return true;
+        return false;
+      });
+    }
+
+    // Se l'utente ha impostato un filtro attivo nella UI diverso da ALL/AUTO
+    if (rosterOfTeam.length === 0 && selectedCategoryFilter !== 'ALL' && selectedCategoryFilter !== 'AUTO') {
+      rosterOfTeam = giocatori.filter((g) => g.categoria === selectedCategoryFilter);
+    }
+
+    // Se ancora nessun atleta e ci sono giocatori nel database, restituisce tutti i giocatori caricati
+    // per non lasciare MAI il foglio convocazioni senza atleti!
+    if (rosterOfTeam.length === 0 && giocatori.length > 0) {
+      rosterOfTeam = giocatori;
+    }
+
     // 2. Aggiunge eventuali giocatori convocati (selezionati) per questa gara anche se provenienti da altra categoria/squadra
     const extraSelectedPlayers = giocatori.filter(
       (g) => g.selezionato && !rosterOfTeam.some((r) => r.id === g.id)
@@ -788,7 +825,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
 
     const combined = [...rosterOfTeam, ...extraSelectedPlayers];
     return deduplicateGiocatori(combined);
-  }, [currentPartita, categoriaCustom, matchedCategory, availableCategories, giocatori]);
+  }, [currentPartita, categoriaCustom, matchedCategory, availableCategories, giocatori, selectedCategoryFilter]);
 
   // Prepara le opzioni per generare il PDF o mostrare l'anteprima live per il mister
   const getPdfOptions = (modalitaOverride?: 'tutta_la_rosa' | 'solo_convocati'): ConvocazioniPdfOptions => {
@@ -798,26 +835,38 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     // Regola utente:
     // Nell'anteprima live e nel foglio convocazioni vengono riportati SOLO i giocatori della squadra selezionata!
     // - In modalità 'solo_convocati': solo i giocatori selezionati tra quelli della squadra, fino al limite massimo di 25
-    // - In modalità 'tutta_la_rosa': tutta la rosa della squadra selezionata
+    // - In modalità 'tutta_la_rosa': tutta la rosa della squadra selezionata, deselezionati [ ] per la spunta a penna
     let targetPlayers: GiocatoreConvocato[];
     if (currentModalita === 'solo_convocati') {
       targetPlayers = matchRoster.filter((g) => g.selezionato).slice(0, MAX_CONVOCATI_LIMIT);
     } else {
-      targetPlayers = matchRoster;
+      targetPlayers = matchRoster.map((g) => ({ ...g, selezionato: false }));
     }
 
-    const fullRitrovoToUse = oraRitrovo || `${currentRitrovoTime} ${ritrovoLuogo.trim()}`;
+    const calcTime = currentRitrovoTime || (currentPartita?.ora ? calculateRitrovoTimeOnly(currentPartita.ora, 90) : '14:00');
+    const fullRitrovoToUse = `${calcTime} ${ritrovoLuogo.trim()}`;
+
+    const gironePart = currentPartita?.girone && currentPartita.girone !== '-' ? ` (Gir. ${currentPartita.girone})` : '';
+    const campToUse = `${currentPartita?.campionato || categoriaCustom || 'Campionato Regionale'}${gironePart}`;
+
+    const campoToUse = currentPartita?.campo
+      ? `${currentPartita.campo}${currentPartita.tipo ? ` (${currentPartita.tipo})` : ''}`
+      : campoCustom || '';
+
+    const indirizzoToUse = currentPartita?.indirizzo
+      ? [currentPartita.indirizzo, currentPartita.comune].filter(Boolean).join(', ')
+      : indirizzoCustom || '';
 
     return {
       partita: currentPartita,
-      campionato: currentPartita?.campionato || categoriaCustom || 'Campionato Regionale',
+      campionato: campToUse,
       squadraCasa: currentPartita?.squadraCasa || squadraCasaCustom || 'Cynthia 1920',
       squadraOspite: currentPartita?.squadraOspite || squadraOspiteCustom || 'Avversario',
       dataGara: currentPartita?.data || dataGaraCustom || '',
       oraGara: currentPartita?.ora || oraGaraCustom || '',
       oraRitrovo: fullRitrovoToUse,
-      campo: currentPartita?.campo || campoCustom || '',
-      indirizzo: currentPartita?.indirizzo || indirizzoCustom || '',
+      campo: campoToUse,
+      indirizzo: indirizzoToUse,
       misterName: misterName,
       noteMister: noteMister,
       giocatori: targetPlayers,

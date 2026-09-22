@@ -36,12 +36,16 @@ export interface CynthiaCoach {
  */
 export function isInventedMisterName(name: string | null | undefined): boolean {
   if (!name) return false;
-  const upper = name.toUpperCase();
-  const bannedKeywords = [
-    'CORRADINI', 'BIANCHI', 'CONTI', 'DE SANTIS', 'DESANTIS',
-    'VICHI', 'MANCINI', 'FERRI', 'GALLI', 'ALBANO', 'FABI', 'NERI'
-  ];
-  return bannedKeywords.some((b) => upper.includes(b));
+  const upper = name.toUpperCase().trim();
+  if (
+    upper === 'MISTER SIMONE CORRADINI' ||
+    upper === 'SIMONE CORRADINI' ||
+    upper === 'DA DEFINIRE' ||
+    upper === 'DA ASSEGNARE'
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -910,13 +914,26 @@ export interface WhatsAppMessageParams {
   targetCategoria?: string; // Squadra di riferimento della gara
 }
 
-export function calculateRitrovoTimeOnly(oraGara: string): string {
-  if (!oraGara || !oraGara.includes(':')) return '14:00';
-  const [hStr, mStr] = oraGara.split(':');
-  const h = Number(hStr);
-  const m = Number(mStr);
-  if (isNaN(h) || isNaN(m)) return '14:00';
-  let ritrovoMinutes = h * 60 + m - 90; // 90 minuti prima della gara
+export function calculateRitrovoTimeOnly(oraGara: string, minutesBefore: number = 90): string {
+  if (!oraGara) return '14:00';
+  const clean = oraGara.trim().toLowerCase().replace('ore', '').trim();
+  const match = clean.match(/(\d{1,2})[:.](\d{2})/);
+  let h = NaN;
+  let m = 0;
+  if (match) {
+    h = parseInt(match[1], 10);
+    m = parseInt(match[2], 10);
+  } else {
+    const singleHour = clean.match(/^(\d{1,2})$/);
+    if (singleHour) {
+      h = parseInt(singleHour[1], 10);
+      m = 0;
+    }
+  }
+  if (isNaN(h) || h < 0 || h > 23 || isNaN(m) || m < 0 || m > 59) {
+    return '14:00';
+  }
+  let ritrovoMinutes = h * 60 + m - minutesBefore;
   if (ritrovoMinutes < 0) ritrovoMinutes += 24 * 60;
   const rh = Math.floor(ritrovoMinutes / 60);
   const rm = ritrovoMinutes % 60;
@@ -925,12 +942,12 @@ export function calculateRitrovoTimeOnly(oraGara: string): string {
 
 export function extractTimeFromRitrovo(ritrovo: string): string {
   if (!ritrovo) return '14:00';
-  const match = ritrovo.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  const match = ritrovo.match(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/);
   return match ? `${match[1].padStart(2, '0')}:${match[2]}` : '14:00';
 }
 
-export function calculateRitrovoFromOraGara(oraGara: string): string {
-  const timeOnly = calculateRitrovoTimeOnly(oraGara);
+export function calculateRitrovoFromOraGara(oraGara: string, minutesBefore: number = 90): string {
+  const timeOnly = calculateRitrovoTimeOnly(oraGara, minutesBefore);
   return `${timeOnly} PRESSO IL CAMPO DI GIUOCO`;
 }
 
@@ -953,46 +970,37 @@ export function buildWhatsAppConvocazioniMessage(params: WhatsAppMessageParams):
   } = params;
 
   const categoria = (categoriaCustom || partita?.campionato || 'GARA UFFICIALE').trim().toUpperCase();
+  const girone = partita?.girone && partita.girone !== '-' ? `(GIRONE ${partita.girone.trim().toUpperCase()})` : '';
   const gara = partita?.gara ? partita.gara.trim().toUpperCase() : '';
   const casa = (squadraCasaCustom || partita?.squadraCasa || 'ASD CYNTHIA 1920').trim().toUpperCase();
   const ospite = (squadraOspiteCustom || partita?.squadraOspite || 'AVVERSARIO').trim().toUpperCase();
   const dataGara = (dataGaraCustom || partita?.data || '').trim().toUpperCase();
   const oraGara = (oraGaraCustom || partita?.ora || '').trim().toUpperCase();
-  const campo = (campoCustom || (partita ? `${partita.campo}${partita.tipo ? ` (${partita.tipo})` : ''}` : '')).trim().toUpperCase();
-  const indirizzo = (indirizzoCustom || (partita ? `${partita.indirizzo}, ${partita.comune}` : '')).trim().toUpperCase();
-  const lnkMaps = linkMapsCustom || partita?.lnkMaps || '';
+  const campo = (campoCustom || (partita ? `${partita.campo || ''}${partita.tipo ? ` (${partita.tipo})` : ''}` : '')).trim().toUpperCase();
+  const indirizzo = (indirizzoCustom || (partita ? [partita.indirizzo, partita.comune].filter(Boolean).join(', ') : '')).trim().toUpperCase();
+  const lnkMaps = linkMapsCustom || (partita?.lnkMaps && partita.lnkMaps !== '#' ? partita.lnkMaps : '');
 
   const convocati = giocatori.filter(g => g.selezionato);
 
-  // 1. Prima riga: solo CONVOCAZIONE UFFICIALE
+  // 1. Intestazione ufficiale
   let msg = `📋 *CONVOCAZIONE UFFICIALE*\n\n`;
 
-  // 2. Seconda riga: CAMPIONATO al posto di GARA
-  msg += `🏆 *CAMPIONATO*: ${categoria}${gara ? ` - ${gara}` : ''}\n`;
-  msg += `⚔️ *PARTITA*: ${casa} VS ${ospite}\n`;
+  // 2. Campionato e Partita
+  const campTitle = [categoria, girone].filter(Boolean).join(' ');
+  msg += `🏆 *CAMPIONATO*: ${campTitle}${gara ? ` [Gara: ${gara}]` : ''}\n`;
+  msg += `⚔️ *PARTITA*: ${casa} vs ${ospite}\n`;
 
   if (dataGara || oraGara) {
-    msg += `📅 *DATA*: ${dataGara}${oraGara ? ` - ORE ${oraGara}` : ''}\n`;
+    msg += `📅 *DATA E ORA*: ${dataGara}${oraGara ? ` • ORE ${oraGara}` : ''}\n`;
   }
 
-  // 3. Riga Ritrovo: orario + PRESSO IL CAMPO DI GIUOCO (senza il nome del campo)
+  // 3. Riga Ritrovo: orario calcolato (90 min prima) e luogo
   if (oraRitrovo && oraRitrovo.trim()) {
-    const rawRitrovo = oraRitrovo.trim().toUpperCase();
-    const timeMatch = rawRitrovo.match(/(\d{1,2}[:.]\d{2})/);
-    let ritrovoFormatted = '';
-
-    if (timeMatch) {
-      const timeVal = timeMatch[1].replace('.', ':');
-      ritrovoFormatted = `ORE ${timeVal} PRESSO IL CAMPO DI GIUOCO`;
-    } else {
-      let clean = rawRitrovo.replace(/PRESSO\s+.*$/i, '').trim();
-      clean = clean ? `${clean} PRESSO IL CAMPO DI GIUOCO` : 'PRESSO IL CAMPO DI GIUOCO';
-      if (!clean.startsWith('ORE ') && !clean.startsWith('ORE:')) {
-        clean = `ORE ${clean}`;
-      }
-      ritrovoFormatted = clean;
+    let cleanRitrovo = oraRitrovo.trim().toUpperCase();
+    if (!cleanRitrovo.startsWith('ORE ') && !cleanRitrovo.startsWith('ORE:')) {
+      cleanRitrovo = `ORE ${cleanRitrovo}`;
     }
-    msg += `⏰ *RITROVO*: ${ritrovoFormatted}\n`;
+    msg += `⏰ *RITROVO*: ${cleanRitrovo}\n`;
   }
 
   if (campo) {

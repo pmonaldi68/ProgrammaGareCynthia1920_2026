@@ -234,8 +234,12 @@ export function mapCsvToPartite(rows: string[][]): Partita[] {
       }
     }
 
+    const campVal = getCol(row, idxCampionato, 'camp').trim();
+    const dataVal = getCol(row, idxData, '').trim();
+    const matchSlug = `${r}_${campVal}_${casa}_${ospite}_${dataVal}`.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
     partite.push({
-      id: `match-${r}-${Date.now().toString(36)}`,
+      id: `match_${matchSlug}`,
       campionato: getCol(row, idxCampionato, 'Campionato'),
       girone: getCol(row, idxGirone, '-'),
       gara: getCol(row, idxGara, `Gara ${r}`),

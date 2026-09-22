@@ -32,6 +32,7 @@ export interface ConvocazioniPdfOptions {
  */
 export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF {
   const {
+    partita,
     campionato,
     squadraCasa,
     squadraOspite,
@@ -99,92 +100,117 @@ export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF 
   doc.setLineWidth(0.6);
   doc.line(marginX, 23.5, pageWidth - marginX, 23.5);
 
-  // 2. Quadro Dettagli Gara (Box Riassuntivo Compatto - altezza 22mm)
+  // 2. Quadro Dettagli Gara (Box Riassuntivo Compatto e Spazioso)
   const boxY = 25.5;
-  const boxHeight = 22; // Ridotto a 22mm per garantire spazio alle 25 righe
+  const boxHeight = 27; // Altezza ottimizzata per accogliere tutti i dettagli senza sovrapposizioni
 
   // Sfondo box dettagli gara
   doc.setFillColor(248, 250, 252); // slate-50
-  doc.setDrawColor(203, 213, 225); // slate-300
-  doc.setLineWidth(0.35);
-  doc.roundedRect(marginX, boxY, contentWidth, boxHeight, 1.5, 1.5, 'FD');
+  doc.setDrawColor(186, 230, 253); // sky-200
+  doc.setLineWidth(0.4);
+  doc.roundedRect(marginX, boxY, contentWidth, boxHeight, 1.8, 1.8, 'FD');
 
-  // Colonna 1: Partita e Campionato (larghezza ~66mm)
+  const col1W = 66;
+  const col2W = 66;
+  const col3W = contentWidth - col1W - col2W; // ~56mm
+
+  // Linee separatrici verticali interne
+  doc.setDrawColor(226, 232, 240); // slate-200
+  doc.setLineWidth(0.3);
+  doc.line(marginX + col1W, boxY + 2, marginX + col1W, boxY + boxHeight - 2);
+  doc.line(marginX + col1W + col2W, boxY + 2, marginX + col1W + col2W, boxY + boxHeight - 2);
+
+  // Colonna 1: Partita e Campionato (larghezza 66mm)
+  const c1X = marginX + 3.5;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
   doc.setTextColor(2, 132, 199); // sky-600
-  doc.text('CAMPIONATO / CATEGORIA:', marginX + 3, boxY + 4.5);
+  doc.text('CAMPIONATO / CATEGORIA:', c1X, boxY + 4.5);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42); // slate-900
-  const campLines = doc.splitTextToSize((campionato || 'CAMPIONATO REGIONALE').toUpperCase(), 64);
-  doc.text(campLines, marginX + 3, boxY + 8.5);
+  const gironeStr = (partita as any)?.girone && (partita as any).girone !== '-' ? ` (Gir. ${(partita as any).girone})` : '';
+  const campTitle = `${(campionato || 'CAMPIONATO REGIONALE').toUpperCase()}${gironeStr}`;
+  const campLines = doc.splitTextToSize(campTitle, col1W - 6);
+  doc.text(campLines.slice(0, 1), c1X, boxY + 8.8);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
   doc.setTextColor(100, 116, 139);
-  doc.text('PARTITA:', marginX + 3, boxY + 14);
+  doc.text('PARTITA UFFICIALE:', c1X, boxY + 15);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(12, 74, 110);
   const matchDesc = `${(squadraCasa || 'CYNTHIA 1920').toUpperCase()} vs ${(squadraOspite || 'AVVERSARIO').toUpperCase()}`;
-  const matchLines = doc.splitTextToSize(matchDesc, 64);
-  doc.text(matchLines, marginX + 3, boxY + 18.2);
+  const matchLines = doc.splitTextToSize(matchDesc, col1W - 6);
+  doc.text(matchLines.slice(0, 2), c1X, boxY + 19.5);
 
-  // Colonna 2: Data, Ora Gara, Impianto & Mister (da marginX + 68)
-  const col2X = marginX + 68;
+  // Colonna 2: Data, Ora Gara, Impianto & Indirizzo (larghezza 66mm)
+  const c2X = marginX + col1W + 3.5;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
   doc.setTextColor(100, 116, 139);
-  doc.text('DATA & ORA GARA:', col2X, boxY + 4.5);
+  doc.text('DATA & ORA DEL MATCH:', c2X, boxY + 4.5);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
   const dataOraStr = `${dataGara || 'DA DEFINIRE'} • ORE ${oraGara || '--:--'}`;
-  doc.text(dataOraStr.toUpperCase(), col2X, boxY + 8.5);
+  doc.text(dataOraStr.toUpperCase(), c2X, boxY + 8.8);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
   doc.setTextColor(100, 116, 139);
-  doc.text('CAMPO:', col2X, boxY + 13.5);
+  doc.text('CAMPO DI GIUOCO & INDIRIZZO:', c2X, boxY + 15);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.2);
-  doc.setTextColor(15, 23, 42);
-  const campoFull = campo ? `${campo}${indirizzo ? ` (${indirizzo})` : ''}` : 'PRESSO IL CAMPO DI GIUOCO';
-  const campoLines = doc.splitTextToSize(campoFull.toUpperCase(), 48);
-  doc.text(campoLines, col2X, boxY + 17.2);
+  doc.setTextColor(30, 41, 59);
+  const campoFull = campo ? `${campo}${indirizzo ? ` • ${indirizzo}` : ''}` : 'PRESSO IL CAMPO DI GIUOCO';
+  const campoLines = doc.splitTextToSize(campoFull.toUpperCase(), col2W - 6);
+  doc.text(campoLines.slice(0, 2), c2X, boxY + 19.5);
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.2);
-  doc.setTextColor(2, 132, 199);
-  doc.text(`MISTER: ${(misterName || 'DA ASSEGNARE').toUpperCase()}`, col2X, boxY + 20.8);
-
-  // Colonna 3: ORARIO RITROVO IN EVIDENZA (compatto e nitido)
-  const ritrovoBoxX = marginX + 118;
-  const ritrovoBoxWidth = contentWidth - 119; // ~69mm
-  const ritrovoBoxHeight = boxHeight - 2.8;
+  // Colonna 3: ORARIO RITROVO & MISTER (larghezza ~56mm)
+  const c3X = marginX + col1W + col2W + 2;
+  const c3W = col3W - 4;
 
   // Box colorato ambra/oro per evidenziare l'orario di ritrovo
   doc.setFillColor(254, 243, 199); // amber-100
   doc.setDrawColor(245, 158, 11); // amber-500
-  doc.setLineWidth(0.5);
-  doc.roundedRect(ritrovoBoxX, boxY + 1.4, ritrovoBoxWidth, ritrovoBoxHeight, 1.5, 1.5, 'FD');
+  doc.setLineWidth(0.4);
+  doc.roundedRect(c3X, boxY + 1.8, c3W, 11.2, 1.2, 1.2, 'FD');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(6.8);
   doc.setTextColor(180, 83, 9); // amber-700
-  doc.text('ORARIO RITROVO:', ritrovoBoxX + 3.5, boxY + 6.2);
+  doc.text('ORARIO DI RITROVO:', c3X + 2.5, boxY + 5.2);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5); // Ben visibile
+  doc.setFontSize(9);
   doc.setTextColor(120, 53, 15); // amber-950
-  const ritrovoFormatted = (oraRitrovo || 'PRESSO IL CAMPO DI GIUOCO').toUpperCase();
-  const ritrovoLines = doc.splitTextToSize(ritrovoFormatted, ritrovoBoxWidth - 7);
-  doc.text(ritrovoLines, ritrovoBoxX + 3.5, boxY + 12);
+  const ritrovoFormatted = (oraRitrovo || '90 MINUTI PRIMA').toUpperCase();
+  const ritrovoLines = doc.splitTextToSize(ritrovoFormatted, c3W - 5);
+  doc.text(ritrovoLines.slice(0, 2), c3X + 2.5, boxY + 9.6);
+
+  // Box colorato azzurro per Mister
+  doc.setFillColor(240, 249, 255); // sky-50
+  doc.setDrawColor(186, 230, 253); // sky-200
+  doc.setLineWidth(0.4);
+  doc.roundedRect(c3X, boxY + 14.2, c3W, 11, 1.2, 1.2, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.8);
+  doc.setTextColor(2, 132, 199); // sky-600
+  doc.text('MISTER RESPONSABILE:', c3X + 2.5, boxY + 17.6);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(12, 74, 110); // sky-900
+  const misterFormatted = (misterName || 'DA ASSEGNARE').toUpperCase();
+  const misterLines = doc.splitTextToSize(misterFormatted, c3W - 5);
+  doc.text(misterLines.slice(0, 1), c3X + 2.5, boxY + 22.2);
 
   // 3. Tabella Calciatori
   // Modalità 'tutta_la_rosa': foglio di spunta con TUTTI i giocatori in rosa deselezionati [ ] per la spunta a penna
