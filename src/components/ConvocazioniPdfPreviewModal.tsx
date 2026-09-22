@@ -63,11 +63,11 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
 
   // Filtra i giocatori per l'anteprima in base alla modalità selezionata:
   // - 'solo_convocati': considerati i calciatori selezionati fino a massimo 25
-  // - 'tutta_la_rosa': tutti i calciatori in rosa con casella vuota [ ] per la spunta a penna
+  // - 'tutta_la_rosa': tutti i calciatori della rosa della squadra selezionata
   const displayedPlayers =
     modalita === 'solo_convocati'
       ? giocatori.filter((g) => g.selezionato).slice(0, 25)
-      : giocatori.map((g) => ({ ...g, selezionato: false }));
+      : giocatori;
 
   const convocatiCount = giocatori.filter((g) => g.selezionato).length;
   const totalCount = giocatori.length;

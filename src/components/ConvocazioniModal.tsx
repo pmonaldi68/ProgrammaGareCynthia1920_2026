@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   X,
   Send,
@@ -74,7 +74,7 @@ import {
   resolveMisterForMatch,
   saveMisterForMatch,
   loadSavedMisterForMatch,
-  OFFICIAL_CYNTHIA_COACHES,
+  isInventedMisterName,
 } from '../services/convocazioniService';
 
 interface ConvocazioniModalProps {
@@ -138,7 +138,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   const [noteMister, setNoteMister] = useState<string>(
     'Portare documento di riconoscimento in corso di validità, divisa di rappresentanza e parastinchi. Massima puntualità!'
   );
-  const [misterName, setMisterName] = useState<string>('Mister Simone Corradini');
+  const [misterName, setMisterName] = useState<string>('');
 
   // Filtri elenco giocatori
   const [searchPlayer, setSearchPlayer] = useState<string>('');
@@ -237,6 +237,11 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     // Reset modifiche manuali al cambio partita per rigenerare il testo fresco
     setEditedWhatsAppText(null);
 
+    // Determina il mister per questa gara: carica SOLO i mister presenti nel file delle rose
+    const currentStaff = (staffMap && Object.keys(staffMap).length > 0) ? staffMap : loadCachedStaff();
+    const correctMister = resolveMisterForMatch(p, p.campionato, currentStaff);
+    setMisterName(correctMister);
+
     // Carica la lista dei convocati salvati in localStorage per questa specifica gara
     const savedSelectedIds = loadSavedConvocatiForMatch(p.id);
     const savedIdSet = savedSelectedIds !== null ? new Set(savedSelectedIds) : null;
@@ -249,15 +254,6 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         new Set(cleanList.map((g) => g.categoria).filter(Boolean))
       ) as string[];
       const matchCat = findMatchingCategory(p.campionato, availableCats);
-
-      // Determina il mister per questa gara: prima verifica se è definito nel file, altrimenti usa l'ufficiale
-      let correctMister = '';
-      if (matchCat && staffMap[matchCat]) {
-        correctMister = staffMap[matchCat];
-      } else {
-        correctMister = resolveMisterForMatch(p, p.campionato);
-      }
-      setMisterName(correctMister);
 
       if (matchCat) {
         setSelectedCategoryFilter(matchCat);
@@ -274,7 +270,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       saveCachedGiocatori(updated);
       return updated;
     });
-  }, [selectedPartitaId, isOpen, partite]);
+  }, [selectedPartitaId, isOpen, partite, staffMap]);
 
   // Aggiorna staff quando l'utente modifica a mano il nome del Mister
   const handleMisterChange = (name: string) => {
@@ -352,16 +348,23 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       saveCachedGiocatori(playersWithPreserved);
 
       if (Object.keys(parsed.staffByCategoria).length > 0) {
-        const mergedStaff = { ...staffMap, ...parsed.staffByCategoria };
-        setStaffMap(mergedStaff);
-        saveCachedStaff(mergedStaff);
+        // Pulisce lo staff per assicurare che contenga solo i mister reali del file senza vecchi fittizi
+        const cleanStaff: Record<string, string> = {};
+        for (const [cat, mister] of Object.entries(parsed.staffByCategoria)) {
+          if (mister && !isInventedMisterName(mister)) {
+            cleanStaff[cat] = mister.trim();
+          }
+        }
+        setStaffMap(cleanStaff);
+        saveCachedStaff(cleanStaff);
 
         // Se la gara attuale trova riscontro nel nuovo staff, aggiorna il mister
-        const curCat = currentPartita?.campionato || categoriaCustom;
-        const matched = findMatchingCategory(curCat, parsed.availableCategories);
-        if (matched && mergedStaff[matched]) {
-          setMisterName(mergedStaff[matched]);
-        }
+        const newMister = resolveMisterForMatch(
+          currentPartita,
+          currentPartita?.campionato || categoriaCustom,
+          cleanStaff
+        );
+        setMisterName(newMister);
       }
 
       const updatedConfig: ConvocazioneConfig = {
@@ -433,14 +436,23 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         saveCachedGiocatori(playersWithPreserved);
 
         if (Object.keys(parsed.staffByCategoria).length > 0) {
-          const mergedStaff = { ...staffMap, ...parsed.staffByCategoria };
-          setStaffMap(mergedStaff);
-          saveCachedStaff(mergedStaff);
-          const curCat = currentPartita?.campionato || categoriaCustom;
-          const matched = findMatchingCategory(curCat, parsed.availableCategories);
-          if (matched && mergedStaff[matched]) {
-            setMisterName(mergedStaff[matched]);
+          // Pulisce lo staff per assicurare che contenga solo i mister reali del file senza vecchi fittizi
+          const cleanStaff: Record<string, string> = {};
+          for (const [cat, mister] of Object.entries(parsed.staffByCategoria)) {
+            if (mister && !isInventedMisterName(mister)) {
+              cleanStaff[cat] = mister.trim();
+            }
           }
+          setStaffMap(cleanStaff);
+          saveCachedStaff(cleanStaff);
+
+          // Se la gara attuale trova riscontro nel nuovo staff, aggiorna il mister
+          const newMister = resolveMisterForMatch(
+            currentPartita,
+            currentPartita?.campionato || categoriaCustom,
+            cleanStaff
+          );
+          setMisterName(newMister);
         }
 
         setSheetSuccess(`Caricati con successo ${cleanList.length} atleti dal file "${file.name}"!`);
@@ -738,23 +750,60 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     handleRitrovoTimeChange(formatted);
   };
 
-  // Prepara le opzioni per generare il PDF per il mister
+  // Calcola la rosa dei calciatori appartenenti alla squadra/categoria della gara selezionata
+  const getMatchRosterPlayers = useCallback((): GiocatoreConvocato[] => {
+    const campionatoGara = currentPartita?.campionato || categoriaCustom || '';
+    const clubGara = detectCynthiaClub(currentPartita);
+    const catGara = matchedCategory || findMatchingCategory(campionatoGara, availableCategories);
+
+    // 1. Filtra i giocatori che appartengono specificamente alla squadra/categoria della gara selezionata
+    const rosterOfTeam = giocatori.filter((g) => {
+      // Verifica categoria
+      const catMatches = catGara
+        ? isCategoryMatch(g.categoria || '', catGara)
+        : campionatoGara
+        ? isCategoryMatch(g.categoria || '', campionatoGara)
+        : false;
+
+      if (!catMatches) return false;
+
+      // Verifica società se specificata sul giocatore
+      if (g.squadra && clubGara) {
+        const sqUpper = g.squadra.toUpperCase();
+        if (clubGara === 'CYNTHIA 1920') {
+          if (sqUpper.includes('ACADEMY') || sqUpper.includes('ALBA')) return false;
+        } else if (clubGara === 'ACADEMY CYNTHIA GENZANO') {
+          if (!sqUpper.includes('ACADEMY')) return false;
+        } else if (clubGara === 'ALBACYNTHIA') {
+          if (!sqUpper.includes('ALBA')) return false;
+        }
+      }
+      return true;
+    });
+
+    // 2. Aggiunge eventuali giocatori convocati (selezionati) per questa gara anche se provenienti da altra categoria/squadra
+    const extraSelectedPlayers = giocatori.filter(
+      (g) => g.selezionato && !rosterOfTeam.some((r) => r.id === g.id)
+    );
+
+    const combined = [...rosterOfTeam, ...extraSelectedPlayers];
+    return deduplicateGiocatori(combined);
+  }, [currentPartita, categoriaCustom, matchedCategory, availableCategories, giocatori]);
+
+  // Prepara le opzioni per generare il PDF o mostrare l'anteprima live per il mister
   const getPdfOptions = (modalitaOverride?: 'tutta_la_rosa' | 'solo_convocati'): ConvocazioniPdfOptions => {
     const currentModalita = modalitaOverride || pdfModalita;
+    const matchRoster = getMatchRosterPlayers();
 
     // Regola utente:
-    // - Foglio di spunta da dare al mister ('tutta_la_rosa'): tutti i giocatori in rosa deselezionati [ ] per spunta a penna
-    // - Distinta definitiva ('solo_convocati'): solo i giocatori selezionati fino al limite massimo di 25
+    // Nell'anteprima live e nel foglio convocazioni vengono riportati SOLO i giocatori della squadra selezionata!
+    // - In modalità 'solo_convocati': solo i giocatori selezionati tra quelli della squadra, fino al limite massimo di 25
+    // - In modalità 'tutta_la_rosa': tutta la rosa della squadra selezionata
     let targetPlayers: GiocatoreConvocato[];
     if (currentModalita === 'solo_convocati') {
-      targetPlayers = giocatori.filter((g) => g.selezionato).slice(0, MAX_CONVOCATI_LIMIT);
+      targetPlayers = matchRoster.filter((g) => g.selezionato).slice(0, MAX_CONVOCATI_LIMIT);
     } else {
-      const categoryPlayers = giocatori.filter((g) => {
-        if (matchedCategory) return isCategoryMatch(g.categoria || '', matchedCategory);
-        return true;
-      });
-      const baseList = categoryPlayers.length > 0 ? categoryPlayers : giocatori;
-      targetPlayers = baseList.map((g) => ({ ...g, selezionato: false }));
+      targetPlayers = matchRoster;
     }
 
     const fullRitrovoToUse = oraRitrovo || `${currentRitrovoTime} ${ritrovoLuogo.trim()}`;
@@ -1212,55 +1261,40 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                       title="Puoi modificare liberamente il nome del mister che apparirà nel PDF e su WhatsApp"
                     />
 
-                    {/* Selezione Rapida tra i Mister Ufficiali delle 3 Società */}
-                    <div className="mt-1">
-                      <label
-                        htmlFor="select-official-cynthia-coach"
-                        className="block text-[10px] font-medium text-slate-500 dark:text-slate-400 mb-0.5"
-                      >
-                        Oppure seleziona tra i mister ufficiali delle 3 società:
-                      </label>
-                      <select
-                        id="select-official-cynthia-coach"
-                        value={
-                          OFFICIAL_CYNTHIA_COACHES.find(
-                            (c) => c.displayName === misterName || c.nome === misterName
-                          )?.id || ''
-                        }
-                        onChange={(e) => {
-                          const coach = OFFICIAL_CYNTHIA_COACHES.find((c) => c.id === e.target.value);
-                          if (coach) {
-                            handleMisterChange(coach.displayName);
-                          }
-                        }}
-                        className="w-full text-[11px] p-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-hidden font-medium cursor-pointer"
-                      >
-                        <option value="">-- Seleziona Mister / Istruttore --</option>
-                        <optgroup label="CYNTHIA 1920">
-                          {OFFICIAL_CYNTHIA_COACHES.filter((c) => c.societa === 'CYNTHIA 1920').map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.displayName} ({c.ruoloDescrizione})
-                            </option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="ACADEMY CYNTHIA GENZANO">
-                          {OFFICIAL_CYNTHIA_COACHES.filter(
-                            (c) => c.societa === 'ACADEMY CYNTHIA GENZANO'
-                          ).map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.displayName} ({c.ruoloDescrizione})
-                            </option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="ALBACYNTHIA">
-                          {OFFICIAL_CYNTHIA_COACHES.filter((c) => c.societa === 'ALBACYNTHIA').map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.displayName} ({c.ruoloDescrizione})
-                            </option>
-                          ))}
-                        </optgroup>
-                      </select>
-                    </div>
+                    {/* Selezione Rapida tra i Mister presenti nel file delle rose */}
+                    {Object.keys(staffMap).length > 0 ? (
+                      <div className="mt-1">
+                        <label
+                          htmlFor="select-roster-coach"
+                          className="block text-[10px] font-medium text-slate-500 dark:text-slate-400 mb-0.5"
+                        >
+                          Oppure seleziona tra i mister presenti nel file delle rose:
+                        </label>
+                        <select
+                          id="select-roster-coach"
+                          value={misterName}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handleMisterChange(e.target.value);
+                            }
+                          }}
+                          className="w-full text-[11px] p-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-sky-500 focus:outline-hidden font-medium cursor-pointer"
+                        >
+                          <option value="">-- Seleziona Mister dal file delle rose --</option>
+                          {Object.entries(staffMap)
+                            .filter(([_, m]) => Boolean(m) && !isInventedMisterName(String(m)))
+                            .map(([cat, coachName]) => (
+                              <option key={`${cat}_${coachName}`} value={String(coachName)}>
+                                {String(coachName)} ({cat})
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 italic">
+                        Carica il file delle rose per rilevare automaticamente i mister ufficiali delle squadre.
+                      </div>
+                    )}
                   </div>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-2">
                     Il nome del mister è modificabile e viene memorizzato per questa gara sul PDF e sul messaggio WhatsApp.
