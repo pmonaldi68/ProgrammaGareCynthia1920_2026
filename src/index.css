@@ -243,6 +243,50 @@
   a[href]::after {
     content: "" !important;
   }
+
+  /* 9. Supporto Stampa Scheda Convocazioni A4: Quando il modale convocazioni è aperto, stampa solo il foglio */
+  body:has(#pdf-sheet-a4) #root > header,
+  body:has(#pdf-sheet-a4) #root > main,
+  body:has(#pdf-sheet-a4) #root > footer {
+    display: none !important;
+  }
+
+  body:has(#pdf-sheet-a4) #modal-convocazioni-pdf-preview {
+    display: block !important;
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  body:has(#pdf-sheet-a4) #modal-pdf-preview-container {
+    display: block !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body:has(#pdf-sheet-a4) #pdf-sheet-a4 {
+    display: flex !important;
+    visibility: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    transform: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
 }
 
 /* ==========================================================================

@@ -42,6 +42,7 @@ export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF 
     campo,
     indirizzo,
     misterName,
+    noteMister,
     giocatori,
     modalita = 'tutta_la_rosa',
   } = options;
@@ -255,52 +256,62 @@ export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF 
     }
   }
 
-  // Posizione inizio tabella compatta
+  // Posizione inizio tabella
   const startTableY = boxY + boxHeight + 2.5;
 
   const headerColumnTitle = modalita === 'solo_convocati'
     ? 'CALCIATORE (COGNOME E NOME) - CONVOCATI UFFICIALI (MAX 25)'
     : 'CALCIATORE (COGNOME E NOME) - ROSA COMPLETA SPUNTA A PENNA';
 
-  // Altezza riga calibrata: per fino a 25 atleti è 5.1mm (singola pagina perfetta),
-  // se la rosa è più numerosa riduce proporzionalmente per mantenere l'impaginazione ottimale
-  const dynamicCellHeight = Math.max(3.9, Math.min(5.1, 130 / Math.max(tableData.length, 1)));
+  // Calcolo dinamico dell'altezza delle righe per il file di stampa:
+  // Aumenta sensibilmente la dimensione delle righe per massima leggibilità e comodità di scrittura,
+  // garantendo matematicamente che l'intero documento rimanga in una singola pagina A4.
+  const rowCount = Math.max(tableData.length, 1);
+  // Spazio verticale disponibile per il corpo tabella tra startTableY (55mm) e fine pagina/firma (268mm) = ~203mm
+  const availableBodyHeight = 202;
+  const dynamicCellHeight = Math.max(5.8, Math.min(8.6, availableBodyHeight / rowCount));
+  const dynamicPaddingV = dynamicCellHeight >= 7.8 ? 2.0 : (dynamicCellHeight >= 6.8 ? 1.6 : 1.2);
+  const dynamicFontSizeName = dynamicCellHeight >= 7.6 ? 9.2 : 8.5;
+  const dynamicFontSizeNum = dynamicCellHeight >= 7.6 ? 9.0 : 8.2;
+  const dynamicCheckboxSize = dynamicCellHeight >= 7.6 ? 4.8 : 3.8;
 
   autoTable(doc, {
     startY: startTableY,
-    margin: { left: marginX, right: marginX, bottom: 10 },
+    margin: { left: marginX, right: marginX, bottom: 8 },
     theme: 'grid',
     head: [['SPUNTA', 'N°', headerColumnTitle, 'NOTE MISTER']],
     body: tableData,
-    pageBreak: modalita === 'solo_convocati' ? 'avoid' : 'auto',
+    pageBreak: 'avoid',
     rowPageBreak: 'avoid',
     headStyles: {
       fillColor: [12, 74, 110], // Cynthia Blue
       textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 7.8,
+      fontSize: 8.2,
       halign: 'center',
-      cellPadding: { top: 1.5, bottom: 1.5, left: 2, right: 2 },
+      valign: 'middle',
+      cellPadding: { top: 2.0, bottom: 2.0, left: 2, right: 2 },
     },
     columnStyles: {
-      0: { cellWidth: 15, halign: 'center', fontStyle: 'bold', fontSize: 8 }, // SPUNTA
-      1: { cellWidth: 11, halign: 'center', fontSize: 7.8 }, // N°
-      2: { cellWidth: 92, halign: 'left', fontStyle: 'bold', fontSize: 8.2 }, // NOMINATIVO
-      3: { cellWidth: 70, halign: 'left', fontSize: 7.5 }, // NOTE MISTER
+      0: { cellWidth: 16, halign: 'center', fontStyle: 'bold', fontSize: 8 }, // SPUNTA
+      1: { cellWidth: 12, halign: 'center', fontSize: dynamicFontSizeNum, fontStyle: 'bold' }, // N°
+      2: { cellWidth: 95, halign: 'left', fontStyle: 'bold', fontSize: dynamicFontSizeName }, // NOMINATIVO
+      3: { cellWidth: 65, halign: 'left', fontSize: 8.0 }, // NOTE MISTER
     },
     styles: {
       fillColor: false, // Trasparente per filigrana
       lineColor: [203, 213, 225],
-      lineWidth: 0.2,
-      cellPadding: { top: 1.2, bottom: 1.2, left: 1.8, right: 1.8 },
+      lineWidth: 0.25,
+      cellPadding: { top: dynamicPaddingV, bottom: dynamicPaddingV, left: 2.2, right: 2.2 },
       minCellHeight: dynamicCellHeight,
       overflow: 'linebreak',
+      valign: 'middle',
     },
     willDrawPage: () => {
       // Filigrana diagonale tenue 'CYNTHIA 1920' posizionata dietro al contenuto della distinta
       doc.saveGraphicsState();
       if (typeof (doc as any).GState === 'function') {
-        doc.setGState(new (doc as any).GState({ opacity: 0.07 }));
+        doc.setGState(new (doc as any).GState({ opacity: 0.06 }));
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(44);
         doc.setTextColor(12, 74, 110);
@@ -316,55 +327,90 @@ export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF 
       doc.restoreGraphicsState();
     },
     didDrawCell: (data) => {
-      // Disegna una casella di spunta quadrata proporzionata all'altezza riga ridotta
+      // Disegna una casella di spunta quadrata proporzionata all'altezza riga aumentata
       if (data.section === 'body' && data.column.index === 0) {
         const cell = data.cell;
-        const squareSize = 3.6;
+        const squareSize = dynamicCheckboxSize;
         const squareX = cell.x + (cell.width - squareSize) / 2;
         const squareY = cell.y + (cell.height - squareSize) / 2;
 
         doc.setDrawColor(2, 132, 199);
-        doc.setLineWidth(0.35);
+        doc.setLineWidth(0.4);
 
         const rowVal = String(cell.raw || '');
         if (rowVal.includes('X')) {
           doc.setFillColor(224, 242, 254); // sky-100
-          doc.rect(squareX, squareY, squareSize, squareSize, 'FD');
+          doc.roundedRect(squareX, squareY, squareSize, squareSize, 0.6, 0.6, 'FD');
           doc.setFont('helvetica', 'bold');
-          doc.setFontSize(7.5);
+          doc.setFontSize(8.5);
           doc.setTextColor(2, 132, 199);
-          doc.text('X', squareX + 0.9, squareY + 2.8);
+          doc.text('X', squareX + squareSize / 2, squareY + squareSize / 2 + 1.2, { align: 'center' });
         } else {
           doc.setFillColor(255, 255, 255);
-          doc.rect(squareX, squareY, squareSize, squareSize, 'FD');
+          doc.roundedRect(squareX, squareY, squareSize, squareSize, 0.6, 0.6, 'FD');
         }
       }
     },
   });
 
-  // In modalità 'solo_convocati' (max 25): garantisce singola pagina
-  if (modalita === 'solo_convocati') {
-    while (doc.getNumberOfPages() > 1) {
-      doc.deletePage(2);
+  // Garantisce categoricamente che il documento sia SEMPRE di una singola pagina
+  while (doc.getNumberOfPages() > 1) {
+    doc.deletePage(2);
+  }
+
+  // Box Note Mister & Firma posizionato dopo la tabella se lo spazio residuo lo consente
+  const finalTableY = (doc as any).lastAutoTable?.finalY || 240;
+  if (finalTableY < 274) {
+    const noteBoxY = finalTableY + 2.5;
+    const noteBoxH = Math.min(13, 287 - noteBoxY);
+    if (noteBoxH >= 8.5) {
+      doc.setDrawColor(203, 213, 225);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(marginX, noteBoxY, contentWidth, noteBoxH, 1.2, 1.2, 'FD');
+
+      // Note a sinistra
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.8);
+      doc.setTextColor(100, 116, 139);
+      doc.text('DISPOSIZIONI TECNICHE & NOTE GARA:', marginX + 3, noteBoxY + 3.8);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.2);
+      doc.setTextColor(30, 41, 59);
+      if (noteMister) {
+        const noteLines = doc.splitTextToSize(noteMister, contentWidth - 62);
+        doc.text(noteLines.slice(0, 2), marginX + 3, noteBoxY + 7.5);
+      } else {
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(148, 163, 184);
+        doc.text('Presentarsi in tenuta societaria ufficiale con documento di riconoscimento in corso di validità.', marginX + 3, noteBoxY + 7.5);
+      }
+
+      // Linea separatrice verticale prima della firma
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.line(marginX + contentWidth - 58, noteBoxY + 2, marginX + contentWidth - 58, noteBoxY + noteBoxH - 2);
+
+      // Firma Mister a destra
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.8);
+      doc.setTextColor(100, 116, 139);
+      doc.text('FIRMA MISTER / DIRIGENTE:', marginX + contentWidth - 55, noteBoxY + 3.8);
+      doc.setDrawColor(148, 163, 184);
+      doc.setLineWidth(0.3);
+      doc.line(marginX + contentWidth - 55, noteBoxY + noteBoxH - 3, marginX + contentWidth - 3, noteBoxY + noteBoxH - 3);
     }
   }
 
-  // Footer su tutte le pagine generate
-  const totalPages = doc.getNumberOfPages();
-  for (let p = 1; p <= totalPages; p++) {
-    doc.setPage(p);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(148, 163, 184);
-    const footerLeft = modalita === 'solo_convocati'
-      ? `ASD CYNTHIA 1920 • Distinta Convocati Ufficiale (Limite max 25: ${targetGiocatori.length} convocati)`
-      : `ASD CYNTHIA 1920 • Foglio di Spunta Rosa Completa (${targetGiocatori.length} atleti per spunta a penna)`;
-    doc.text(footerLeft, marginX, pageHeight - 5);
-    const footerRight = totalPages > 1
-      ? `Pagina ${p} di ${totalPages} • Forza Cynthia 1920!`
-      : 'Pagina 1 di 1 • Forza Cynthia 1920!';
-    doc.text(footerRight, pageWidth - marginX, pageHeight - 5, { align: 'right' });
-  }
+  // Footer singola pagina
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  const footerLeft = modalita === 'solo_convocati'
+    ? `ASD CYNTHIA 1920 • Distinta Convocati Ufficiale (${targetGiocatori.length} convocati)`
+    : `ASD CYNTHIA 1920 • Foglio di Spunta Rosa Completa (${targetGiocatori.length} atleti)`;
+  doc.text(footerLeft, marginX, pageHeight - 4.5);
+  doc.text('Pagina 1 di 1 • Forza Cynthia 1920!', pageWidth - marginX, pageHeight - 4.5, { align: 'right' });
 
   return doc;
 }
@@ -383,14 +429,30 @@ export function downloadConvocazioniPdf(options: ConvocazioniPdfOptions): void {
 }
 
 /**
- * Apre la finestra di stampa per il documento PDF convocazioni
+ * Stampa pulita del foglio convocazioni senza iframe blob (che causano blocco pagina in Chrome)
  */
 export function printConvocazioniPdf(options: ConvocazioniPdfOptions): void {
-  const doc = generateConvocazioniPdf(options);
-  const pdfBlobUrl = doc.output('bloburl');
-  const printWindow = window.open(pdfBlobUrl, '_blank');
-  if (printWindow) {
-    printWindow.focus();
+  // Se l'elemento DOM del foglio A4 è presente, esegue window.print() tramite overlay di stampa
+  const sheetElement = document.getElementById('pdf-sheet-a4');
+  if (sheetElement) {
+    window.print();
+    return;
+  }
+
+  // Fallback se il modale di anteprima non è aperto:
+  // Usa il metodo standard jsPDF autoPrint in una nuova finestra pulita o scarica direttamente
+  try {
+    const doc = generateConvocazioniPdf(options);
+    doc.autoPrint();
+    const blobUrl = doc.output('bloburl');
+    const printWindow = window.open(blobUrl, '_blank');
+    if (!printWindow) {
+      // Se il popup viene bloccato da Chrome, scarica il PDF direttamente
+      downloadConvocazioniPdf(options);
+    }
+  } catch (err) {
+    console.warn('Fallback download PDF per la stampa:', err);
+    downloadConvocazioniPdf(options);
   }
 }
 

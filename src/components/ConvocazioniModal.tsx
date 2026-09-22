@@ -2420,7 +2420,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       <ConvocazioniPdfPreviewModal
         isOpen={showPdfPreviewModal}
         onClose={() => setShowPdfPreviewModal(false)}
-        options={getPdfOptions()}
+        options={getPdfOptions(pdfModalita)}
         onDownloadPdf={(m) => handleDownloadPdf(m)}
         onPrintPdf={(m) => handlePrintPdf(m)}
         onTogglePlayer={(id) => togglePlayer(id)}
