@@ -229,6 +229,7 @@ export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF 
     const spuntaText = g.selezionato ? '[ X ]' : '[   ]';
     const numJersey = g.numero ? String(g.numero) : String(index + 1);
     const nominativo = (g.nome || '').trim().toUpperCase() || 'CALCIATORE';
+    const annoTag = g.annoNascita ? ` (${g.annoNascita})` : '';
     const ruoloTag = g.ruolo ? ` (${g.ruolo.toUpperCase()})` : '';
     const squadUpper = (g.squadra || '').toUpperCase();
     const clubTag = squadUpper.includes('ALBA')
@@ -236,7 +237,7 @@ export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF 
       : squadUpper.includes('ACADEMY')
       ? ' [ACADEMY]'
       : '';
-    const fullNominativo = `${nominativo}${ruoloTag}${clubTag}`;
+    const fullNominativo = `${nominativo}${annoTag}${ruoloTag}${clubTag}`;
     const noteCol = g.note ? g.note.toUpperCase() : (clubTag ? squadUpper : '');
 
     return [spuntaText, numJersey, fullNominativo, noteCol];

@@ -668,7 +668,8 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
   const hasHeaderKeywords = normalizedFirst.some(h =>
     [
       'giocatore', 'nominativo', 'nome', 'cognome', 'atleta', 'calciatore',
-      'ruolo', 'numero', 'maglia', 'categoria', 'squadra', 'convocato', 'mister', 'allenatore'
+      'ruolo', 'numero', 'maglia', 'categoria', 'squadra', 'convocato', 'mister', 'allenatore',
+      'anno', 'nascita', 'leva', 'nato', 'annata'
     ].some(k => h.includes(k))
   );
 
@@ -678,6 +679,7 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
   let idxRuolo = -1;
   let idxNumero = -1;
   let idxCategoria = -1;
+  let idxAnnoNascita = -1;
   let idxConvocato = -1;
   let idxNote = -1;
   let idxMister = -1;
@@ -688,7 +690,7 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
 
     // Rileva colonna Squadra / Categoria
     idxCategoria = normalizedFirst.findIndex(h =>
-      ['squadra', 'categoria', 'cat', 'leva', 'annata', 'gruppo', 'team'].some(k => h === k || h.includes(k))
+      ['squadra', 'categoria', 'cat', 'gruppo', 'team'].some(k => h === k || h.includes(k))
     );
 
     // Rileva colonna distinta per Società / Club (se diversa da Squadra/Categoria)
@@ -699,6 +701,15 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
     if (distinctSocietaIdx !== -1) {
       idxSquadra = distinctSocietaIdx;
     }
+
+    // Rileva colonna Anno di Nascita / Annata / Leva / Data di nascita
+    idxAnnoNascita = normalizedFirst.findIndex((h, idx) =>
+      idx !== idxCategoria &&
+      [
+        'annodinascita', 'annonascita', 'datanascita', 'datadinascita',
+        'nascita', 'annata', 'anno', 'leva', 'nato', 'dob', 'birthyear'
+      ].some(k => h === k || h.includes(k))
+    );
 
     // Rileva colonna Mister / Allenatore
     idxMister = normalizedFirst.findIndex(h =>
@@ -803,6 +814,26 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
     const numero = idxNumero !== -1 ? (row[idxNumero] || '').trim() : '';
     const rawCategoria = idxCategoria !== -1 ? (row[idxCategoria] || '').trim() : '';
     const categoria = rawCategoria || 'Prima Squadra';
+
+    // Estrazione Anno di Nascita (es. "2008", "2010", "08", "15/04/2008")
+    let annoNascita = idxAnnoNascita !== -1 ? (row[idxAnnoNascita] || '').trim() : '';
+    if (annoNascita) {
+      // Se è una data completa GG/MM/AAAA estrae l'anno, altrimenti pulisce il valore numerico
+      const matchYear = annoNascita.match(/\b(19\d{2}|20\d{2})\b/);
+      if (matchYear) {
+        annoNascita = matchYear[1];
+      } else {
+        // Se è es. '08 o 08 o 2008
+        const cleanDigits = annoNascita.replace(/[^0-9]/g, '');
+        if (cleanDigits.length === 2) {
+          const num = parseInt(cleanDigits, 10);
+          annoNascita = num > 50 ? `19${cleanDigits}` : `20${cleanDigits}`;
+        } else if (cleanDigits.length === 4) {
+          annoNascita = cleanDigits;
+        }
+      }
+    }
+
     const stato = idxConvocato !== -1 ? (row[idxConvocato] || '').trim().toLowerCase() : '';
     const note = idxNote !== -1 ? (row[idxNote] || '').trim() : '';
     const misterCell = idxMister !== -1 ? (row[idxMister] || '').trim() : '';
@@ -880,6 +911,7 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
       numero: numero || undefined,
       categoria: categoria,
       squadra: squadra || undefined,
+      annoNascita: annoNascita || undefined,
       selezionato,
       note: note || (stato && !selezionato ? stato.toUpperCase() : undefined),
     });

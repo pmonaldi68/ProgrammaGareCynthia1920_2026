@@ -58,6 +58,7 @@ export interface GiocatoreConvocato {
   numero?: string;
   categoria?: string;
   squadra?: string; // 'CYNTHIA 1920' | 'ACADEMY CYNTHIA GENZANO' | 'ALBACYNTHIA'
+  annoNascita?: string; // Anno di nascita (es. 2008, 2010, '08, 14/05/2009)
   selezionato: boolean;
   note?: string;
 }

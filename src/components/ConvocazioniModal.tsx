@@ -151,6 +151,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
 
   const [isAddingPlayer, setIsAddingPlayer] = useState<boolean>(false);
   const [newPlayerName, setNewPlayerName] = useState<string>('');
+  const [newPlayerAnnoNascita, setNewPlayerAnnoNascita] = useState<string>('');
   const [newPlayerRuolo, setNewPlayerRuolo] = useState<string>('');
   const [newPlayerNumero, setNewPlayerNumero] = useState<string>('');
   const [newPlayerCategoria, setNewPlayerCategoria] = useState<string>('');
@@ -616,6 +617,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       nome: newPlayerName.trim(),
       ruolo: newPlayerRuolo.trim().toUpperCase() || undefined,
       numero: newPlayerNumero.trim() || undefined,
+      annoNascita: newPlayerAnnoNascita.trim() || undefined,
       categoria: cat,
       squadra: newPlayerSquadra || 'CYNTHIA 1920',
       selezionato: canSelect,
@@ -629,6 +631,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     });
 
     setNewPlayerName('');
+    setNewPlayerAnnoNascita('');
     setNewPlayerRuolo('');
     setNewPlayerNumero('');
     setIsAddingPlayer(false);
@@ -1451,7 +1454,10 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                       <strong>Colonna Mister</strong>: inserisci il nome dell'allenatore della squadra (basta anche solo sulla prima riga di quella squadra o ripetuto).
                     </li>
                     <li>
-                      <em>Ruolo, numero di maglia e note non sono necessari!</em>
+                      <strong>Colonna Anno di Nascita (opzionale)</strong>: puoi inserire una colonna <code>Anno di Nascita</code> (es. <code>2008</code>, <code>2010</code>). Il valore apparirà accanto al nome del calciatore sul foglio di stampa/distinta per il mister, ma non nel messaggio WhatsApp.
+                    </li>
+                    <li>
+                      <em>Ruolo, numero di maglia e note sono anch'essi opzionali!</em>
                     </li>
                   </ul>
                 </div>
@@ -1804,6 +1810,13 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                   />
                   <input
                     type="text"
+                    placeholder="Anno (es. 2008)"
+                    value={newPlayerAnnoNascita}
+                    onChange={(e) => setNewPlayerAnnoNascita(e.target.value)}
+                    className="w-24 text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700"
+                  />
+                  <input
+                    type="text"
                     placeholder="N°"
                     value={newPlayerNumero}
                     onChange={(e) => setNewPlayerNumero(e.target.value)}
@@ -2031,6 +2044,14 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                             </span>
                           )}
                           <span className="text-xs font-medium text-slate-900 dark:text-slate-100">{g.nome}</span>
+                          {g.annoNascita && (
+                            <span
+                              className="text-[10px] font-mono px-1.5 py-0.2 rounded-sm bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 font-bold"
+                              title={`Anno di nascita: ${g.annoNascita}`}
+                            >
+                              {g.annoNascita}
+                            </span>
+                          )}
                           {g.ruolo && (
                             <span className="text-[10px] px-1.5 py-0.2 rounded-sm bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-300 font-bold">
                               {g.ruolo}

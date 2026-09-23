@@ -451,10 +451,15 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
                               {g.numero || idx + 1}
                             </td>
 
-                            {/* Nominativo Calciatore con Ruolo e Squadra */}
+                            {/* Nominativo Calciatore con Anno Nascita, Ruolo e Squadra */}
                             <td className="py-2.5 px-3 font-bold text-slate-900 border-r border-slate-200 uppercase text-xs tracking-wide">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span>{g.nome}</span>
+                                {g.annoNascita && (
+                                  <span className="text-[10px] px-1 py-0.2 rounded bg-amber-100 text-amber-900 font-extrabold border border-amber-300">
+                                    {g.annoNascita}
+                                  </span>
+                                )}
                                 {g.ruolo && (
                                   <span className="text-[10px] px-1 py-0.2 rounded bg-sky-100 text-sky-800 font-bold">
                                     {g.ruolo}
