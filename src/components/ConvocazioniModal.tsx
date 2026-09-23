@@ -849,8 +849,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     const calcTime = currentRitrovoTime || (currentPartita?.ora ? calculateRitrovoTimeOnly(currentPartita.ora, 90) : '14:00');
     const fullRitrovoToUse = `${calcTime} ${ritrovoLuogo.trim()}`;
 
-    const gironePart = currentPartita?.girone && currentPartita.girone !== '-' ? ` (Gir. ${currentPartita.girone})` : '';
-    const campToUse = `${currentPartita?.campionato || categoriaCustom || 'Campionato Regionale'}${gironePart}`;
+    const campToUse = currentPartita?.campionato || categoriaCustom || 'Campionato Regionale';
 
     const campoToUse = currentPartita?.campo
       ? `${currentPartita.campo}${currentPartita.tipo ? ` (${currentPartita.tipo})` : ''}`

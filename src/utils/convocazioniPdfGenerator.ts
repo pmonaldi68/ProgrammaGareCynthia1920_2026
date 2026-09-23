@@ -121,7 +121,7 @@ export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF 
   doc.line(marginX + col1W, boxY + 2, marginX + col1W, boxY + boxHeight - 2);
   doc.line(marginX + col1W + col2W, boxY + 2, marginX + col1W + col2W, boxY + boxHeight - 2);
 
-  // Colonna 1: Partita e Campionato (larghezza 66mm)
+  // Colonna 1: Partita, Campionato, Girone e Giornata (larghezza 66mm)
   const c1X = marginX + 3.5;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
@@ -129,10 +129,26 @@ export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF 
   doc.text('CAMPIONATO / CATEGORIA:', c1X, boxY + 4.5);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setTextColor(15, 23, 42); // slate-900
-  const gironeStr = (partita as any)?.girone && (partita as any).girone !== '-' ? ` (Gir. ${(partita as any).girone})` : '';
-  const campTitle = `${(campionato || 'CAMPIONATO REGIONALE').toUpperCase()}${gironeStr}`;
+
+  // Pulisce il campionato se contiene già il girone e costruisce i dettagli (Girone e Giornata/Gara)
+  const baseCamp = (campionato || (partita as any)?.campionato || 'CAMPIONATO REGIONALE')
+    .replace(/\s*\(Gir\.[^)]*\)/gi, '')
+    .trim();
+  const gironeVal = (partita as any)?.girone && (partita as any).girone !== '-' && (partita as any).girone !== '#'
+    ? String((partita as any).girone).trim()
+    : '';
+  const garaVal = (partita as any)?.gara && (partita as any).gara !== '-'
+    ? String((partita as any).gara).trim()
+    : '';
+
+  const detailsParts: string[] = [];
+  if (gironeVal) detailsParts.push(`Gir. ${gironeVal}`);
+  if (garaVal) detailsParts.push(garaVal);
+  const detailsStr = detailsParts.length > 0 ? ` (${detailsParts.join(' • ')})` : '';
+
+  const campTitle = `${baseCamp.toUpperCase()}${detailsStr}`;
   const campLines = doc.splitTextToSize(campTitle, col1W - 6);
   doc.text(campLines.slice(0, 1), c1X, boxY + 8.8);
 

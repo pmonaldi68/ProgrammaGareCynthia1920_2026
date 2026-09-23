@@ -290,8 +290,13 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
                     CAMPIONATO / CATEGORIA:
                   </div>
                   <div className="font-extrabold text-slate-900 text-[11px] uppercase leading-tight truncate">
-                    {(campionato || 'CAMPIONATO REGIONALE').toUpperCase()}
-                    {partita?.girone && partita.girone !== '-' ? ` (Gir. ${partita.girone})` : ''}
+                    {(campionato || partita?.campionato || 'CAMPIONATO REGIONALE').replace(/\s*\(Gir\.[^)]*\)/gi, '').toUpperCase()}
+                    {(() => {
+                      const gir = partita?.girone && partita.girone !== '-' && partita.girone !== '#' ? `Gir. ${partita.girone}` : '';
+                      const gar = partita?.gara && partita.gara !== '-' ? partita.gara : '';
+                      const parts = [gir, gar].filter(Boolean);
+                      return parts.length > 0 ? ` (${parts.join(' • ')})` : '';
+                    })()}
                   </div>
 
                   <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-2.5">
