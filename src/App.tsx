@@ -216,7 +216,6 @@ export default function App() {
         onOpenNotifications={() => setIsNotificationModalOpen(true)}
         onOpenPdfExport={() => setIsPdfModalOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
-        onOpenConvocazioni={() => setIsConvocazioniModalOpen(true)}
         hasFollowedCategories={hasFollowed}
       />
 

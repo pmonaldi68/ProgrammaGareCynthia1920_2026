@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Calendar, Lock, Sun, Moon, Bell, FileDown, Palette, Users } from 'lucide-react';
+import { Shield, Calendar, Lock, Sun, Moon, Bell, FileDown, Palette } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
@@ -8,7 +8,6 @@ interface HeaderProps {
   onOpenNotifications: () => void;
   onOpenPdfExport?: () => void;
   onOpenSettings?: () => void;
-  onOpenConvocazioni?: () => void;
   hasFollowedCategories?: boolean;
 }
 
@@ -18,7 +17,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNotifications,
   onOpenPdfExport,
   onOpenSettings,
-  onOpenConvocazioni,
   hasFollowedCategories = false,
 }) => {
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -67,20 +65,6 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Bottoni Azioni Rapide */}
           <div className="flex items-center justify-center gap-2 mt-1 sm:mt-0">
-            {/* Pulsante Convocazioni & PDF Mister */}
-            {onOpenConvocazioni && (
-              <button
-                id="btn-header-convocazioni"
-                type="button"
-                onClick={onOpenConvocazioni}
-                title="Gestisci le convocazioni e genera la scheda PDF o messaggio WhatsApp per il mister"
-                className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-[0.98] text-white transition border border-white/15 min-h-[44px]"
-              >
-                <Users className="w-4 h-4 text-emerald-300" />
-                <span className="text-xs sm:text-sm font-bold hidden sm:inline">Convocazioni</span>
-              </button>
-            )}
-
             {/* Pulsante Report PDF */}
             {onOpenPdfExport && (
               <button
