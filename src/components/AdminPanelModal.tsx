@@ -20,6 +20,8 @@ import {
   Palette,
   Check,
   Users,
+  FileText,
+  Sparkles,
 } from 'lucide-react';
 import { useTheme, COLOR_THEME_OPTIONS, PrimaryColor } from '../context/ThemeContext';
 import { sendWebNotification, requestNotificationPermission } from '../services/notificationService';
@@ -33,6 +35,7 @@ interface AdminPanelModalProps {
   onOpenGitHubGuide: () => void;
   onOpenPdfExport?: () => void;
   onOpenConvocazioni?: () => void;
+  onOpenLocandina?: () => void;
   sheetUrl: string;
 }
 
@@ -48,6 +51,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onOpenGitHubGuide,
   onOpenPdfExport,
   onOpenConvocazioni,
+  onOpenLocandina,
   sheetUrl,
 }) => {
   const { theme, setTheme, resolvedTheme, primaryColor, setPrimaryColor } = useTheme();
@@ -379,6 +383,38 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
                     <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-emerald-300 dark:border-emerald-700 shadow-2xs">
                       Apri 💬
+                    </span>
+                  </button>
+                )}
+
+                {/* 4. Locandina Gare Ufficiale A4 */}
+                {onOpenLocandina && (
+                  <button
+                    id="admin-btn-locandina"
+                    onClick={() => {
+                      onClose();
+                      onOpenLocandina();
+                    }}
+                    className="flex items-center justify-between p-3.5 rounded-xl border border-sky-300 dark:border-sky-700/80 bg-gradient-to-r from-sky-50 to-cyan-50 dark:from-sky-950/40 dark:to-cyan-950/30 hover:from-sky-100 hover:to-cyan-100 dark:hover:from-sky-900/50 dark:hover:to-cyan-900/40 text-left transition group shadow-2xs ring-1 ring-sky-500/20"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-sky-700 text-white shadow-sm">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-sky-950 dark:group-hover:text-sky-200 flex items-center gap-1.5">
+                          <span>Crea Locandina Gare A4</span>
+                          <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded-md bg-amber-500 text-white">
+                            A4
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          Genera il poster ufficiale A4 con logo al centro in alto per bacheca e social
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-sky-700 dark:text-sky-300 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-sky-300 dark:border-sky-700 shadow-2xs">
+                      Crea 📄
                     </span>
                   </button>
                 )}
