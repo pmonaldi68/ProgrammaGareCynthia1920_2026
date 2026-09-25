@@ -29,6 +29,7 @@ import { PdfExportModal } from './components/PdfExportModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ConvocazioniModal } from './components/ConvocazioniModal';
 import { LocandinaModal } from './components/LocandinaModal';
+import { DiagnosticModal } from './components/DiagnosticModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
 import { AlertCircle, FileCode, BellRing, X, Palette } from 'lucide-react';
 
@@ -54,6 +55,7 @@ export default function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isConvocazioniModalOpen, setIsConvocazioniModalOpen] = useState<boolean>(false);
   const [isLocandinaModalOpen, setIsLocandinaModalOpen] = useState<boolean>(false);
+  const [isDiagnosticModalOpen, setIsDiagnosticModalOpen] = useState<boolean>(false);
   const [recentVariations, setRecentVariations] = useState<MatchVariation[]>([]);
   const [bannerVariation, setBannerVariation] = useState<MatchVariation | null>(null);
 
@@ -431,7 +433,17 @@ export default function App() {
         onOpenPdfExport={() => setIsPdfModalOpen(true)}
         onOpenConvocazioni={() => setIsConvocazioniModalOpen(true)}
         onOpenLocandina={() => setIsLocandinaModalOpen(true)}
+        onOpenDiagnostic={() => setIsDiagnosticModalOpen(true)}
         sheetUrl={config.sheetUrl}
+      />
+
+      {/* Modale Diagnosi Sistema & Dati */}
+      <DiagnosticModal
+        isOpen={isDiagnosticModalOpen}
+        onClose={() => setIsDiagnosticModalOpen(false)}
+        config={config}
+        partite={partite}
+        onRefreshData={() => refreshData()}
       />
 
       {/* Modale Locandina Gare A4 */}
