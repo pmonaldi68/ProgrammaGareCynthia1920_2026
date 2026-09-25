@@ -22,6 +22,7 @@ import {
   Users,
   FileText,
   Sparkles,
+  Activity,
 } from 'lucide-react';
 import { useTheme, COLOR_THEME_OPTIONS, PrimaryColor } from '../context/ThemeContext';
 import { sendWebNotification, requestNotificationPermission } from '../services/notificationService';
@@ -36,6 +37,7 @@ interface AdminPanelModalProps {
   onOpenPdfExport?: () => void;
   onOpenConvocazioni?: () => void;
   onOpenLocandina?: () => void;
+  onOpenDiagnostic?: () => void;
   sheetUrl: string;
 }
 
@@ -52,6 +54,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onOpenPdfExport,
   onOpenConvocazioni,
   onOpenLocandina,
+  onOpenDiagnostic,
   sheetUrl,
 }) => {
   const { theme, setTheme, resolvedTheme, primaryColor, setPrimaryColor } = useTheme();
@@ -301,6 +304,35 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
 
               <div className="grid grid-cols-1 gap-2.5 pt-1">
+                {/* 0. Pulsante Diagnosi Sistema & Dati */}
+                {onOpenDiagnostic && (
+                  <button
+                    id="admin-btn-diagnostic"
+                    onClick={() => {
+                      onClose();
+                      onOpenDiagnostic();
+                    }}
+                    className="flex items-center justify-between p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/70 dark:bg-indigo-950/30 hover:bg-indigo-100/70 dark:hover:bg-indigo-900/40 text-left transition group shadow-2xs"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-indigo-600 text-white shadow-sm">
+                        <Activity className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-900 dark:group-hover:text-indigo-200 flex items-center gap-1.5">
+                          <span>Diagnosi Sistema & Dati</span>
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          Esegui test diagnostici in tempo reale su Google Sheets, cache e notifiche
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-700 shadow-2xs">
+                      Diagnosi 🔍
+                    </span>
+                  </button>
+                )}
+
                 {/* 1. Pulsante Aggiorna */}
                 <button
                   id="admin-btn-refresh"
