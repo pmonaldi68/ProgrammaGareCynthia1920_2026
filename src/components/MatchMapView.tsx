@@ -53,7 +53,7 @@ export const MatchMapView: React.FC<MatchMapViewProps> = ({ partite }) => {
 
     // Se la mappa non esiste ancora, inizializzala
     if (!mapInstanceRef.current) {
-      const defaultCenter: [number, number] = [41.7052, 12.6947]; // Genzano di Roma
+      const defaultCenter: [number, number] = [41.7008, 12.6945]; // Genzano di Roma (Stadio Bruno Abbatini)
       const map = L.map(mapContainerRef.current, {
         center: defaultCenter,
         zoom: 11,
@@ -155,10 +155,13 @@ export const MatchMapView: React.FC<MatchMapViewProps> = ({ partite }) => {
 
       // Costruzione del contenuto HTML del Popup
       const navUrl =
-        venue.lnkMaps ||
-        `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-          `${venue.campo}, ${venue.indirizzo}, ${venue.comune}`
-        )}`;
+        venue.lnkMaps && venue.lnkMaps !== '#' && venue.lnkMaps.startsWith('http')
+          ? venue.lnkMaps
+          : venue.lat && venue.lng
+          ? `https://www.google.com/maps/dir/?api=1&destination=${venue.lat},${venue.lng}`
+          : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+              `${venue.campo}, ${venue.indirizzo}, ${venue.comune}`
+            )}`;
 
       const matchesHtml = venue.partite
         .map(
@@ -172,17 +175,24 @@ export const MatchMapView: React.FC<MatchMapViewProps> = ({ partite }) => {
                 ${escapeHtml(p.data)} ore ${escapeHtml(p.ora)}
               </span>
             </div>
-            <div style="font-weight: 700; color: #0f172a; margin-top: 3px;">
+            <div style="font-weight: 700; color: #0f172a; margin-top: 3px; display: flex; justify-content: space-between; align-items: center;">
+              <span>
+                ${
+                  p.isCynthiaCasa
+                    ? `<span style="color: #0369a1;">${escapeHtml(p.squadraCasa)}</span>`
+                    : escapeHtml(p.squadraCasa)
+                }
+                <span style="color: #94a3b8; font-weight: 400;"> vs </span>
+                ${
+                  p.isCynthiaOspite
+                    ? `<span style="color: #0369a1;">${escapeHtml(p.squadraOspite)}</span>`
+                    : escapeHtml(p.squadraOspite)
+                }
+              </span>
               ${
-                p.isCynthiaCasa
-                  ? `<span style="color: #0369a1;">${escapeHtml(p.squadraCasa)}</span>`
-                  : escapeHtml(p.squadraCasa)
-              }
-              <span style="color: #94a3b8; font-weight: 400;"> vs </span>
-              ${
-                p.isCynthiaOspite
-                  ? `<span style="color: #0369a1;">${escapeHtml(p.squadraOspite)}</span>`
-                  : escapeHtml(p.squadraOspite)
+                p.lnkMaps && p.lnkMaps !== '#' && p.lnkMaps.startsWith('http')
+                  ? `<a href="${escapeHtml(p.lnkMaps)}" target="_blank" rel="noopener noreferrer" style="color: #0284c7; font-size: 10px; font-weight: 700; text-decoration: underline; white-space: nowrap; margin-left: 6px;" title="Link Maps gara">Maps ↗</a>`
+                  : ''
               }
             </div>
           </div>
@@ -208,7 +218,7 @@ export const MatchMapView: React.FC<MatchMapViewProps> = ({ partite }) => {
             ${matchesHtml}
           </div>
 
-          <a href="${navUrl}" target="_blank" rel="noopener noreferrer" style="
+          <a href="${escapeHtml(navUrl)}" target="_blank" rel="noopener noreferrer" style="
             display: flex;
             align-items: center;
             justify-content: center;
@@ -216,16 +226,16 @@ export const MatchMapView: React.FC<MatchMapViewProps> = ({ partite }) => {
             width: 100%;
             background: #0284c7;
             color: white;
-            padding: 6px 10px;
+            padding: 7px 10px;
             border-radius: 6px;
             font-size: 11px;
             font-weight: 700;
             text-decoration: none;
             text-align: center;
             box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-          ">
-            <span>Apri Indicazioni Maps</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          " title="Apri navigatore satellitare per ${escapeHtml(venue.campo)}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+            <span>Navigatore Google Maps</span>
           </a>
         </div>
       `;
@@ -289,7 +299,7 @@ export const MatchMapView: React.FC<MatchMapViewProps> = ({ partite }) => {
   const handleCenterGenzano = () => {
     const map = mapInstanceRef.current;
     if (!map) return;
-    map.flyTo([41.7052, 12.6947], 13, { duration: 0.8 });
+    map.flyTo([41.7008, 12.6945], 14, { duration: 0.8 });
   };
 
   const totalMatches = partite.length;
@@ -392,10 +402,13 @@ export const MatchMapView: React.FC<MatchMapViewProps> = ({ partite }) => {
             const isSelected = selectedVenueId === venue.id;
             const isHome = venue.hasCynthiaCasa;
             const navUrl =
-              venue.lnkMaps ||
-              `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                `${venue.campo}, ${venue.indirizzo}, ${venue.comune}`
-              )}`;
+              venue.lnkMaps && venue.lnkMaps !== '#' && venue.lnkMaps.startsWith('http')
+                ? venue.lnkMaps
+                : venue.lat && venue.lng
+                ? `https://www.google.com/maps/dir/?api=1&destination=${venue.lat},${venue.lng}`
+                : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                    `${venue.campo}, ${venue.indirizzo}, ${venue.comune}`
+                  )}`;
 
             return (
               <div

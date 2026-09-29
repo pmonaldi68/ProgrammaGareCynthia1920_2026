@@ -1,6 +1,7 @@
 import { Partita, SheetConfig } from '../types';
 import { DEFAULT_PARTITE } from '../data/defaultPartite';
 import { APP_CONFIG } from '../appConfig';
+import { extractCoordsFromUrl, resolveMapLinkAsync } from '../utils/geoUtils';
 
 const CONFIG_STORAGE_KEY = 'cynthia_sheet_config_v1';
 const DATA_STORAGE_KEY = 'cynthia_partite_cache_v1';
@@ -40,6 +41,7 @@ export function saveStoredConfig(config: SheetConfig): void {
 }
 
 export function loadCachedPartite(): Partita[] | null {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
   try {
     const raw = localStorage.getItem(DATA_STORAGE_KEY);
     if (raw) {
@@ -55,6 +57,7 @@ export function loadCachedPartite(): Partita[] | null {
 }
 
 export function saveCachedPartite(partite: Partita[]): void {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
   try {
     localStorage.setItem(DATA_STORAGE_KEY, JSON.stringify(partite));
   } catch (e) {
@@ -234,6 +237,17 @@ export function mapCsvToPartite(rows: string[][]): Partita[] {
       }
     }
 
+    // Se non abbiamo ancora coordinate, estraiamo subito dal link Maps del foglio
+    if (lat === undefined || lng === undefined) {
+      if (lnkMaps) {
+        const fromMaps = extractCoordsFromUrl(lnkMaps);
+        if (fromMaps) {
+          lat = fromMaps[0];
+          lng = fromMaps[1];
+        }
+      }
+    }
+
     const campVal = getCol(row, idxCampionato, 'camp').trim();
     const dataVal = getCol(row, idxData, '').trim();
     const matchSlug = `${r}_${campVal}_${casa}_${ospite}_${dataVal}`.toLowerCase().replace(/[^a-z0-9]/g, '_');
@@ -263,6 +277,25 @@ export function mapCsvToPartite(rows: string[][]): Partita[] {
 }
 
 /**
+ * Risolve in background le coordinate per le partite che hanno solo il link Google Maps
+ */
+export function resolveMissingPartiteCoords(partite: Partita[]): void {
+  Promise.all(
+    partite.map(async p => {
+      if ((!p.lat || !p.lng) && p.lnkMaps && p.lnkMaps.startsWith('http')) {
+        const res = await resolveMapLinkAsync(p.lnkMaps);
+        if (res) {
+          p.lat = res[0];
+          p.lng = res[1];
+        }
+      }
+    })
+  ).then(() => {
+    saveCachedPartite(partite);
+  }).catch(() => {});
+}
+
+/**
  * Carica le partite da URL Google Sheets o file locale
  */
 export async function fetchPartiteFromSource(sheetUrlOrId?: string, tabName?: string): Promise<Partita[]> {
@@ -278,6 +311,7 @@ export async function fetchPartiteFromSource(sheetUrlOrId?: string, tabName?: st
         const rows = parseCSV(text);
         const parsed = mapCsvToPartite(rows);
         if (parsed.length > 0) {
+          resolveMissingPartiteCoords(parsed);
           saveCachedPartite(parsed);
           return parsed;
         }
@@ -289,6 +323,7 @@ export async function fetchPartiteFromSource(sheetUrlOrId?: string, tabName?: st
     // Se c'è cache, usala, altrimenti default
     const cached = loadCachedPartite();
     if (cached && cached.length > 0) {
+      resolveMissingPartiteCoords(cached);
       return cached;
     }
     return DEFAULT_PARTITE;
@@ -337,6 +372,7 @@ export async function fetchPartiteFromSource(sheetUrlOrId?: string, tabName?: st
       throw new Error('Nessuna partita valida trovata nel foglio.');
     }
 
+    resolveMissingPartiteCoords(partite);
     saveCachedPartite(partite);
     return partite;
   } catch (error: any) {
@@ -350,6 +386,7 @@ export async function fetchPartiteFromSource(sheetUrlOrId?: string, tabName?: st
         const localRows = parseCSV(localText);
         const localPartite = mapCsvToPartite(localRows);
         if (localPartite.length > 0) {
+          resolveMissingPartiteCoords(localPartite);
           saveCachedPartite(localPartite);
           (localPartite as any).fallbackWarning = error?.message;
           return localPartite;
