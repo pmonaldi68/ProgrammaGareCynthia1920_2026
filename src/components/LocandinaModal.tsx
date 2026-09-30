@@ -21,6 +21,7 @@ import {
 import {
   generateLocandinaPdf,
   downloadLocandinaPdf,
+  downloadLocandinaImage,
   printLocandinaPdf,
   shareLocandinaPdf,
   computeWeekendDatesString,
@@ -112,36 +113,52 @@ export const LocandinaModal: React.FC<LocandinaModalProps> = ({
     logoBase64,
   });
 
-  // Download PDF
-  const handleDownloadPdf = () => {
+  // Download PDF fedele al 100% all'anteprima
+  const handleDownloadPdf = async () => {
     setIsGenerating(true);
-    setStatusMessage('Generazione PDF A4...');
-    setTimeout(() => {
-      try {
-        downloadLocandinaPdf(getPdfOptions());
-        setStatusMessage('Locandina scaricata con successo!');
-        setTimeout(() => setStatusMessage(null), 3000);
-      } catch (err) {
-        console.error('Errore creazione PDF locandina:', err);
-        setStatusMessage('Errore durante il download.');
-      } finally {
-        setIsGenerating(false);
-      }
-    }, 100);
+    setStatusMessage('Generazione PDF A4 fedele...');
+    try {
+      await downloadLocandinaPdf(getPdfOptions());
+      setStatusMessage('Locandina PDF scaricata con successo!');
+      setTimeout(() => setStatusMessage(null), 3000);
+    } catch (err) {
+      console.error('Errore creazione PDF locandina:', err);
+      setStatusMessage('Errore durante il download del PDF.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  // Stampa diretta
-  const handlePrint = () => {
+  // Download Immagine PNG ad alta risoluzione (300 DPI) per Social e WhatsApp
+  const handleDownloadImage = async () => {
     setIsGenerating(true);
-    setTimeout(() => {
-      try {
-        printLocandinaPdf(getPdfOptions());
-      } catch (err) {
-        console.error('Errore stampa locandina:', err);
-      } finally {
-        setIsGenerating(false);
+    setStatusMessage('Generazione immagine HD...');
+    try {
+      const ok = await downloadLocandinaImage();
+      if (ok) {
+        setStatusMessage('Immagine PNG salvata con successo!');
+        setTimeout(() => setStatusMessage(null), 3000);
       }
-    }, 100);
+    } catch (err) {
+      console.error('Errore creazione immagine locandina:', err);
+      setStatusMessage('Errore durante il salvataggio.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Stampa diretta fedele
+  const handlePrint = async () => {
+    setIsGenerating(true);
+    setStatusMessage('Preparazione stampa A4...');
+    try {
+      await printLocandinaPdf(getPdfOptions());
+      setTimeout(() => setStatusMessage(null), 2000);
+    } catch (err) {
+      console.error('Errore stampa locandina:', err);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   // Condividi
@@ -249,33 +266,50 @@ export const LocandinaModal: React.FC<LocandinaModalProps> = ({
                   onClick={handleDownloadPdf}
                   disabled={isGenerating || selectedPartite.length === 0}
                   className="py-2.5 px-3 rounded-xl bg-sky-700 hover:bg-sky-800 active:scale-[0.98] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50"
+                  title="Scarica il file PDF A4 esattamente identico all'anteprima a schermo"
                 >
                   <FileDown className="w-4 h-4 text-sky-200" />
                   <span>Scarica PDF A4</span>
                 </button>
 
                 <button
+                  id="btn-locandina-image"
+                  type="button"
+                  onClick={handleDownloadImage}
+                  disabled={isGenerating || selectedPartite.length === 0}
+                  className="py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50"
+                  title="Salva immagine PNG ad alta risoluzione (300 DPI) per Social e WhatsApp"
+                >
+                  <ImageIcon className="w-4 h-4 text-indigo-200" />
+                  <span>Salva PNG HD</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
                   id="btn-locandina-print"
                   type="button"
                   onClick={handlePrint}
                   disabled={isGenerating || selectedPartite.length === 0}
-                  className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50"
+                  className="py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50"
+                  title="Stampa diretta su stampante in formato A4"
                 >
                   <Printer className="w-4 h-4 text-emerald-200" />
                   <span>Stampa A4</span>
                 </button>
-              </div>
 
-              <button
-                id="btn-locandina-share"
-                type="button"
-                onClick={handleShare}
-                disabled={isGenerating || selectedPartite.length === 0}
-                className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 active:scale-[0.98] text-slate-800 dark:text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 transition"
-              >
-                <Share2 className="w-3.5 h-3.5 text-sky-500" />
-                <span>Condividi Locandina (WhatsApp / Social)</span>
-              </button>
+                <button
+                  id="btn-locandina-share"
+                  type="button"
+                  onClick={handleShare}
+                  disabled={isGenerating || selectedPartite.length === 0}
+                  className="py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 active:scale-[0.98] text-slate-800 dark:text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+                  title="Condividi locandina via WhatsApp o Social"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-sky-500" />
+                  <span className="truncate">Condividi</span>
+                </button>
+              </div>
             </div>
 
             {/* Box 2: Logo Caricato Centrato in Alto */}
@@ -530,26 +564,39 @@ export const LocandinaModal: React.FC<LocandinaModalProps> = ({
                   maxWidth: '540px',
                   minHeight: '760px',
                   padding: '16px',
-                  border: '3px solid #0c4a6e',
-                  outline: '1.5px solid #d97706',
-                  outlineOffset: '-7px',
+                  border: '3.5px solid #0c4a6e',
+                  backgroundColor: '#ffffff',
+                  boxSizing: 'border-box',
                 }}
               >
+                {/* Cornice decorativa interna dorata */}
+                <div
+                  className="absolute pointer-events-none rounded-[3px]"
+                  style={{
+                    top: '5px',
+                    bottom: '5px',
+                    left: '5px',
+                    right: '5px',
+                    border: '1.5px solid #d97706',
+                  }}
+                />
+
                 {/* Header Locandina con Logo Centrato in Alto */}
-                <div className="text-center pt-2">
+                <div className="text-center pt-2 relative z-10">
                   
                   {/* Logo Centrato in Alto con Linee Simmetriche */}
                   <div className="flex items-center justify-center gap-3 mb-2">
-                    <div className="h-[2px] flex-1 bg-gradient-to-r from-transparent via-[#0c4a6e] to-[#0c4a6e]" />
+                    <div className="h-[2px] flex-1 bg-[#0c4a6e]" />
                     <div className="relative">
                       <img
                         id="locandina-logo-preview"
                         src={logoBase64}
                         alt="Logo Cynthia 1920 Centrato"
                         className="h-20 w-auto object-contain drop-shadow-sm transition-transform hover:scale-105"
+                        crossOrigin="anonymous"
                       />
                     </div>
-                    <div className="h-[2px] flex-1 bg-gradient-to-r from-[#0c4a6e] via-[#0c4a6e] to-transparent" />
+                    <div className="h-[2px] flex-1 bg-[#0c4a6e]" />
                   </div>
 
                   {/* Nome Società */}
@@ -576,7 +623,7 @@ export const LocandinaModal: React.FC<LocandinaModalProps> = ({
                 </div>
 
                 {/* Elenco Gare */}
-                <div className="my-3 flex-1">
+                <div className="my-3 flex-1 relative z-10">
                   {selectedPartite.length === 0 ? (
                     <div className="text-center py-16 text-slate-400 text-xs italic">
                       Seleziona almeno una gara dalla colonna a sinistra
@@ -594,38 +641,44 @@ export const LocandinaModal: React.FC<LocandinaModalProps> = ({
                         return (
                           <div
                             key={p.id}
-                            className={`p-2 rounded-xl border text-left flex flex-col justify-between relative overflow-hidden transition-all ${
+                            className={`p-2.5 rounded-xl border text-left flex flex-col justify-between relative overflow-hidden transition-all ${
                               isCasa
-                                ? 'bg-sky-50/40 border-sky-300'
+                                ? 'bg-sky-50/50 border-sky-300'
                                 : 'bg-white border-slate-200 shadow-2xs'
                             }`}
+                            style={{
+                              backgroundColor: isCasa ? '#f0f9ff' : '#ffffff',
+                              borderColor: isCasa ? '#7dd3fc' : '#e2e8f0',
+                            }}
                           >
                             {/* Striscia laterale colore */}
                             <div
-                              className={`absolute left-0 top-0 bottom-0 w-1 ${
-                                isCasa ? 'bg-sky-600' : 'bg-amber-500'
-                              }`}
+                              className="absolute left-0 top-0 bottom-0 w-1.5"
+                              style={{
+                                backgroundColor: isCasa ? '#0284c7' : '#d97706',
+                              }}
                             />
 
                             {/* Header Card: Categoria + Badge Casa/Trasferta */}
-                            <div className="flex items-center justify-between gap-1 pl-1">
+                            <div className="flex items-center justify-between gap-1 pl-1.5">
                               <span className="font-extrabold text-[10px] text-[#0c4a6e] uppercase truncate">
                                 {p.campionato}
                               </span>
                               <span
-                                className={`text-[8px] font-black px-1.5 py-0.5 rounded-md ${
-                                  isCasa
-                                    ? 'bg-sky-100 text-sky-800 border border-sky-200'
-                                    : 'bg-amber-100 text-amber-800 border border-amber-200'
-                                }`}
+                                className="text-[8px] font-black px-1.5 py-0.5 rounded-md"
+                                style={{
+                                  backgroundColor: isCasa ? '#e0f2fe' : '#fef3c7',
+                                  color: isCasa ? '#0369a1' : '#b45309',
+                                  border: `1px solid ${isCasa ? '#bae6fd' : '#fde68a'}`,
+                                }}
                               >
                                 {isCasa ? 'CASA' : 'TRASFERTA'}
                               </span>
                             </div>
 
                             {/* Data e Orario */}
-                            <div className="text-[10px] font-bold text-slate-600 pl-1 mt-0.5 flex items-center gap-1">
-                              <Clock className="w-2.5 h-2.5 text-slate-400" />
+                            <div className="text-[10px] font-bold text-slate-600 pl-1.5 mt-0.5 flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5 text-slate-400 flex-shrink-0" />
                               <span>
                                 {dateInfo.dayOfWeek ? dateInfo.dayOfWeek + ' ' : ''}
                                 {p.data} • ore {p.ora}
@@ -633,19 +686,19 @@ export const LocandinaModal: React.FC<LocandinaModalProps> = ({
                             </div>
 
                             {/* Squadre */}
-                            <div className="text-xs font-black text-slate-800 pl-1 my-1 leading-snug">
-                              <span className={isCasa ? 'text-sky-700' : 'text-slate-800'}>
+                            <div className="text-xs font-black text-slate-800 pl-1.5 my-1 leading-snug">
+                              <span style={{ color: isCasa ? '#0369a1' : '#1e293b' }}>
                                 {p.squadraCasa}
                               </span>
                               <span className="text-slate-400 font-normal mx-1">vs</span>
-                              <span className={!isCasa ? 'text-sky-700' : 'text-slate-800'}>
+                              <span style={{ color: !isCasa ? '#0369a1' : '#1e293b' }}>
                                 {p.squadraOspite}
                               </span>
                             </div>
 
                             {/* Campo Sportivo */}
                             {p.campo && (
-                              <div className="text-[9px] text-slate-500 pl-1 truncate flex items-center gap-1">
+                              <div className="text-[9px] text-slate-500 pl-1.5 truncate flex items-center gap-1">
                                 <MapPin className="w-2.5 h-2.5 text-slate-400 flex-shrink-0" />
                                 <span className="truncate">{p.campo}</span>
                               </div>
@@ -658,11 +711,16 @@ export const LocandinaModal: React.FC<LocandinaModalProps> = ({
                 </div>
 
                 {/* Footer Istituzionale A4 */}
-                <div className="bg-[#0c4a6e] text-white p-2.5 rounded-lg text-center mt-2">
-                  <p className="text-[10px] font-bold leading-tight uppercase tracking-wider">
+                <div
+                  className="text-white p-2.5 rounded-lg text-center mt-2 relative z-10"
+                  style={{
+                    backgroundColor: '#0c4a6e',
+                  }}
+                >
+                  <p className="text-[10px] font-bold leading-tight uppercase tracking-wider text-white">
                     {notePiePagina}
                   </p>
-                  <p className="text-[8.5px] text-sky-200 mt-0.5">
+                  <p className="text-[8.5px] mt-0.5" style={{ color: '#bae6fd' }}>
                     Sito Ufficiale: asdcynthia1920.it • Canale WhatsApp Ufficiale • #ForzaCynthia
                   </p>
                 </div>

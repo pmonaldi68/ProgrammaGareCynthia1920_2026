@@ -289,6 +289,14 @@
     box-shadow: none !important;
     page-break-after: avoid !important;
     break-after: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body:has(#locandina-sheet-a4) #locandina-sheet-a4,
+  body:has(#locandina-sheet-a4) #locandina-sheet-a4 * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 

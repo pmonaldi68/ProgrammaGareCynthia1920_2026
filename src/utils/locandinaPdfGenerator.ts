@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { Partita } from '../types';
 import { CYNTHIA_LOGO_BASE64 } from '../assets/logoBase64';
 import { formatMatchDateAndDay } from './dateFormatter';
@@ -450,45 +451,142 @@ function renderMatchCardTwoColumns(
 }
 
 /**
- * Scarica il file PDF della locandina sul dispositivo
+ * Cattura l'esatto elemento DOM dell'anteprima (#locandina-sheet-a4) ad altissima definizione (300 DPI)
+ * e lo esporta all'interno di un documento PDF A4, garantendo una fedeltà visiva identica al 100% all'anteprima.
  */
-export function downloadLocandinaPdf(options: LocandinaPdfOptions): void {
-  const doc = generateLocandinaPdf(options);
+export async function generateFaithfulLocandinaPdf(options: LocandinaPdfOptions): Promise<jsPDF> {
+  const element = document.getElementById('locandina-sheet-a4');
+  if (!element) {
+    // Fallback programmatico se l'elemento DOM non è presente a schermo
+    return generateLocandinaPdf(options);
+  }
+
+  // Cattura canvas ad altissima risoluzione (scala 3.5 per qualità tipografica 300 DPI)
+  const canvas = await html2canvas(element, {
+    scale: 3.5,
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: '#ffffff',
+    logging: false,
+    imageTimeout: 15000,
+  });
+
+  const imgData = canvas.toDataURL('image/png', 1.0);
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const margin = 6; // 6 mm di margine per garantire la stampabilità su qualsiasi stampante da ufficio
+  const printableWidth = pageWidth - margin * 2; // 198 mm
+  const printableHeight = pageHeight - margin * 2; // 285 mm
+
+  const imgRatio = canvas.width / canvas.height;
+  const printableRatio = printableWidth / printableHeight;
+
+  let finalWidth = printableWidth;
+  let finalHeight = printableHeight;
+
+  if (imgRatio > printableRatio) {
+    finalWidth = printableWidth;
+    finalHeight = printableWidth / imgRatio;
+  } else {
+    finalHeight = printableHeight;
+    finalWidth = printableHeight * imgRatio;
+  }
+
+  const x = margin + (printableWidth - finalWidth) / 2;
+  const y = margin + (printableHeight - finalHeight) / 2;
+
+  pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight, undefined, 'FAST');
+  return pdf;
+}
+
+/**
+ * Scarica il file PDF della locandina esattamente identico e fedele all'anteprima a schermo
+ */
+export async function downloadLocandinaPdf(options: LocandinaPdfOptions): Promise<void> {
+  const doc = await generateFaithfulLocandinaPdf(options);
   const now = new Date();
   const dateSuffix = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
   doc.save(`Locandina_Gare_Cynthia_A4_${dateSuffix}.pdf`);
 }
 
 /**
- * Stampa pulita della locandina in A4
+ * Scarica la locandina come immagine PNG ad alta risoluzione (300 DPI), ideale per WhatsApp e Social Media
  */
-export function printLocandinaPdf(options: LocandinaPdfOptions): void {
-  const sheetElement = document.getElementById('locandina-sheet-a4');
-  if (sheetElement) {
-    window.print();
-    return;
-  }
+export async function downloadLocandinaImage(): Promise<boolean> {
+  const element = document.getElementById('locandina-sheet-a4');
+  if (!element) return false;
 
+  const canvas = await html2canvas(element, {
+    scale: 3.5,
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: '#ffffff',
+    logging: false,
+    imageTimeout: 15000,
+  });
+
+  const dataUrl = canvas.toDataURL('image/png', 1.0);
+  const link = document.createElement('a');
+  const now = new Date();
+  const dateSuffix = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+  link.download = `Locandina_Gare_Cynthia_1920_${dateSuffix}.png`;
+  link.href = dataUrl;
+  link.click();
+  return true;
+}
+
+/**
+ * Stampa pulita e fedele della locandina in A4
+ */
+export async function printLocandinaPdf(options: LocandinaPdfOptions): Promise<void> {
   try {
-    const doc = generateLocandinaPdf(options);
+    const doc = await generateFaithfulLocandinaPdf(options);
     doc.autoPrint();
-    const blobUrl = doc.output('bloburl');
-    const printWindow = window.open(blobUrl, '_blank');
-    if (!printWindow) {
-      downloadLocandinaPdf(options);
-    }
+    const pdfBlob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = '0';
+    printFrame.src = blobUrl;
+    document.body.appendChild(printFrame);
+    printFrame.onload = () => {
+      setTimeout(() => {
+        try {
+          printFrame.contentWindow?.focus();
+          printFrame.contentWindow?.print();
+        } catch {
+          window.print();
+        }
+        setTimeout(() => {
+          if (document.body.contains(printFrame)) {
+            document.body.removeChild(printFrame);
+          }
+          URL.revokeObjectURL(blobUrl);
+        }, 60000);
+      }, 500);
+    };
   } catch (err) {
-    console.warn('Fallback download per stampa locandina:', err);
-    downloadLocandinaPdf(options);
+    console.warn('Fallback standard per stampa locandina:', err);
+    window.print();
   }
 }
 
 /**
- * Condivide il file PDF della locandina tramite Web Share API o effettua fallback a download
+ * Condivide il file PDF fedele della locandina tramite Web Share API o effettua fallback a download
  */
 export async function shareLocandinaPdf(options: LocandinaPdfOptions): Promise<{ shared: boolean }> {
   try {
-    const doc = generateLocandinaPdf(options);
+    const doc = await generateFaithfulLocandinaPdf(options);
     const pdfBlob = doc.output('blob');
     const fileName = `Locandina_Gare_Cynthia_1920_${Date.now()}.pdf`;
     const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
@@ -496,7 +594,7 @@ export async function shareLocandinaPdf(options: LocandinaPdfOptions): Promise<{
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
         title: 'Locandina Gare ASD Cynthia 1920',
-        text: `Locandina Ufficiale A4 - Programma Gare del Weekend (${options.partite.length} partite in programma)`,
+        text: `Locandina Ufficiale A4 - Programma Gare (${options.partite.length} partite in programma)`,
         files: [file],
       });
       return { shared: true };
@@ -508,6 +606,6 @@ export async function shareLocandinaPdf(options: LocandinaPdfOptions): Promise<{
     console.warn('Web Share file non supportato, fallback download:', err);
   }
 
-  downloadLocandinaPdf(options);
+  await downloadLocandinaPdf(options);
   return { shared: false };
 }
