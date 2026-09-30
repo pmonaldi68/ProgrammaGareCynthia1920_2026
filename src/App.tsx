@@ -177,12 +177,21 @@ export default function App() {
         return false;
       }
 
-      // Filtro di ricerca testuale
+      // Filtro di ricerca testuale potenziato (supporta ricerca predittiva per squadra, categoria, campo e token multipli)
       if (filters.search.trim()) {
         const query = filters.search.toLowerCase().trim();
+        const compactQuery = query.replace(/\s+/g, '');
         const matchString = `${p.campionato} ${p.girone} ${p.gara} ${p.squadraCasa} ${p.squadraOspite} ${p.campo} ${p.comune} ${p.indirizzo}`.toLowerCase();
-        if (!matchString.includes(query)) {
-          return false;
+        const compactMatch = matchString.replace(/\s+/g, '');
+
+        if (!matchString.includes(query) && !compactMatch.includes(compactQuery)) {
+          const tokens = query.split(/\s+/).filter(Boolean);
+          const allTokensMatch = tokens.length > 0 && tokens.every(
+            tok => matchString.includes(tok) || compactMatch.includes(tok)
+          );
+          if (!allTokensMatch) {
+            return false;
+          }
         }
       }
 
@@ -287,6 +296,7 @@ export default function App() {
           onChangeFilters={setFilters}
           availableCampionati={availableCampionati}
           availableDate={availableDate}
+          partite={partite}
           viewMode={viewMode}
           onChangeViewMode={setViewMode}
           onOpenPdfExport={() => setIsPdfModalOpen(true)}

@@ -134,7 +134,7 @@ export const LocandinaModal: React.FC<LocandinaModalProps> = ({
     setIsGenerating(true);
     setStatusMessage('Generazione immagine HD...');
     try {
-      const ok = await downloadLocandinaImage();
+      const ok = await downloadLocandinaImage(getPdfOptions());
       if (ok) {
         setStatusMessage('Immagine PNG salvata con successo!');
         setTimeout(() => setStatusMessage(null), 3000);

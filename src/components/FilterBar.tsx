@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FilterState, ViewMode, LocationFilter } from '../types';
+import { FilterState, ViewMode, LocationFilter, Partita } from '../types';
+import { PredictiveSearchBar } from './PredictiveSearchBar';
 import {
   Search,
   Filter,
@@ -15,6 +16,7 @@ import {
   ChevronUp,
   SlidersHorizontal,
   RotateCcw,
+  Sparkles,
 } from 'lucide-react';
 
 interface FilterBarProps {
@@ -22,6 +24,7 @@ interface FilterBarProps {
   onChangeFilters: (filters: FilterState) => void;
   availableCampionati: string[];
   availableDate: string[];
+  partite?: Partita[];
   viewMode: ViewMode;
   onChangeViewMode: (mode: ViewMode) => void;
   onOpenPdfExport: () => void;
@@ -32,6 +35,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onChangeFilters,
   availableCampionati,
   availableDate,
+  partite = [],
   viewMode,
   onChangeViewMode,
   onOpenPdfExport,
@@ -113,9 +117,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   };
 
   return (
-    <div id="filter-bar" className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs mb-5 overflow-hidden transition-all duration-200">
+    <div id="filter-bar" className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs mb-5 transition-all duration-200 relative z-30">
       {/* Barra Superiore: Toggle Espansione Filtri + Azioni Rapide (PDF, Schede/Tabella) */}
-      <div className="p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800">
+      <div className="p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800 rounded-t-2xl">
         {/* Bottone Toggle Espandi/Comprimi Filtri */}
         <button
           id="btn-toggle-filters-expand"
@@ -355,37 +359,72 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               </select>
             </div>
 
-            {/* Ricerca Testuale */}
-            <div>
+            {/* Ricerca Predittiva (Squadra, Categoria, Campo) */}
+            <div className="relative">
               <label
                 htmlFor="filter-search-input"
-                className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5"
+                className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5 flex items-center justify-between"
               >
-                <Search className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                Cerca Partita o Campo
+                <span className="flex items-center gap-1.5">
+                  <Search className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                  Cerca Squadra o Categoria
+                </span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/80 px-1.5 py-0.5 rounded border border-sky-200/80 dark:border-sky-800">
+                  <Sparkles className="w-3 h-3 text-sky-600 dark:text-sky-400" />
+                  Predittiva
+                </span>
               </label>
-              <div className="relative">
-                <input
-                  id="filter-search-input"
-                  type="text"
-                  value={filters.search}
-                  onChange={e => onChangeFilters({ ...filters, search: e.target.value })}
-                  placeholder="Es. Under 16, Ostia, Genzano..."
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl pl-9 pr-8 py-3 sm:py-2.5 text-base sm:text-sm font-medium text-slate-900 dark:text-slate-100 transition outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                />
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5 sm:top-3" />
-                {filters.search && (
-                  <button
-                    type="button"
-                    onClick={() => onChangeFilters({ ...filters, search: '' })}
-                    className="absolute right-2.5 top-3 sm:top-2.5 p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
+              <PredictiveSearchBar
+                filters={filters}
+                onChangeFilters={onChangeFilters}
+                partite={partite}
+                availableCampionati={availableCampionati}
+                placeholder="Es. Under 17, Ostia, Cynthia..."
+              />
             </div>
           </div>
+
+          {/* Scorciatoie Rapide Categorie (per filtrare rapidamente con 1 click quando ci sono molte gare) */}
+          {availableCampionati.length > 0 && (
+            <div className="pt-2 flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1 mr-1">
+                Filtro rapido:
+              </span>
+              <button
+                type="button"
+                onClick={() => onChangeFilters({ ...filters, campionato: 'ALL' })}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition border ${
+                  filters.campionato === 'ALL'
+                    ? 'bg-sky-700 text-white border-sky-800 shadow-2xs font-bold'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                Tutte ({availableCampionati.length})
+              </button>
+              {availableCampionati.slice(0, 6).map(camp => {
+                const isSelected = filters.campionato === camp;
+                return (
+                  <button
+                    key={camp}
+                    type="button"
+                    onClick={() =>
+                      onChangeFilters({
+                        ...filters,
+                        campionato: isSelected ? 'ALL' : camp,
+                      })
+                    }
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition border ${
+                      isSelected
+                        ? 'bg-sky-700 text-white border-sky-800 shadow-2xs font-bold'
+                        : 'bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-700 hover:text-sky-700 dark:hover:text-sky-300'
+                    }`}
+                  >
+                    {camp}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Riepilogo Filtri Attivi & Reset all'interno del pannello */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
@@ -400,6 +439,19 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   <RotateCcw className="w-3.5 h-3.5" />
                   Azzera Tutti i Filtri
                 </button>
+              )}
+              {filters.search && (
+                <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-200 border border-sky-200/60 dark:border-sky-800 font-medium">
+                  Cerca: "{filters.search}"
+                  <button
+                    type="button"
+                    onClick={() => onChangeFilters({ ...filters, search: '' })}
+                    className="hover:text-rose-600 ml-0.5"
+                    title="Rimuovi ricerca"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
               )}
               {filters.campionato !== 'ALL' && (
                 <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-200 border border-sky-200/60 dark:border-sky-800 font-medium">
