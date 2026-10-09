@@ -245,16 +245,8 @@ export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF 
     const spuntaText = g.selezionato ? '[ X ]' : '[   ]';
     const numJersey = g.numero ? String(g.numero) : String(index + 1);
     const nominativo = (g.nome || '').trim().toUpperCase() || 'CALCIATORE';
-    const annoTag = g.annoNascita ? ` (${g.annoNascita})` : '';
-    const ruoloTag = g.ruolo ? ` (${g.ruolo.toUpperCase()})` : '';
-    const squadUpper = (g.squadra || '').toUpperCase();
-    const clubTag = squadUpper.includes('ALBA')
-      ? ' [ALBACYNTHIA]'
-      : squadUpper.includes('ACADEMY')
-      ? ' [ACADEMY]'
-      : '';
-    const fullNominativo = `${nominativo}${annoTag}${ruoloTag}${clubTag}`;
-    const noteCol = g.note ? g.note.toUpperCase() : (clubTag ? squadUpper : '');
+    const fullNominativo = nominativo;
+    const noteCol = g.note ? g.note.toUpperCase() : '';
 
     return [spuntaText, numJersey, fullNominativo, noteCol];
   });
@@ -397,10 +389,6 @@ export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF 
       if (noteMister) {
         const noteLines = doc.splitTextToSize(noteMister, contentWidth - 62);
         doc.text(noteLines.slice(0, 2), marginX + 3, noteBoxY + 7.5);
-      } else {
-        doc.setFont('helvetica', 'italic');
-        doc.setTextColor(148, 163, 184);
-        doc.text('Presentarsi in tenuta societaria ufficiale con documento di riconoscimento in corso di validità.', marginX + 3, noteBoxY + 7.5);
       }
 
       // Linea separatrice verticale prima della firma

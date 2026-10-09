@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Partita } from '../types';
 import { generateGoogleCalendarUrl, downloadIcsFile } from '../utils/calendarUtils';
 import { formatMatchDateAndDay } from '../utils/dateFormatter';
+import { WeatherBadge } from './WeatherBadge';
 import {
   MapPin,
   Navigation,
@@ -133,9 +134,12 @@ export const MatchCard: React.FC<MatchCardProps> = ({ partita }) => {
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-black text-sm sm:text-base shadow-xs shadow-amber-500/25 ring-2 ring-amber-400/20">
-            <Clock className="w-4 h-4 text-amber-100 flex-shrink-0" />
-            <span className="tracking-wider">{dateInfo.oraFormatted}</span>
+          <div className="flex items-center gap-2">
+            <WeatherBadge partita={partita} />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-black text-sm sm:text-base shadow-xs shadow-amber-500/25 ring-2 ring-amber-400/20">
+              <Clock className="w-4 h-4 text-amber-100 flex-shrink-0" />
+              <span className="tracking-wider">{dateInfo.oraFormatted}</span>
+            </div>
           </div>
         </div>
 

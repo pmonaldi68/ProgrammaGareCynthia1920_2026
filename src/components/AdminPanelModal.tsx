@@ -22,6 +22,7 @@ import {
   Users,
   FileText,
   Sparkles,
+  Activity,
 } from 'lucide-react';
 import { useTheme, COLOR_THEME_OPTIONS, PrimaryColor } from '../context/ThemeContext';
 import { sendWebNotification, requestNotificationPermission } from '../services/notificationService';
@@ -36,6 +37,7 @@ interface AdminPanelModalProps {
   onOpenPdfExport?: () => void;
   onOpenConvocazioni?: () => void;
   onOpenLocandina?: () => void;
+  onOpenTabellino?: () => void;
   sheetUrl: string;
 }
 
@@ -52,6 +54,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onOpenPdfExport,
   onOpenConvocazioni,
   onOpenLocandina,
+  onOpenTabellino,
   sheetUrl,
 }) => {
   const { theme, setTheme, resolvedTheme, primaryColor, setPrimaryColor } = useTheme();
@@ -415,6 +418,38 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
                     <span className="text-xs font-bold text-sky-700 dark:text-sky-300 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-sky-300 dark:border-sky-700 shadow-2xs">
                       Crea 📄
+                    </span>
+                  </button>
+                )}
+
+                {/* 5. Tabellino Gara & Diretta Live */}
+                {onOpenTabellino && (
+                  <button
+                    id="admin-btn-tabellino"
+                    onClick={() => {
+                      onClose();
+                      onOpenTabellino();
+                    }}
+                    className="flex items-center justify-between p-3.5 rounded-xl border border-emerald-300 dark:border-emerald-700/80 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/40 dark:to-green-950/30 hover:from-emerald-100 hover:to-green-100 dark:hover:from-emerald-900/50 dark:hover:to-green-900/40 text-left transition group shadow-2xs ring-1 ring-emerald-500/20"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-emerald-600 text-white shadow-sm">
+                        <Activity className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-emerald-950 dark:group-hover:text-emerald-200 flex items-center gap-1.5">
+                          <span>Tabellino Gara & Diretta Live</span>
+                          <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-600 text-white">
+                            Live
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          Punteggio in tempo reale, cronometro, marcatori e invio WhatsApp
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-emerald-300 dark:border-emerald-700 shadow-2xs">
+                      Live ⏱️
                     </span>
                   </button>
                 )}

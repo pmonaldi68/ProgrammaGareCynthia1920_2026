@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
   X,
-  Printer,
   Download,
   Eye,
   ZoomIn,
@@ -24,7 +23,7 @@ interface ConvocazioniPdfPreviewModalProps {
   onClose: () => void;
   options: ConvocazioniPdfOptions;
   onDownloadPdf: (modalita?: 'tutta_la_rosa' | 'solo_convocati') => void;
-  onPrintPdf: (modalita?: 'tutta_la_rosa' | 'solo_convocati') => void;
+  onPrintPdf?: (modalita?: 'tutta_la_rosa' | 'solo_convocati') => void;
   onTogglePlayer?: (id: string) => void;
   onUpdateRitrovoTime?: (newTime: string) => void;
   onUpdateMisterName?: (newName: string) => void;
@@ -76,15 +75,6 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
   const handleZoomIn = () => setZoomLevel((prev) => Math.min(prev + 15, 140));
   const handleZoomOut = () => setZoomLevel((prev) => Math.max(prev - 15, 60));
   const handleResetZoom = () => setZoomLevel(100);
-
-  // Stampa diretta garantita: usa window.print() sul foglio A4 o scarica il PDF
-  const handleDirectPrint = () => {
-    if (onPrintPdf) {
-      onPrintPdf(modalita);
-    } else {
-      window.print();
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -209,18 +199,6 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Scarica PDF</span>
-            </button>
-
-            {/* Pulsante Stampa */}
-            <button
-              id="btn-preview-modal-print"
-              type="button"
-              onClick={handleDirectPrint}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-black transition shadow-xs cursor-pointer"
-              title="Stampa subito il foglio A4"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Stampa</span>
             </button>
 
             {/* Chiudi */}
@@ -456,41 +434,12 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
                               {g.numero || idx + 1}
                             </td>
 
-                            {/* Nominativo Calciatore con Anno Nascita, Ruolo e Squadra */}
+                            {/* Nominativo Calciatore: solo il nome */}
                             <td className="py-2.5 px-3 font-bold text-slate-900 border-r border-slate-200 uppercase text-xs tracking-wide">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span>{g.nome}</span>
-                                {g.annoNascita && (
-                                  <span className="text-[10px] px-1 py-0.2 rounded bg-amber-100 text-amber-900 font-extrabold border border-amber-300">
-                                    {g.annoNascita}
-                                  </span>
-                                )}
-                                {g.ruolo && (
-                                  <span className="text-[10px] px-1 py-0.2 rounded bg-sky-100 text-sky-800 font-bold">
-                                    {g.ruolo}
-                                  </span>
-                                )}
-                                {g.squadra && (
-                                  <span
-                                    className={`text-[9.5px] px-1 py-0.2 rounded font-bold ${
-                                      g.squadra.toUpperCase().includes('ALBA')
-                                        ? 'bg-purple-100 text-purple-800'
-                                        : g.squadra.toUpperCase().includes('ACADEMY')
-                                        ? 'bg-cyan-100 text-cyan-800'
-                                        : 'bg-slate-100 text-slate-700'
-                                    }`}
-                                  >
-                                    {g.squadra.toUpperCase().includes('ALBA')
-                                      ? 'ALBACYNTHIA'
-                                      : g.squadra.toUpperCase().includes('ACADEMY')
-                                      ? 'ACADEMY'
-                                      : 'CYNTHIA'}
-                                  </span>
-                                )}
-                              </div>
+                              <span>{g.nome}</span>
                             </td>
 
-                            {/* Note Mister */}
+                            {/* Note Mister: vuoto per appunti a penna o note specifiche */}
                             <td className="py-2.5 px-3 text-slate-600 text-[10.5px]">
                               {g.note ? g.note.toUpperCase() : ''}
                             </td>
@@ -538,9 +487,8 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
                   <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
                     DISPOSIZIONI TECNICHE & NOTE GARA:
                   </div>
-                  <div className="text-[11px] text-slate-700 italic mt-1">
-                    {noteMister ||
-                      'Presentarsi in tenuta societaria ufficiale con documento di riconoscimento in corso di validità.'}
+                  <div className="text-[11px] text-slate-700 italic mt-1 min-h-[1.25rem]">
+                    {noteMister || ''}
                   </div>
                 </div>
                 <div className="col-span-4 pl-1 flex flex-col justify-between">
@@ -591,14 +539,6 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
             >
               <Download className="w-3.5 h-3.5" />
               <span>Scarica File PDF</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleDirectPrint}
-              className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black transition flex items-center gap-1.5 active:scale-95 shadow-xs cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Stampa Scheda</span>
             </button>
             <button
               type="button"

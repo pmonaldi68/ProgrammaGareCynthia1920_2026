@@ -135,9 +135,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   const [campoCustom, setCampoCustom] = useState<string>('');
   const [indirizzoCustom, setIndirizzoCustom] = useState<string>('');
   const [linkMapsCustom, setLinkMapsCustom] = useState<string>('');
-  const [noteMister, setNoteMister] = useState<string>(
-    'Portare documento di riconoscimento in corso di validità, divisa di rappresentanza e parastinchi. Massima puntualità!'
-  );
+  const [noteMister, setNoteMister] = useState<string>('');
   const [misterName, setMisterName] = useState<string>('');
 
   // Filtri elenco giocatori
@@ -2285,7 +2283,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
               </button>
 
               {/* Pulsanti Azione PDF */}
-              <div className="grid grid-cols-3 gap-2 pt-0.5">
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
                 {/* 1. Scarica PDF */}
                 <button
                   id="btn-download-pdf-mister"
@@ -2299,20 +2297,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                   <span>Scarica PDF</span>
                 </button>
 
-                {/* 2. Stampa Diretta */}
-                <button
-                  id="btn-print-pdf-mister"
-                  type="button"
-                  disabled={isGeneratingPdf}
-                  onClick={() => handlePrintPdf()}
-                  className="py-2.5 px-2 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 active:scale-95 text-slate-800 dark:text-slate-100 font-semibold text-xs shadow-2xs transition flex flex-col items-center justify-center gap-1 disabled:opacity-50"
-                  title="Stampa subito il foglio convocazioni da spuntare a penna"
-                >
-                  <Printer className="w-4 h-4 text-slate-700 dark:text-slate-200" />
-                  <span>Stampa Foglio</span>
-                </button>
-
-                {/* 3. Invia al Mister */}
+                {/* 2. Invia al Mister */}
                 <button
                   id="btn-share-pdf-mister"
                   type="button"
@@ -2410,20 +2395,10 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
               disabled={isGeneratingPdf}
               onClick={() => handleOpenPdfPreview()}
               className="px-3 py-2 rounded-xl bg-sky-100 hover:bg-sky-200 dark:bg-sky-950 dark:hover:bg-sky-900 text-sky-800 dark:text-sky-200 border border-sky-300 dark:border-sky-700 font-semibold text-xs transition flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
-              title="Visualizza l'anteprima live del PDF prima di stamparlo o scaricarlo"
+              title="Visualizza l'anteprima live del PDF prima di scaricarlo"
             >
               <Eye className="w-3.5 h-3.5 text-sky-700 dark:text-sky-400" />
               <span>Anteprima Live PDF</span>
-            </button>
-            <button
-              id="btn-footer-print-mister-pdf"
-              type="button"
-              onClick={() => handlePrintPdf()}
-              className="px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 font-semibold text-xs transition flex items-center gap-1.5 active:scale-95"
-              title="Stampa subito il foglio convocazioni per il mister"
-            >
-              <Printer className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
-              <span>Stampa Scheda Mister</span>
             </button>
             <button
               type="button"

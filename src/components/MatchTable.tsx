@@ -3,6 +3,7 @@ import { Partita } from '../types';
 import { Navigation, CalendarPlus, Share2, Download, ExternalLink, Check, Clock } from 'lucide-react';
 import { generateGoogleCalendarUrl, downloadIcsFile } from '../utils/calendarUtils';
 import { formatMatchDateAndDay } from '../utils/dateFormatter';
+import { WeatherBadge } from './WeatherBadge';
 
 interface MatchTableProps {
   partite: Partita[];
@@ -96,12 +97,15 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
                     </div>
                   </td>
 
-                  {/* ORA FORMATTATA */}
+                  {/* ORA FORMATTATA & METEO */}
                   <td className="py-3.5 px-3 whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-black text-xs sm:text-sm bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-2xs">
-                      <Clock className="w-3 h-3 text-amber-100" />
-                      {dInfo.oraFormatted}
-                    </span>
+                    <div className="flex flex-col gap-1 items-start">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-black text-xs sm:text-sm bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-2xs">
+                        <Clock className="w-3 h-3 text-amber-100" />
+                        {dInfo.oraFormatted}
+                      </span>
+                      <WeatherBadge partita={p} compact />
+                    </div>
                   </td>
 
                 {/* SQUADRA CASA */}

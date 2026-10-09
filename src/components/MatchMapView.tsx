@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Partita } from '../types';
 import { groupPartiteByVenue, VenueLocation, geocodeVenueAsync } from '../utils/geoUtils';
+import { WeatherBadge } from './WeatherBadge';
 import {
   MapPin,
   Navigation,
@@ -464,9 +465,12 @@ export const MatchMapView: React.FC<MatchMapViewProps> = ({ partite }) => {
                           <span className="font-bold text-sky-700 dark:text-sky-400">
                             {p.campionato}
                           </span>
-                          <span className="text-slate-500 dark:text-slate-400 font-medium">
-                            {p.data} • {p.ora}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">
+                              {p.data} • {p.ora}
+                            </span>
+                            <WeatherBadge partita={p} compact />
+                          </div>
                         </div>
                         <div className="font-semibold text-slate-800 dark:text-slate-200 text-xs truncate">
                           {p.squadraCasa} vs {p.squadraOspite}

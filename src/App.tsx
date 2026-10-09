@@ -29,6 +29,7 @@ import { PdfExportModal } from './components/PdfExportModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ConvocazioniModal } from './components/ConvocazioniModal';
 import { LocandinaModal } from './components/LocandinaModal';
+import { TabellinoModal } from './components/TabellinoModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
 import { AlertCircle, FileCode, BellRing, X, Palette } from 'lucide-react';
 
@@ -54,6 +55,8 @@ export default function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isConvocazioniModalOpen, setIsConvocazioniModalOpen] = useState<boolean>(false);
   const [isLocandinaModalOpen, setIsLocandinaModalOpen] = useState<boolean>(false);
+  const [isTabellinoModalOpen, setIsTabellinoModalOpen] = useState<boolean>(false);
+  const [selectedTabellinoPartita, setSelectedTabellinoPartita] = useState<Partita | null>(null);
   const [recentVariations, setRecentVariations] = useState<MatchVariation[]>([]);
   const [bannerVariation, setBannerVariation] = useState<MatchVariation | null>(null);
 
@@ -216,6 +219,17 @@ export default function App() {
     setLastUpdated(nowStr);
   };
 
+  const handleOpenTabellino = (partita?: Partita) => {
+    if (partita) {
+      setSelectedTabellinoPartita(partita);
+    } else if (filteredPartite.length > 0) {
+      setSelectedTabellinoPartita(filteredPartite[0]);
+    } else if (partite.length > 0) {
+      setSelectedTabellinoPartita(partite[0]);
+    }
+    setIsTabellinoModalOpen(true);
+  };
+
   const hasFollowed = getFollowedCategories().length > 0;
 
   return (
@@ -334,12 +348,17 @@ export default function App() {
         ) : viewMode === 'cards' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 animate-in fade-in duration-200">
             {filteredPartite.map(partita => (
-              <MatchCard key={partita.id} partita={partita} />
+              <MatchCard
+                key={partita.id}
+                partita={partita}
+              />
             ))}
           </div>
         ) : viewMode === 'table' ? (
           <div className="animate-in fade-in duration-200">
-            <MatchTable partite={filteredPartite} />
+            <MatchTable
+              partite={filteredPartite}
+            />
           </div>
         ) : (
           <div className="animate-in fade-in duration-200">
@@ -441,7 +460,16 @@ export default function App() {
         onOpenPdfExport={() => setIsPdfModalOpen(true)}
         onOpenConvocazioni={() => setIsConvocazioniModalOpen(true)}
         onOpenLocandina={() => setIsLocandinaModalOpen(true)}
+        onOpenTabellino={() => handleOpenTabellino()}
         sheetUrl={config.sheetUrl}
+      />
+
+      {/* Modale Tabellino Gara & Diretta Live */}
+      <TabellinoModal
+        isOpen={isTabellinoModalOpen}
+        onClose={() => setIsTabellinoModalOpen(false)}
+        partite={partite}
+        initialPartita={selectedTabellinoPartita}
       />
 
       {/* Modale Locandina Gare A4 */}
