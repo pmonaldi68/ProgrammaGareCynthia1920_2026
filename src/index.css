@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme {
+  --color-slate-850: #172033;
+}
+
 /* ==========================================================================
    DEDICATED PRINT STYLESHEET (STAMPA BROWSER DIRETTA)
    Layout pulito, minimale, ink-friendly senza bottoni UI, filtri né barre

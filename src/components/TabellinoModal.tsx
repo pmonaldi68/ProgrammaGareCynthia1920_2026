@@ -28,6 +28,7 @@ import {
   AlertCircle,
   ChevronDown,
 } from 'lucide-react';
+import { WeatherBadge } from './WeatherBadge';
 
 interface TabellinoModalProps {
   isOpen: boolean;
@@ -384,9 +385,12 @@ export const TabellinoModal: React.FC<TabellinoModalProps> = ({
                   <span className="text-xs font-bold uppercase tracking-wider text-sky-300">
                     {tabellino.campionato} {tabellino.girone && tabellino.girone !== '#' ? `• Girone ${tabellino.girone}` : ''}
                   </span>
-                  <span className="text-xs font-medium text-slate-300">
-                    📍 {tabellino.campo} ({tabellino.comune})
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-slate-300">
+                      📍 {tabellino.campo} ({tabellino.comune})
+                    </span>
+                    {currentPartita && <WeatherBadge partita={currentPartita} />}
+                  </div>
                 </div>
 
                 {/* Squadre e Gol */}
