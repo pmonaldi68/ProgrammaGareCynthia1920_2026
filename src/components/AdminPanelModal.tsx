@@ -28,6 +28,8 @@ import {
   Sparkles,
   Smartphone,
   ExternalLink,
+  Archive,
+  Download,
 } from 'lucide-react';
 import { useTheme, COLOR_THEME_OPTIONS, PrimaryColor } from '../context/ThemeContext';
 import { sendWebNotification, requestNotificationPermission } from '../services/notificationService';
@@ -286,7 +288,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400'
                   }`}
                 >
-                  <span>📊 Dati (3)</span>
+                  <span>📊 Dati (4)</span>
                 </button>
 
                 <button
@@ -585,6 +587,35 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         </span>
                       </button>
                     )}
+
+                    {/* 2.4 SCARICA TUTTO IL CODICE PROGETTO (ZIP) */}
+                    <a
+                      id="admin-btn-download-zip"
+                      href="./cynthia1920-app-source.zip"
+                      download="cynthia1920-app-source.zip"
+                      className="w-full flex items-center justify-between p-3 sm:p-3.5 rounded-xl border border-violet-300 dark:border-violet-700/80 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/40 dark:to-purple-950/30 hover:from-violet-100 hover:to-purple-100 dark:hover:from-violet-900/50 dark:hover:to-purple-900/40 text-left transition group active:scale-[0.99] cursor-pointer shadow-xs"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2.5 rounded-xl bg-violet-700 text-white shadow-sm shrink-0">
+                          <Archive className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                            <span>Scarica Tutto il Codice (ZIP)</span>
+                            <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded-md bg-violet-600 text-white shadow-2xs">
+                              Sorgente Completo
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                            Archivio compresso con tutti i sorgenti React, componenti, configurazioni e icone
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-violet-700 dark:text-violet-300 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-violet-300 dark:border-violet-700 shadow-2xs shrink-0 flex items-center gap-1 ml-2">
+                        <Download className="w-3.5 h-3.5 text-violet-600" />
+                        <span>ZIP</span>
+                      </span>
+                    </a>
                   </div>
                 </div>
               )}
