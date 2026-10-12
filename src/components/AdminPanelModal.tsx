@@ -42,6 +42,7 @@ interface AdminPanelModalProps {
   onOpenPdfExport?: () => void;
   onOpenConvocazioni?: () => void;
   onOpenLocandina?: () => void;
+  onOpenLocandinaSingola?: () => void;
   onOpenTabellino?: () => void;
   onOpenFoglioGara?: () => void;
   sheetUrl: string;
@@ -62,6 +63,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onOpenPdfExport,
   onOpenConvocazioni,
   onOpenLocandina,
+  onOpenLocandinaSingola,
   onOpenTabellino,
   onOpenFoglioGara,
   sheetUrl,
@@ -272,7 +274,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       : 'text-slate-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400'
                   }`}
                 >
-                  <span>⚽ Gara (4)</span>
+                  <span>⚽ Gara (5)</span>
                 </button>
 
                 <button
@@ -416,7 +418,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       </button>
                     )}
 
-                    {/* 1.4 CREA LOCANDINA GARE A4 */}
+                    {/* 1.4 CREA LOCANDINA GARE A4 (PROGRAMMA) */}
                     {onOpenLocandina && (
                       <button
                         id="admin-btn-locandina"
@@ -433,19 +435,53 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           </div>
                           <div className="min-w-0">
                             <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                              <span>Crea Locandina Gare A4</span>
+                              <span>Locandina Programma Gare (A4)</span>
                               <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded-md bg-cyan-600 text-white shadow-2xs">
                                 Poster
                               </span>
                             </div>
                             <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                              Genera il manifesto ufficiale A4 con logo Cynthia per social e bacheca campo
+                              Genera il manifesto riepilogativo di tutte le partite con logo per la bacheca
                             </div>
                           </div>
                         </div>
                         <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-cyan-200 dark:border-cyan-700 shadow-2xs shrink-0 flex items-center gap-1 ml-2">
                           <span>Crea</span>
                           <ChevronRight className="w-3.5 h-3.5 text-cyan-500" />
+                        </span>
+                      </button>
+                    )}
+
+                    {/* 1.5 LOCANDINA SINGOLA PARTITA (SFONDO SPLASH BALL) */}
+                    {onOpenLocandinaSingola && (
+                      <button
+                        id="admin-btn-locandina-singola"
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onOpenLocandinaSingola();
+                        }}
+                        className="w-full flex items-center justify-between p-3 sm:p-3.5 rounded-xl border border-amber-300 dark:border-amber-700/80 bg-gradient-to-r from-amber-50/80 via-sky-50 to-blue-50 dark:from-amber-950/40 dark:via-sky-950/30 dark:to-blue-950/20 hover:from-amber-100 hover:to-sky-100 dark:hover:from-amber-900/50 dark:hover:to-sky-900/40 text-left transition group shadow-xs active:scale-[0.99] ring-1 ring-amber-400/30 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500 to-sky-600 text-white shadow-sm shrink-0">
+                            <Sparkles className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                              <span>Locandina Singola Partita (Matchday)</span>
+                              <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded-md bg-amber-500 text-white shadow-2xs">
+                                Sfondo Splash
+                              </span>
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                              Grafica social ufficiale 1:1, Story e A4 con sfondo palla splash blu e dettagli gara
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs font-bold text-amber-800 dark:text-amber-200 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 shadow-2xs shrink-0 flex items-center gap-1 ml-2">
+                          <span>Nuovo 🎨</span>
+                          <ChevronRight className="w-3.5 h-3.5 text-amber-500" />
                         </span>
                       </button>
                     )}

@@ -31,6 +31,7 @@ import { ConvocazioniModal } from './components/ConvocazioniModal';
 import { LocandinaModal } from './components/LocandinaModal';
 import { TabellinoModal } from './components/TabellinoModal';
 import { FoglioGaraPanchinaModal } from './components/FoglioGaraPanchinaModal';
+import { LocandinaSingolaModal } from './components/LocandinaSingolaModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
 import { AlertCircle, FileCode, BellRing, X, Palette } from 'lucide-react';
 
@@ -56,9 +57,11 @@ export default function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isConvocazioniModalOpen, setIsConvocazioniModalOpen] = useState<boolean>(false);
   const [isLocandinaModalOpen, setIsLocandinaModalOpen] = useState<boolean>(false);
+  const [isLocandinaSingolaModalOpen, setIsLocandinaSingolaModalOpen] = useState<boolean>(false);
   const [isTabellinoModalOpen, setIsTabellinoModalOpen] = useState<boolean>(false);
   const [isFoglioGaraModalOpen, setIsFoglioGaraModalOpen] = useState<boolean>(false);
   const [selectedTabellinoPartita, setSelectedTabellinoPartita] = useState<Partita | null>(null);
+  const [selectedLocandinaPartita, setSelectedLocandinaPartita] = useState<Partita | null>(null);
   const [recentVariations, setRecentVariations] = useState<MatchVariation[]>([]);
   const [bannerVariation, setBannerVariation] = useState<MatchVariation | null>(null);
 
@@ -462,9 +465,21 @@ export default function App() {
         onOpenPdfExport={() => setIsPdfModalOpen(true)}
         onOpenConvocazioni={() => setIsConvocazioniModalOpen(true)}
         onOpenLocandina={() => setIsLocandinaModalOpen(true)}
+        onOpenLocandinaSingola={() => {
+          setSelectedLocandinaPartita(null);
+          setIsLocandinaSingolaModalOpen(true);
+        }}
         onOpenTabellino={() => handleOpenTabellino()}
         onOpenFoglioGara={() => setIsFoglioGaraModalOpen(true)}
         sheetUrl={config.sheetUrl}
+      />
+
+      {/* Modale Locandina Singola Partita (Matchday con sfondo palla splash blu) */}
+      <LocandinaSingolaModal
+        isOpen={isLocandinaSingolaModalOpen}
+        onClose={() => setIsLocandinaSingolaModalOpen(false)}
+        partite={partite}
+        initialPartita={selectedLocandinaPartita}
       />
 
       {/* Modale Tabellino Gara & Diretta Live */}

@@ -421,31 +421,32 @@ function renderMatchCardTwoColumns(
   // Matchup Squadre
   const teamCasa = (p.squadraCasa || '').toUpperCase();
   const teamOspite = (p.squadraOspite || '').toUpperCase();
-  const matchY = y + 14.8;
+  const matchY = y + (h >= 24 ? 14.5 : 13.5);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(h >= 24 ? 8 : 7.2);
 
   const matchText = `${teamCasa} vs ${teamOspite}`;
-  if (matchText.length > 36) {
-    // Stampa su due righe se lungo
+  if (matchText.length > 34 && h >= 24) {
+    // Stampa su due righe solo se l'altezza card è sufficiente
     doc.setTextColor(isCasa ? 2 : 30, isCasa ? 132 : 41, isCasa ? 199 : 59);
-    doc.text(teamCasa.length > 30 ? teamCasa.substring(0, 28) + '..' : teamCasa, x + 4.5, matchY);
+    doc.text(teamCasa.length > 28 ? teamCasa.substring(0, 26) + '..' : teamCasa, x + 4.5, matchY);
     doc.setTextColor(isCasa ? 30 : 2, isCasa ? 41 : 132, isCasa ? 59 : 199);
-    doc.text(`vs ${teamOspite.length > 27 ? teamOspite.substring(0, 25) + '..' : teamOspite}`, x + 4.5, matchY + 3.8);
+    doc.text(`vs ${teamOspite.length > 26 ? teamOspite.substring(0, 24) + '..' : teamOspite}`, x + 4.5, matchY + 3.2);
   } else {
-    // Riga singola
+    // Riga singola con eventuale abbreviazione
     doc.setTextColor(15, 23, 42);
-    doc.text(matchText, x + 4.5, matchY);
+    const safeText = matchText.length > 36 ? matchText.substring(0, 34) + '..' : matchText;
+    doc.text(safeText, x + 4.5, matchY);
   }
 
   // Campo Sportivo
-  if (p.campo && h >= 22) {
+  if (p.campo && h >= 20) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
+    doc.setFontSize(5.8);
     doc.setTextColor(100, 116, 139);
-    const campoShort = p.campo.length > 36 ? p.campo.substring(0, 34) + '..' : p.campo;
-    doc.text(campoShort, x + 4.5, y + h - 2.5);
+    const campoShort = p.campo.length > 34 ? p.campo.substring(0, 32) + '..' : p.campo;
+    doc.text(campoShort, x + 4.5, y + h - 2);
   }
 }
 
@@ -742,7 +743,7 @@ function renderCanvasMatchCard(
   ctx.fillText(`🕒 ${dateFormatted}`, x + 30, y + 68);
 
   // Matchup Squadre
-  const teamFontSize = isTwoCols ? 24 : 28;
+  const teamFontSize = isTwoCols ? (h >= 170 ? 23 : 20) : (h >= 170 ? 27 : 24);
   ctx.font = `900 ${teamFontSize}px system-ui, -apple-system, sans-serif`;
 
   const casaName = p.squadraCasa || 'Squadra Casa';
@@ -752,7 +753,7 @@ function renderCanvasMatchCard(
   const maxTeamsW = w - 60;
 
   const totalMatchW = ctx.measureText(casaName + vsText + ospiteName).width;
-  const matchY = y + (h >= 190 ? 116 : 104);
+  const matchY = y + (h >= 180 ? 112 : h >= 150 ? 98 : 88);
 
   if (totalMatchW <= maxTeamsW) {
     ctx.fillStyle = isCasa ? '#0369a1' : '#1e293b';
@@ -785,12 +786,12 @@ function renderCanvasMatchCard(
     ctx.fillText(truncatedOspite, x + 30 + casaW + vsW, matchY);
   }
 
-  // Campo Sportivo (se presente e altezza card sufficiente)
-  if (p.campo && h >= 140) {
-    ctx.font = '500 18px system-ui, -apple-system, sans-serif';
+  // Campo Sportivo (se presente)
+  if (p.campo && h >= 120) {
+    ctx.font = '500 16px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = '#64748b';
     const venueRaw = `📍 ${p.campo}${p.indirizzo ? ' • ' + p.indirizzo : ''} (${p.comune})`;
-    ctx.fillText(truncateText(ctx, venueRaw, w - 60), x + 30, y + h - 18);
+    ctx.fillText(truncateText(ctx, venueRaw, w - 60), x + 30, y + h - 14);
   }
 }
 
