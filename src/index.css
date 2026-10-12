@@ -14,6 +14,56 @@
   margin: 10mm 12mm 12mm 12mm;
 }
 
+/* ==========================================================================
+   STAMPA SPECIFICA FOGLIO GARA PANCHINA A4 FEDELE 1:1
+   ========================================================================== */
+@media print {
+  body.print-foglio-panchina #root,
+  body.print-foglio-panchina header,
+  body.print-foglio-panchina main,
+  body.print-foglio-panchina footer,
+  body.print-foglio-panchina .no-print-foglio {
+    display: none !important;
+  }
+
+  body.print-foglio-panchina,
+  body.print-foglio-panchina [role="dialog"],
+  body.print-foglio-panchina [role="dialog"] > div,
+  body.print-foglio-panchina #foglio-panchina-a4-wrapper,
+  body.print-foglio-panchina #foglio-panchina-a4 {
+    display: block !important;
+    position: static !important;
+    background: white !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 4mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.print-foglio-panchina #foglio-panchina-a4 input {
+    display: inline-block !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-weight: bold !important;
+  }
+
+  body.print-foglio-panchina #foglio-panchina-a4 * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
 @media print {
   /* 1. Rimozione Elementi Interattivi e UI (Pulsanti, Filtri, Modali, Banner) */
   button,

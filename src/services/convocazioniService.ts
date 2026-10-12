@@ -461,43 +461,76 @@ function normalizeHeader(h: string): string {
 }
 
 /**
- * Confronta in modo flessibile due categorie (es. "Under 19" e "JUNIORES U19", "UNDER14PROV" e "Under 14")
+ * Normalizza il nome di una categoria per un confronto canonico rigoroso ed esatto.
+ * Rimuove accenti, caratteri speciali, spazi multipli e standardizza abbreviazioni ufficiali.
+ */
+export function canonicalCategoryKey(cat: string): string {
+  if (!cat) return '';
+  let s = cat
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Standardizza prefissi Under / U (es. "U14", "U 14" -> "UNDER 14")
+  s = s.replace(/\bU\s*([0-9]{1,2})\b/g, 'UNDER $1');
+
+  // Standardizza Prov / Provinciale / Provinciali in forma canonica PROVINCIALI
+  s = s.replace(/\b(PROV|PROVINCIALE|PROVINCIALI)\b/g, 'PROVINCIALI');
+
+  // Standardizza Reg / Regionale / Regionali in forma canonica REGIONALI
+  s = s.replace(/\b(REG|REGIONALE|REGIONALI)\b/g, 'REGIONALI');
+
+  // Standardizza Calcio a 5 / Ca5 -> C5
+  s = s.replace(/\b(CALCIO\s*A\s*5|CA5)\b/g, 'C5');
+
+  // Standardizza Maschile / Masc -> MASC
+  s = s.replace(/\b(MASCHILE|MASC)\b/g, 'MASC');
+
+  // Standardizza Femminile / Femm -> FEMMINILE
+  s = s.replace(/\b(FEMMINILE|FEMM)\b/g, 'FEMMINILE');
+
+  // Standardizza Categorie federali
+  s = s.replace(/\b(TERZA\s*CATEGORIA|3\s*CATEGORIA|3CATEGORIA)\b/g, '3 CATEGORIA');
+  s = s.replace(/\b(SECONDA\s*CATEGORIA|2\s*CATEGORIA|2CATEGORIA)\b/g, '2 CATEGORIA');
+  s = s.replace(/\b(PRIMA\s*CATEGORIA|1\s*CATEGORIA|1CATEGORIA)\b/g, '1 CATEGORIA');
+
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Confronta due categorie in modo che siano PERFETTAMENTE UGUALI come richiesto.
+ * Non esegue matching parziali o numerici approssimativi:
+ * es. "UNDER 14 PROVINCIALI" NON coincide MAI con "UNDER 14 REGIONALI".
  */
 export function isCategoryMatch(catA: string, catB: string): boolean {
   if (!catA || !catB) return false;
-  const a = catA.trim().toUpperCase();
-  const b = catB.trim().toUpperCase();
-  if (a === b) return true;
+  const a = catA.trim();
+  const b = catB.trim();
+  if (a.toUpperCase() === b.toUpperCase()) return true;
 
-  const cleanA = a.replace(/[^A-Z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
-  const cleanB = b.replace(/[^A-Z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
-  if (cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA)) return true;
+  const keyA = canonicalCategoryKey(a);
+  const keyB = canonicalCategoryKey(b);
+  if (!keyA || !keyB) return false;
+  if (keyA === keyB) return true;
 
-  // Estrae numeri di categoria (19, 18, 17, 16, 15, 14, 13, 12, 11, 10, ecc.)
-  // anche se attaccati a stringhe composte come UNDER14PROV, U15ELITE, UNDER16
-  const extractCatNumbers = (str: string): string[] => {
-    const matches = str.match(/(?:19|18|17|16|15|14|13|12|11|10|201[0-9]|202[0-9])/g);
-    return matches ? Array.from(new Set(matches)) : [];
-  };
-
-  const numsA = extractCatNumbers(cleanA);
-  const numsB = extractCatNumbers(cleanB);
-  if (numsA.length > 0 && numsB.length > 0) {
-    if (numsA.some((num) => numsB.includes(num))) {
-      return true;
-    }
+  // Gestione se una stringa riporta il girone (es. "PROMOZIONE GIRONE D" vs "PROMOZIONE")
+  const removeGirone = (str: string) =>
+    str.replace(/\bGIRONE\s+[A-Z0-9]+\b/g, '').replace(/\s+/g, ' ').trim();
+  const noGironeA = removeGirone(keyA);
+  const noGironeB = removeGirone(keyB);
+  if (noGironeA && noGironeB && noGironeA === noGironeB) {
+    return true;
   }
-
-  // Promozione / Prima squadra
-  const isPromoA = cleanA.includes('PROMOZIONE') || cleanA.includes('PRIMA') || cleanA.includes('SERIE D') || cleanA.includes('ECCELLENZA');
-  const isPromoB = cleanB.includes('PROMOZIONE') || cleanB.includes('PRIMA') || cleanB.includes('SERIE D') || cleanB.includes('ECCELLENZA');
-  if (isPromoA && isPromoB) return true;
 
   return false;
 }
 
 /**
- * Trova quale categoria della rosa corrisponde al campionato della gara
+ * Trova quale categoria della rosa corrisponde in modo PERFETTAMENTE UGUALE alla categoria/campionato della gara.
+ * Restituisce null se la gara appartiene a una categoria per cui non è stata caricata alcuna rosa.
  */
 export function findMatchingCategory(
   matchCampionato: string,
@@ -505,77 +538,20 @@ export function findMatchingCategory(
 ): string | null {
   if (!matchCampionato || !availableCategories || availableCategories.length === 0) return null;
 
-  // 1. Corrispondenza diretta / numerica
+  const normMatch = matchCampionato.trim().toUpperCase();
+
+  // 1. Prima cerca una corrispondenza esatta diretta (case-insensitive)
   for (const cat of availableCategories) {
-    if (isCategoryMatch(matchCampionato, cat)) {
+    if (cat.trim().toUpperCase() === normMatch) {
       return cat;
     }
   }
 
-  // 2. Corrispondenza per parole chiave note nel calcio dilettantistico
-  const normMatch = matchCampionato.toUpperCase();
-
-  if (
-    normMatch.includes('PROMOZIONE') ||
-    normMatch.includes('SERIE D') ||
-    normMatch.includes('PRIMA') ||
-    normMatch.includes('ECCELLENZA')
-  ) {
-    const found = availableCategories.find(c => {
-      const up = c.toUpperCase();
-      return (
-        up.includes('PROMOZIONE') ||
-        up.includes('PRIMA') ||
-        up.includes('SERIE D') ||
-        up.includes('ECCELLENZA')
-      );
-    });
-    if (found) return found;
-  }
-
-  if (normMatch.includes('19') || normMatch.includes('JUNIORES')) {
-    const found = availableCategories.find(c => c.toUpperCase().includes('19') || c.toUpperCase().includes('JUNIORES'));
-    if (found) return found;
-  }
-
-  if (normMatch.includes('18')) {
-    const found = availableCategories.find(c => c.toUpperCase().includes('18'));
-    if (found) return found;
-  }
-
-  if (normMatch.includes('17') || normMatch.includes('ALLIEVI')) {
-    const found = availableCategories.find(c => c.toUpperCase().includes('17') || c.toUpperCase().includes('ALLIEVI'));
-    if (found) return found;
-  }
-
-  if (normMatch.includes('16')) {
-    const found = availableCategories.find(c => c.toUpperCase().includes('16'));
-    if (found) return found;
-  }
-
-  if (normMatch.includes('15') || normMatch.includes('GIOVANISSIMI')) {
-    const found = availableCategories.find(c => c.toUpperCase().includes('15') || c.toUpperCase().includes('GIOVANISSIMI'));
-    if (found) return found;
-  }
-
-  if (normMatch.includes('14')) {
-    const found = availableCategories.find(c => c.toUpperCase().includes('14'));
-    if (found) return found;
-  }
-
-  if (normMatch.includes('13')) {
-    const found = availableCategories.find(c => c.toUpperCase().includes('13'));
-    if (found) return found;
-  }
-
-  if (normMatch.includes('ESORDIENTI')) {
-    const found = availableCategories.find(c => c.toUpperCase().includes('ESORDIENTI'));
-    if (found) return found;
-  }
-
-  if (normMatch.includes('PULCINI')) {
-    const found = availableCategories.find(c => c.toUpperCase().includes('PULCINI'));
-    if (found) return found;
+  // 2. Cerca tramite matching canonico rigoroso (isCategoryMatch)
+  for (const cat of availableCategories) {
+    if (isCategoryMatch(matchCampionato, cat)) {
+      return cat;
+    }
   }
 
   return null;

@@ -273,10 +273,11 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       ) as string[];
       const matchCat = findMatchingCategory(p.campionato, availableCats);
 
+      // Associa PERFETTAMENTE la categoria della gara selezionata
       if (matchCat) {
         setSelectedCategoryFilter(matchCat);
-      } else if (availableCats.length > 0) {
-        setSelectedCategoryFilter('ALL');
+      } else {
+        setSelectedCategoryFilter(p.campionato || 'AUTO');
       }
 
       // Se esistono convocati salvati in precedenza per questa specifica gara, ripristinali!
@@ -768,65 +769,30 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     handleRitrovoTimeChange(formatted);
   };
 
-  // Calcola la rosa dei calciatori appartenenti alla squadra/categoria della gara selezionata
+  // Calcola la rosa dei calciatori appartenenti PERFETTAMENTE alla categoria della gara selezionata
   const getMatchRosterPlayers = useCallback((): GiocatoreConvocato[] => {
     const campionatoGara = currentPartita?.campionato || categoriaCustom || '';
-    const clubGara = detectCynthiaClub(currentPartita);
     const catGara = matchedCategory || findMatchingCategory(campionatoGara, availableCategories);
 
-    // 1. Filtra i giocatori che appartengono specificamente alla squadra/categoria della gara selezionata
-    let rosterOfTeam = giocatori.filter((g) => {
-      // Verifica categoria
-      const catMatches = catGara
-        ? isCategoryMatch(g.categoria || '', catGara)
-        : campionatoGara
-        ? isCategoryMatch(g.categoria || '', campionatoGara)
-        : false;
+    if (!catGara && !campionatoGara) {
+      return [];
+    }
 
-      if (!catMatches) return false;
+    const targetCat = catGara || campionatoGara;
 
-      // Verifica società se specificata sul giocatore
-      if (g.squadra && clubGara) {
-        const sqUpper = g.squadra.toUpperCase();
-        if (clubGara === 'CYNTHIA 1920') {
-          if (sqUpper.includes('ACADEMY') || sqUpper.includes('ALBA')) return false;
-        } else if (clubGara === 'ACADEMY CYNTHIA GENZANO') {
-          if (!sqUpper.includes('ACADEMY')) return false;
-        } else if (clubGara === 'ALBACYNTHIA') {
-          if (!sqUpper.includes('ALBA')) return false;
-        }
-      }
-      return true;
+    // 1. Filtra i giocatori la cui categoria è PERFETTAMENTE UGUALE alla categoria della gara selezionata
+    const rosterOfTeam = giocatori.filter((g) => {
+      return g.categoria && isCategoryMatch(g.categoria, targetCat);
     });
 
-    // Se il filtro non ha trovato atleti, prova a matchare per categoria senza restrizione stretta di società
-    if (rosterOfTeam.length === 0 && (catGara || campionatoGara)) {
-      rosterOfTeam = giocatori.filter((g) => {
-        if (catGara && isCategoryMatch(g.categoria || '', catGara)) return true;
-        if (campionatoGara && isCategoryMatch(g.categoria || '', campionatoGara)) return true;
-        return false;
-      });
-    }
-
-    // Se l'utente ha impostato un filtro attivo nella UI diverso da ALL/AUTO
-    if (rosterOfTeam.length === 0 && selectedCategoryFilter !== 'ALL' && selectedCategoryFilter !== 'AUTO') {
-      rosterOfTeam = giocatori.filter((g) => g.categoria === selectedCategoryFilter);
-    }
-
-    // Se ancora nessun atleta e ci sono giocatori nel database, restituisce tutti i giocatori caricati
-    // per non lasciare MAI il foglio convocazioni senza atleti!
-    if (rosterOfTeam.length === 0 && giocatori.length > 0) {
-      rosterOfTeam = giocatori;
-    }
-
-    // 2. Aggiunge eventuali giocatori convocati (selezionati) per questa gara anche se provenienti da altra categoria/squadra
+    // 2. Aggiunge eventuali giocatori convocati (selezionati) per questa gara anche se provenienti da altra categoria (aggregati)
     const extraSelectedPlayers = giocatori.filter(
       (g) => g.selezionato && !rosterOfTeam.some((r) => r.id === g.id)
     );
 
     const combined = [...rosterOfTeam, ...extraSelectedPlayers];
     return deduplicateGiocatori(combined);
-  }, [currentPartita, categoriaCustom, matchedCategory, availableCategories, giocatori, selectedCategoryFilter]);
+  }, [currentPartita, categoriaCustom, matchedCategory, availableCategories, giocatori]);
 
   // Prepara le opzioni per generare il PDF o mostrare l'anteprima live per il mister
   const getPdfOptions = (modalitaOverride?: 'tutta_la_rosa' | 'solo_convocati'): ConvocazioniPdfOptions => {
@@ -963,12 +929,17 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   // Giocatori filtrati nella lista UI in base a categoria, società, ruolo, ricerca e storico
   const filteredGiocatori = useMemo(() => {
     return giocatori.filter((g) => {
-      // 1. Filtro Categoria
+      // 1. Filtro Categoria: deve essere perfettamente uguale alla categoria della gara selezionata
       if (selectedCategoryFilter !== 'ALL') {
         const cat = g.categoria || '';
-        if (selectedCategoryFilter === 'AUTO') {
-          if (matchedCategory && !isCategoryMatch(cat, matchedCategory)) return false;
-        } else if (!isCategoryMatch(cat, selectedCategoryFilter)) {
+        const targetCat =
+          selectedCategoryFilter === 'AUTO'
+            ? (matchedCategory || currentPartita?.campionato || categoriaCustom)
+            : selectedCategoryFilter;
+
+        if (targetCat) {
+          if (!isCategoryMatch(cat, targetCat)) return false;
+        } else {
           return false;
         }
       }
@@ -1005,7 +976,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
 
       return matchSearch && matchRuolo && matchHistory;
     });
-  }, [giocatori, selectedCategoryFilter, selectedClubFilter, matchedCategory, searchPlayer, filterRuolo, filterOnlyWithHistory, historicalConvocazioniStats]);
+  }, [giocatori, selectedCategoryFilter, selectedClubFilter, matchedCategory, currentPartita, categoriaCustom, searchPlayer, filterRuolo, filterOnlyWithHistory, historicalConvocazioniStats]);
 
   // Numero di atleti nella lista filtrata che hanno già convocazioni registrate nello storico
   const playersWithHistoryCount = useMemo(() => {
@@ -1172,10 +1143,15 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                   <Calendar className="w-4 h-4 text-sky-600 dark:text-sky-400" />
                   1. Scegli la Gara del Calendario
                 </span>
-                {matchedCategory && (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200 border border-sky-300 dark:border-sky-700 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-amber-500" />
-                    Rosa: {matchedCategory}
+                {matchedCategory ? (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-emerald-600" />
+                    Rosa associata: {matchedCategory} ({giocatori.filter((g) => isCategoryMatch(g.categoria || '', matchedCategory)).length} atleti)
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 text-amber-600" />
+                    Nessuna rosa nel file per: {currentPartita?.campionato || 'questa categoria'}
                   </span>
                 )}
               </div>
@@ -1718,20 +1694,35 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                   )}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {matchedCategory && (
+                  {matchedCategory ? (
                     <button
                       type="button"
                       onClick={() => setSelectedCategoryFilter(matchedCategory)}
                       className={`text-xs px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 ${
-                        selectedCategoryFilter === matchedCategory
+                        selectedCategoryFilter === matchedCategory || selectedCategoryFilter === 'AUTO'
                           ? 'bg-sky-600 text-white shadow-2xs ring-2 ring-sky-400'
                           : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
                       }`}
                     >
                       <Sparkles className="w-3 h-3 text-amber-300" />
-                      <span>Solo {matchedCategory}</span>
+                      <span>
+                        Rosa Gara: {matchedCategory} ({giocatori.filter((g) => isCategoryMatch(g.categoria || '', matchedCategory)).length})
+                      </span>
                     </button>
-                  )}
+                  ) : currentPartita?.campionato ? (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategoryFilter(currentPartita.campionato)}
+                      className={`text-xs px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 ${
+                        selectedCategoryFilter === currentPartita.campionato || selectedCategoryFilter === 'AUTO'
+                          ? 'bg-amber-600 text-white shadow-2xs ring-2 ring-amber-400'
+                          : 'bg-white dark:bg-slate-700 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-slate-600'
+                      }`}
+                    >
+                      <AlertTriangle className="w-3 h-3 text-amber-200" />
+                      <span>{currentPartita.campionato} (0 registrati)</span>
+                    </button>
+                  ) : null}
 
                   <button
                     type="button"
@@ -1746,9 +1737,9 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                   </button>
 
                   {availableCategories
-                    .filter((c) => c !== matchedCategory)
+                    .filter((c) => !matchedCategory || !isCategoryMatch(c, matchedCategory))
                     .map((cat) => {
-                      const countInCat = giocatori.filter((g) => g.categoria === cat).length;
+                      const countInCat = giocatori.filter((g) => isCategoryMatch(g.categoria || '', cat)).length;
                       const isSelected = selectedCategoryFilter === cat;
                       return (
                         <button
@@ -1992,8 +1983,18 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                     </p>
                   </div>
                 ) : filteredGiocatori.length === 0 ? (
-                  <div className="p-4 text-center text-xs text-slate-400">
-                    Nessun giocatore corrisponde ai filtri selezionati.
+                  <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center gap-2">
+                    <AlertTriangle className="w-6 h-6 text-amber-500" />
+                    <p className="font-bold text-slate-800 dark:text-slate-200">
+                      Nessun atleta registrato per la categoria &quot;
+                      {selectedCategoryFilter === 'AUTO'
+                        ? matchedCategory || currentPartita?.campionato || categoriaCustom
+                        : selectedCategoryFilter}
+                      &quot;
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-sm">
+                      Nel file delle rose non sono presenti atleti con categoria perfettamente uguale a questa gara. Puoi aggiungere atleti manualmente con &quot;+ Aggiungi Atleta&quot; o visualizzare altre rose dai filtri in alto.
+                    </p>
                   </div>
                 ) : (
                   filteredGiocatori.map((g) => {

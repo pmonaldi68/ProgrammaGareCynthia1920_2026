@@ -30,6 +30,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { ConvocazioniModal } from './components/ConvocazioniModal';
 import { LocandinaModal } from './components/LocandinaModal';
 import { TabellinoModal } from './components/TabellinoModal';
+import { FoglioGaraPanchinaModal } from './components/FoglioGaraPanchinaModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
 import { AlertCircle, FileCode, BellRing, X, Palette } from 'lucide-react';
 
@@ -56,6 +57,7 @@ export default function App() {
   const [isConvocazioniModalOpen, setIsConvocazioniModalOpen] = useState<boolean>(false);
   const [isLocandinaModalOpen, setIsLocandinaModalOpen] = useState<boolean>(false);
   const [isTabellinoModalOpen, setIsTabellinoModalOpen] = useState<boolean>(false);
+  const [isFoglioGaraModalOpen, setIsFoglioGaraModalOpen] = useState<boolean>(false);
   const [selectedTabellinoPartita, setSelectedTabellinoPartita] = useState<Partita | null>(null);
   const [recentVariations, setRecentVariations] = useState<MatchVariation[]>([]);
   const [bannerVariation, setBannerVariation] = useState<MatchVariation | null>(null);
@@ -461,6 +463,7 @@ export default function App() {
         onOpenConvocazioni={() => setIsConvocazioniModalOpen(true)}
         onOpenLocandina={() => setIsLocandinaModalOpen(true)}
         onOpenTabellino={() => handleOpenTabellino()}
+        onOpenFoglioGara={() => setIsFoglioGaraModalOpen(true)}
         sheetUrl={config.sheetUrl}
       />
 
@@ -470,6 +473,13 @@ export default function App() {
         onClose={() => setIsTabellinoModalOpen(false)}
         partite={partite}
         initialPartita={selectedTabellinoPartita}
+      />
+
+      {/* Modale Foglio Gara Panchina (Referto Note A4) */}
+      <FoglioGaraPanchinaModal
+        isOpen={isFoglioGaraModalOpen}
+        onClose={() => setIsFoglioGaraModalOpen(false)}
+        partite={partite}
       />
 
       {/* Modale Locandina Gare A4 */}
