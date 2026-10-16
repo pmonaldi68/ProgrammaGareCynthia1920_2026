@@ -4,6 +4,7 @@ import { Navigation, CalendarPlus, Share2, Download, ExternalLink, Check, Clock 
 import { generateGoogleCalendarUrl, downloadIcsFile } from '../utils/calendarUtils';
 import { formatMatchDateAndDay } from '../utils/dateFormatter';
 import { WeatherBadge } from './WeatherBadge';
+import { Countdown } from './Countdown';
 
 interface MatchTableProps {
   partite: Partita[];
@@ -104,6 +105,7 @@ export const MatchTable: React.FC<MatchTableProps> = ({ partite }) => {
                         <Clock className="w-3 h-3 text-amber-100" />
                         {dInfo.oraFormatted}
                       </span>
+                      <Countdown data={p.data} ora={p.ora} compact />
                       <WeatherBadge partita={p} compact />
                     </div>
                   </td>

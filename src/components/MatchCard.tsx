@@ -3,6 +3,7 @@ import { Partita } from '../types';
 import { generateGoogleCalendarUrl, downloadIcsFile } from '../utils/calendarUtils';
 import { formatMatchDateAndDay } from '../utils/dateFormatter';
 import { WeatherBadge } from './WeatherBadge';
+import { Countdown } from './Countdown';
 import {
   MapPin,
   Navigation,
@@ -142,6 +143,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({ partita }) => {
             </div>
           </div>
         </div>
+
+        {/* Countdown Incontro nelle prossime 24 ore */}
+        <Countdown data={partita.data} ora={partita.ora} className="mb-3.5" />
 
         {/* Box Squadre: Casa vs Ospite con nome centrato e senza etichette/scudi ridondanti */}
         <div className="space-y-2 mb-4">

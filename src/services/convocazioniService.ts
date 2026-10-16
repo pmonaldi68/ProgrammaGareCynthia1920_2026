@@ -426,6 +426,108 @@ export function clearConvocatiForMatch(matchId: string): void {
   }
 }
 
+export interface SavedConvocazioneRecord {
+  id: string;
+  matchId: string;
+  savedAt: string;
+  displayDate: string;
+  categoria: string;
+  partitaTitle: string;
+  squadraCasa: string;
+  squadraOspite: string;
+  dataGara: string;
+  oraGara: string;
+  oraRitrovo: string;
+  luogoRitrovo: string;
+  campo: string;
+  indirizzo: string;
+  mister: string;
+  noteMister: string;
+  selectedPlayerIds: string[];
+  selectedCount: number;
+  societa: string;
+  customWhatsAppText?: string | null;
+}
+
+const SAVED_CONVOCAZIONI_ARCHIVE_KEY = 'cynthia_saved_convocazioni_archive_v2';
+
+/**
+ * Carica tutte le convocazioni salvate nell'archivio storico (ordinate per data decrescente)
+ */
+export function loadSavedConvocazioniArchive(): SavedConvocazioneRecord[] {
+  try {
+    const raw = localStorage.getItem(SAVED_CONVOCAZIONI_ARCHIVE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
+      }
+    }
+  } catch (e) {
+    console.warn('Errore lettura archivio convocazioni', e);
+  }
+  return [];
+}
+
+/**
+ * Salva o aggiorna una convocazione completa nell'archivio storico per riapertura rapida
+ */
+export function saveConvocazioneToArchive(
+  data: Omit<SavedConvocazioneRecord, 'id' | 'savedAt' | 'displayDate'> & { id?: string }
+): SavedConvocazioneRecord {
+  const archive = loadSavedConvocazioniArchive();
+  const now = new Date();
+  const displayDate = now.toLocaleString('it-IT', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  // Cerca se esiste già un record con lo stesso matchId (se diverso da custom_match) o id esplicito
+  const existingIndex = data.id
+    ? archive.findIndex((r) => r.id === data.id)
+    : archive.findIndex((r) => r.matchId && r.matchId === data.matchId && data.matchId !== 'custom_match');
+
+  const newRecord: SavedConvocazioneRecord = {
+    ...data,
+    id: data.id || (existingIndex >= 0 ? archive[existingIndex].id : `conv_${Date.now()}`),
+    savedAt: now.toISOString(),
+    displayDate,
+  };
+
+  if (existingIndex >= 0) {
+    archive[existingIndex] = newRecord;
+  } else {
+    archive.unshift(newRecord);
+  }
+
+  try {
+    localStorage.setItem(SAVED_CONVOCAZIONI_ARCHIVE_KEY, JSON.stringify(archive));
+  } catch (e) {
+    console.warn('Errore salvataggio archivio convocazioni', e);
+  }
+
+  // Sincronizza anche con il salvataggio per match
+  if (data.matchId) {
+    saveConvocatiForMatch(data.matchId, data.selectedPlayerIds);
+  }
+
+  return newRecord;
+}
+
+/**
+ * Elimina una specifica convocazione salvata dall'archivio
+ */
+export function deleteConvocazioneFromArchive(id: string): void {
+  try {
+    const archive = loadSavedConvocazioniArchive().filter((r) => r.id !== id);
+    localStorage.setItem(SAVED_CONVOCAZIONI_ARCHIVE_KEY, JSON.stringify(archive));
+  } catch (e) {
+    console.warn('Errore eliminazione convocazione da archivio', e);
+  }
+}
+
 /**
  * Calcola quante convocazioni precedenti ha ciascun giocatore nello storico salvato in localStorage.
  * excludeCurrentMatchId permette di escludere la partita attualmente aperta,
