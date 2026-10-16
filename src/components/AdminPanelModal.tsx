@@ -30,6 +30,7 @@ import {
   ExternalLink,
   Archive,
   Download,
+  FileCode,
 } from 'lucide-react';
 import { useTheme, COLOR_THEME_OPTIONS, PrimaryColor } from '../context/ThemeContext';
 import { sendWebNotification, requestNotificationPermission } from '../services/notificationService';
@@ -48,6 +49,9 @@ interface AdminPanelModalProps {
   onOpenTabellino?: () => void;
   onOpenFoglioGara?: () => void;
   sheetUrl: string;
+  totalPartiteCount?: number;
+  publicPartiteCount?: number;
+  donBoscoCount?: number;
 }
 
 const ADMIN_PASSWORD = 'Admin1234';
@@ -69,6 +73,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onOpenTabellino,
   onOpenFoglioGara,
   sheetUrl,
+  totalPartiteCount,
+  publicPartiteCount,
+  donBoscoCount,
 }) => {
   const { theme, setTheme, resolvedTheme, primaryColor, setPrimaryColor } = useTheme();
 
@@ -303,6 +310,31 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   <span>⚙️ Sistema</span>
                 </button>
               </div>
+
+              {/* Banner Informativo Gare Riservate P.G.S. DON BOSCO GENZANO (Gialloblù) */}
+              {donBoscoCount !== undefined && donBoscoCount > 0 && (
+                <div className="p-3 sm:p-3.5 rounded-xl border border-amber-300 dark:border-amber-700/80 bg-gradient-to-r from-amber-50/95 via-yellow-50/70 to-blue-50/60 dark:from-amber-950/40 dark:via-blue-950/30 dark:to-slate-900/40 shadow-xs">
+                  <div className="flex items-start gap-2.5">
+                    <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500 to-blue-600 text-white shadow-sm shrink-0 mt-0.5">
+                      <Shield className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <span>🟡🔵</span>
+                          <span>P.G.S. DON BOSCO GENZANO</span>
+                        </span>
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-500 text-white shadow-2xs">
+                          {donBoscoCount} {donBoscoCount === 1 ? 'Gara Riservata' : 'Gare Riservate'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                        Le gare della Don Bosco Genzano (colori sociali <strong>Giallo e Blu 🟡🔵</strong>) <strong>non sono visibili nell&apos;area pubblica</strong> ai tifosi. Sono attive ed esclusive <strong>qui nell&apos;Area Admin</strong> per Convocazioni, Fogli Gara, Tabellino Live e Locandine.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* GRUPPO 1: ⚽ STRUMENTI GARA & PANCHINA */}
               {(activeTab === 'all' || activeTab === 'match') && (
@@ -614,6 +646,36 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       <span className="text-xs font-bold text-violet-700 dark:text-violet-300 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-violet-300 dark:border-violet-700 shadow-2xs shrink-0 flex items-center gap-1 ml-2">
                         <Download className="w-3.5 h-3.5 text-violet-600" />
                         <span>ZIP</span>
+                      </span>
+                    </a>
+
+                    {/* 2.5 VERSIONE HTML PURO STANDALONE (RISERVATO ADMIN) */}
+                    <a
+                      id="admin-btn-standalone-html"
+                      href="./standalone.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full flex items-center justify-between p-3 sm:p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 text-left transition group active:scale-[0.99] cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2.5 rounded-xl bg-slate-700 text-white shadow-sm shrink-0">
+                          <FileCode className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                            <span>Versione HTML Puro (Standalone)</span>
+                            <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
+                              No Build
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                            File HTML autonomo con Tailwind CDN pronto all&apos;uso senza compilazione
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs shrink-0 flex items-center gap-1 ml-2">
+                        <span>Apri</span>
+                        <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
                       </span>
                     </a>
                   </div>

@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { Partita, GiocatoreConvocato, ConvocazioneConfig } from '../types';
 import { APP_CONFIG } from '../appConfig';
+import { isDonBoscoGenzanoMatch } from '../utils/donBoscoUtils';
 import { parseCSV } from '../services/sheetService';
 import { ConvocazioniPdfPreviewModal } from './ConvocazioniPdfPreviewModal';
 import {
@@ -1164,11 +1165,14 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                     onChange={(e) => setSelectedPartitaId(e.target.value)}
                     className="w-full text-xs sm:text-sm font-semibold p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 focus:outline-hidden"
                   >
-                    {partite.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        [{p.campionato}] {p.squadraCasa} vs {p.squadraOspite} ({p.data} ore {p.ora})
-                      </option>
-                    ))}
+                    {partite.map((p) => {
+                      const isDb = isDonBoscoGenzanoMatch(p);
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {isDb ? '🔒 [DON BOSCO] ' : ''}[{p.campionato}] {p.squadraCasa} vs {p.squadraOspite} ({p.data} ore {p.ora})
+                        </option>
+                      );
+                    })}
                   </select>
 
                   {/* Informazione Rose Multi-Club Convocabili */}
@@ -1178,11 +1182,24 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                       <span>Rose sempre disponibili:</span>
                       <span className="font-bold text-slate-900 dark:text-white">CYNTHIA 1920</span> •{' '}
                       <span className="font-bold text-slate-900 dark:text-white">ACADEMY CYNTHIA GENZANO</span> •{' '}
-                      <span className="font-bold text-slate-900 dark:text-white">ALBACYNTHIA</span>
+                      <span className="font-bold text-slate-900 dark:text-white">ALBACYNTHIA</span> •{' '}
+                      <span className="font-bold text-amber-700 dark:text-amber-400">🟡🔵 P.G.S. DON BOSCO GENZANO</span>
                     </div>
                     {detectedClub && (
-                      <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-bold border border-amber-300 dark:border-amber-700 text-[10px]">
-                        Società gara: {detectedClub} ({currentPartita?.isCynthiaCasa ? 'Casa' : 'Trasferta'})
+                      <span
+                        className={`px-2 py-0.5 rounded-md font-bold text-[10px] border flex items-center gap-1 ${
+                          detectedClub === 'P.G.S. DON BOSCO GENZANO'
+                            ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border-amber-400 dark:border-amber-600 shadow-2xs'
+                            : 'bg-sky-100 dark:bg-sky-900/60 text-sky-900 dark:text-sky-200 border-sky-300 dark:border-sky-700'
+                        }`}
+                      >
+                        <span>{detectedClub === 'P.G.S. DON BOSCO GENZANO' ? '🟡🔵' : '🔵⚪'}</span>
+                        <span>Società gara: {detectedClub}</span>
+                        <span>
+                          {detectedClub === 'P.G.S. DON BOSCO GENZANO'
+                            ? '(🔒 Riservata Admin)'
+                            : `(${currentPartita?.isCynthiaCasa ? 'Casa' : 'Trasferta'})`}
+                        </span>
                       </span>
                     )}
                   </div>

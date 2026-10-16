@@ -33,6 +33,7 @@ import { TabellinoModal } from './components/TabellinoModal';
 import { FoglioGaraPanchinaModal } from './components/FoglioGaraPanchinaModal';
 import { LocandinaSingolaModal } from './components/LocandinaSingolaModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
+import { getPublicPartite, getDonBoscoPartite } from './utils/donBoscoUtils';
 import { AlertCircle, FileCode, BellRing, X, Palette } from 'lucide-react';
 
 export default function App() {
@@ -139,21 +140,31 @@ export default function App() {
     return () => clearInterval(intervalId);
   }, []);
 
-  // Categorie / Campionati unici per il filtro
+  // Partite destinate all'area pubblica (esclude rigorosamente le gare della P.G.S. DON BOSCO GENZANO)
+  const publicPartite = useMemo(() => {
+    return getPublicPartite(partite);
+  }, [partite]);
+
+  // Gare riservate alla P.G.S. DON BOSCO GENZANO (gestibili solo nell'Area Amministrazione)
+  const donBoscoPartite = useMemo(() => {
+    return getDonBoscoPartite(partite);
+  }, [partite]);
+
+  // Categorie / Campionati unici per il filtro dell'area pubblica
   const availableCampionati = useMemo(() => {
-    const list = Array.from(new Set(partite.map(p => p.campionato))).filter(Boolean);
+    const list = Array.from(new Set(publicPartite.map(p => p.campionato))).filter(Boolean);
     return list.sort();
-  }, [partite]);
+  }, [publicPartite]);
 
-  // Date uniche per il filtro
+  // Date uniche per il filtro dell'area pubblica
   const availableDate = useMemo(() => {
-    const list = Array.from(new Set(partite.map(p => p.data))).filter(Boolean);
+    const list = Array.from(new Set(publicPartite.map(p => p.data))).filter(Boolean);
     return list.sort();
-  }, [partite]);
+  }, [publicPartite]);
 
-  // Partite filtrate (supporta Categoria, Data predefinita, Intervallo Date Picker Da/A, Casa/Fuori, Ricerca)
+  // Partite filtrate per l'area pubblica (supporta Categoria, Data, Range Date, Casa/Fuori, Ricerca)
   const filteredPartite = useMemo(() => {
-    return partite.filter(p => {
+    return publicPartite.filter(p => {
       // Filtro Campionato
       if (filters.campionato !== 'ALL' && p.campionato !== filters.campionato) {
         return false;
@@ -205,7 +216,7 @@ export default function App() {
 
       return true;
     });
-  }, [partite, filters]);
+  }, [publicPartite, filters]);
 
   const handleSaveConfig = (newConfig: SheetConfig) => {
     setConfig(newConfig);
@@ -214,7 +225,8 @@ export default function App() {
 
   const handleApplyPartite = (newPartite: Partita[]) => {
     const followed = getFollowedCategories();
-    const detectedVariations = checkPartiteVariations(newPartite, followed);
+    const publicNewPartite = getPublicPartite(newPartite);
+    const detectedVariations = checkPartiteVariations(publicNewPartite, followed);
     if (detectedVariations.length > 0) {
       setRecentVariations(prev => [...detectedVariations, ...prev]);
       setBannerVariation(detectedVariations[0]);
@@ -307,7 +319,7 @@ export default function App() {
         )}
 
         {/* Barra Statistiche Riepilogative */}
-        <StatsSummary partite={filteredPartite} totalAvailable={partite.length} />
+        <StatsSummary partite={filteredPartite} totalAvailable={publicPartite.length} />
 
         {/* Barra Filtri (Campionato, Data, Date Picker Intervallo, Casa/Fuori, Cerca, Switch Vista) */}
         <FilterBar
@@ -315,7 +327,7 @@ export default function App() {
           onChangeFilters={setFilters}
           availableCampionati={availableCampionati}
           availableDate={availableDate}
-          partite={partite}
+          partite={publicPartite}
           viewMode={viewMode}
           onChangeViewMode={setViewMode}
           onOpenPdfExport={() => setIsPdfModalOpen(true)}
@@ -411,24 +423,15 @@ export default function App() {
               <Palette className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
               Impostazioni & Tema
             </button>
-            <span className="text-slate-300 dark:text-slate-700">•</span>
-            <a
-              href="./standalone.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 transition flex items-center gap-1"
-            >
-              Versione HTML Puro <FileCode className="w-3 h-3" />
-            </a>
           </div>
         </div>
       </footer>
 
-      {/* Modale Esportazione e Stampa Report PDF Settimanale */}
+      {/* Modale Esportazione e Stampa Report PDF Settimanale (Area Pubblica) */}
       <PdfExportModal
         isOpen={isPdfModalOpen}
         onClose={() => setIsPdfModalOpen(false)}
-        allPartite={partite}
+        allPartite={publicPartite}
         filteredPartite={filteredPartite}
         hasActiveFilters={
           filters.campionato !== 'ALL' ||
@@ -472,6 +475,9 @@ export default function App() {
         onOpenTabellino={() => handleOpenTabellino()}
         onOpenFoglioGara={() => setIsFoglioGaraModalOpen(true)}
         sheetUrl={config.sheetUrl}
+        totalPartiteCount={partite.length}
+        publicPartiteCount={publicPartite.length}
+        donBoscoCount={donBoscoPartite.length}
       />
 
       {/* Modale Locandina Singola Partita (Matchday con sfondo palla splash blu) */}

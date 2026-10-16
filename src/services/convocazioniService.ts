@@ -1,6 +1,7 @@
 import { GiocatoreConvocato, ConvocazioneConfig, Partita } from '../types';
 import { buildCsvUrl, parseCSV } from './sheetService';
 import { APP_CONFIG } from '../appConfig';
+import { isDonBoscoGenzanoMatch } from '../utils/donBoscoUtils';
 
 const CONVOCAZIONI_CONFIG_KEY = 'cynthia_convocazioni_config_v1';
 const CONVOCAZIONI_PLAYERS_CACHE_KEY = 'cynthia_convocazioni_players_cache_v1';
@@ -16,6 +17,7 @@ export const CYNTHIA_SOCIETA = [
   'CYNTHIA 1920',
   'ACADEMY CYNTHIA GENZANO',
   'ALBACYNTHIA',
+  'P.G.S. DON BOSCO GENZANO',
 ] as const;
 
 export type CynthiaSocieta = typeof CYNTHIA_SOCIETA[number];
@@ -84,6 +86,17 @@ export function detectCynthiaClub(partita?: Partita | null): CynthiaSocieta {
   const ospite = (partita.squadraOspite || '').toUpperCase();
   const camp = (partita.campionato || '').toUpperCase();
 
+  if (
+    casa.includes('DON BOSCO') ||
+    ospite.includes('DON BOSCO') ||
+    camp.includes('DON BOSCO') ||
+    casa.includes('P.G.S.') ||
+    ospite.includes('P.G.S.') ||
+    casa.includes('PGS') ||
+    ospite.includes('PGS')
+  ) {
+    return 'P.G.S. DON BOSCO GENZANO';
+  }
   if (casa.includes('ALBACYNTHIA') || ospite.includes('ALBACYNTHIA') || camp.includes('ALBACYNTHIA')) {
     return 'ALBACYNTHIA';
   }
@@ -990,8 +1003,18 @@ export function buildWhatsAppConvocazioniMessage(params: WhatsAppMessageParams):
 
   const convocati = giocatori.filter(g => g.selezionato);
 
-  // 1. Intestazione ufficiale
-  let msg = `📋 *CONVOCAZIONE UFFICIALE*\n\n`;
+  const isDonBosco =
+    isDonBoscoGenzanoMatch({
+      squadraCasa: casa,
+      squadraOspite: ospite,
+      campionato: categoria,
+      gara: gara,
+    }) || (partita ? isDonBoscoGenzanoMatch(partita) : false);
+
+  // 1. Intestazione ufficiale (colori sociali: 🟡🔵 per Don Bosco Genzano, 🔵⚪ per Cynthia)
+  let msg = isDonBosco
+    ? `📋🟡🔵 *CONVOCAZIONE UFFICIALE PGS DON BOSCO*\n\n`
+    : `📋 *CONVOCAZIONE UFFICIALE*\n\n`;
 
   // 2. Campionato e Partita
   const campTitle = [categoria, girone].filter(Boolean).join(' ');
@@ -1067,7 +1090,12 @@ export function buildWhatsAppConvocazioniMessage(params: WhatsAppMessageParams):
     msg += `\n👤 *MISTER*: ${cleanMister}\n`;
   }
 
-  msg += `\n🔵⚪ *FORZA CYNTHIA!*`;
+  // 6. Chiusura / Grido d'incoraggiamento della società con colori dedicati
+  if (isDonBosco) {
+    msg += `\n🟡🔵 *FORZA PGS!*`;
+  } else {
+    msg += `\n🔵⚪ *FORZA CYNTHIA!*`;
+  }
 
   return msg;
 }
@@ -1078,5 +1106,15 @@ export function buildWhatsAppConvocazioniMessage(params: WhatsAppMessageParams):
 export function shareOnWhatsApp(text: string): void {
   const encoded = encodeURIComponent(text);
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encoded}`;
-  window.open(whatsappUrl, '_blank');
+  try {
+    const link = document.createElement('a');
+    link.href = whatsappUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch {
+    window.location.href = whatsappUrl;
+  }
 }
