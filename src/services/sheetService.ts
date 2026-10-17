@@ -298,7 +298,14 @@ export function resolveMissingPartiteCoords(partite: Partita[]): void {
 /**
  * Carica le partite da URL Google Sheets o file locale
  */
-export async function fetchPartiteFromSource(sheetUrlOrId?: string, tabName?: string): Promise<Partita[]> {
+import { getAccessToken } from './googleAuthService';
+import { extractSpreadsheetId, fetchSpreadsheetValues } from './googleSheetsService';
+
+export async function fetchPartiteFromSource(
+  sheetUrlOrId?: string,
+  tabName?: string,
+  accessToken?: string | null
+): Promise<Partita[]> {
   const target = (sheetUrlOrId || '').trim();
 
   // Se l'utente non ha specificato alcun URL, prova a vedere se esiste un file sincronizzato da GitHub Actions
@@ -329,6 +336,27 @@ export async function fetchPartiteFromSource(sheetUrlOrId?: string, tabName?: st
     return DEFAULT_PARTITE;
   }
 
+  // 1. Se abbiamo un access token Google Workspace e sembra un ID/URL Google Sheets, prova via Google Sheets API v4
+  const cleanId = extractSpreadsheetId(target);
+  const activeToken = accessToken || (await getAccessToken());
+
+  if (activeToken && /^[a-zA-Z0-9-_]{20,}$/.test(cleanId)) {
+    try {
+      const values = await fetchSpreadsheetValues(cleanId, tabName || '', activeToken);
+      if (values && values.length >= 2) {
+        const partite = mapCsvToPartite(values);
+        if (partite.length > 0) {
+          resolveMissingPartiteCoords(partite);
+          saveCachedPartite(partite);
+          return partite;
+        }
+      }
+    } catch (apiErr: any) {
+      console.warn('Google Sheets API v4 non riuscita, provo con esportazione CSV:', apiErr?.message);
+    }
+  }
+
+  // 2. Altrimenti usa l'esportazione CSV diretta o gviz
   const rawCsvUrl = buildCsvUrl(target, tabName);
   const cacheBuster = `_cb=${Date.now()}`;
   const csvUrl = rawCsvUrl.includes('?') ? `${rawCsvUrl}&${cacheBuster}` : `${rawCsvUrl}?${cacheBuster}`;
@@ -356,8 +384,21 @@ export async function fetchPartiteFromSource(sheetUrlOrId?: string, tabName?: st
       csvText.includes('Sign in to your Google Account') ||
       csvText.includes('accounts.google.com')
     ) {
+      // Se il foglio richiede login e abbiamo un token, riprova con le API autenticate
+      if (activeToken && /^[a-zA-Z0-9-_]{20,}$/.test(cleanId)) {
+        const values = await fetchSpreadsheetValues(cleanId, tabName || '', activeToken);
+        if (values && values.length >= 2) {
+          const partite = mapCsvToPartite(values);
+          if (partite.length > 0) {
+            resolveMissingPartiteCoords(partite);
+            saveCachedPartite(partite);
+            return partite;
+          }
+        }
+      }
+
       throw new Error(
-        'Il foglio Google è privato o richiede l\'accesso con account Google. Nel foglio clicca su "Condividi" in alto a destra e imposta "Chiunque abbia il link" come Visualizzatore.'
+        'Il foglio Google è privato. Accedi con Google Workspace tramite il pulsante "Accedi con Google" per caricarlo automaticamente.'
       );
     }
 

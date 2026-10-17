@@ -37,11 +37,16 @@ import {
   Save,
   FolderOpen,
   BookmarkCheck,
+  ExternalLink,
 } from 'lucide-react';
 import { Partita, GiocatoreConvocato, ConvocazioneConfig } from '../types';
 import { APP_CONFIG } from '../appConfig';
 import { isDonBoscoGenzanoMatch } from '../utils/donBoscoUtils';
 import { parseCSV } from '../services/sheetService';
+import { useGoogleAuth } from '../context/GoogleAuthContext';
+import { GoogleSignInButton } from './GoogleSignInButton';
+import { GoogleDrivePickerModal } from './GoogleDrivePickerModal';
+import { createGoogleSpreadsheet } from '../services/googleSheetsService';
 import { ConvocazioniPdfPreviewModal } from './ConvocazioniPdfPreviewModal';
 import { ArchivioConvocazioniModal } from './ArchivioConvocazioniModal';
 import {
@@ -84,6 +89,11 @@ import {
   loadSavedConvocazioniArchive,
   saveConvocazioneToArchive,
   deleteConvocazioneFromArchive,
+  ConvocazioniDraft,
+  saveDraftForMatch,
+  loadDraftForMatch,
+  clearDraftForMatch,
+  downloadConvocatiCsv,
 } from '../services/convocazioniService';
 
 interface ConvocazioniModalProps {
@@ -120,7 +130,12 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     }
     const cleanList = deduplicateGiocatori(cached);
     const initialMatchId = partite.length > 0 ? partite[0].id : '';
-    const savedIds = initialMatchId ? loadSavedConvocatiForMatch(initialMatchId) : null;
+    const initialDraft = initialMatchId ? loadDraftForMatch(initialMatchId) : null;
+    const savedIds = initialDraft
+      ? initialDraft.selectedPlayerIds
+      : initialMatchId
+      ? loadSavedConvocatiForMatch(initialMatchId)
+      : null;
     if (savedIds !== null) {
       const idSet = new Set(savedIds);
       return cleanList.map((g) => ({ ...g, selezionato: idSet.has(g.id) }));
@@ -166,6 +181,22 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
 
   // Messaggio successo esportazione JSON
   const [exportSuccessMessage, setExportSuccessMessage] = useState<string | null>(null);
+
+  // Stato Bozza Convocazioni (salvataggio locale per partita)
+  const [hasCurrentMatchDraft, setHasCurrentMatchDraft] = useState<boolean>(false);
+  const [currentMatchDraftSavedAt, setCurrentMatchDraftSavedAt] = useState<string | null>(null);
+  const [draftNotice, setDraftNotice] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+
+  // Stato notifica esportazione CSV
+  const [csvNotice, setCsvNotice] = useState<string | null>(null);
+
+  // Integrazione Google Workspace (Google Sheets & Google Drive)
+  const { user: googleUser, accessToken, isAuthenticated: isGoogleAuthenticated, login: googleLogin } = useGoogleAuth();
+  const [isDrivePickerOpenForConvocazioni, setIsDrivePickerOpenForConvocazioni] = useState<boolean>(false);
+  const [isExportingGoogleSheet, setIsExportingGoogleSheet] = useState<boolean>(false);
+  const [showGoogleSheetConfirmModal, setShowGoogleSheetConfirmModal] = useState<boolean>(false);
+  const [googleSheetCreatedUrl, setGoogleSheetCreatedUrl] = useState<string | null>(null);
+  const [googleSheetNotice, setGoogleSheetNotice] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Stato copia
   const [copied, setCopied] = useState<boolean>(false);
@@ -271,9 +302,32 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     const p = partite.find((m) => m.id === selectedPartitaId);
     if (!p) return;
 
-    // Carica la lista dei convocati salvati in localStorage per questa specifica gara
-    const savedSelectedIds = loadSavedConvocatiForMatch(p.id);
+    // Controlla se esiste una bozza salvata o convocati memorizzati per questa specifica gara in localStorage
+    const savedDraft = loadDraftForMatch(p.id);
+    const savedSelectedIds = savedDraft
+      ? savedDraft.selectedPlayerIds
+      : loadSavedConvocatiForMatch(p.id);
     const savedIdSet = savedSelectedIds !== null ? new Set(savedSelectedIds) : null;
+
+    if (savedDraft) {
+      setHasCurrentMatchDraft(true);
+      setCurrentMatchDraftSavedAt(savedDraft.displayDate || savedDraft.savedAt);
+      if (savedDraft.misterName) {
+        setMisterName(savedDraft.misterName);
+      }
+      if (savedDraft.noteMister !== undefined) {
+        setNoteMister(savedDraft.noteMister);
+      }
+      if (savedDraft.oraRitrovo) {
+        setOraRitrovo(savedDraft.oraRitrovo);
+      }
+      if (savedDraft.editedWhatsAppText) {
+        setEditedWhatsAppText(savedDraft.editedWhatsAppText);
+      }
+    } else {
+      setHasCurrentMatchDraft(false);
+      setCurrentMatchDraftSavedAt(null);
+    }
 
     setGiocatori((prev) => {
       const cleanList = deduplicateGiocatori(prev);
@@ -289,7 +343,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         setSelectedCategoryFilter(p.campionato || 'AUTO');
       }
 
-      // Se esistono convocati salvati in precedenza per questa specifica gara, ripristinali!
+      // Se esistono convocati salvati nella bozza o in memoria per questa specifica gara, ripristinali esattamente!
       // Altrimenti, per una gara non ancora compilata, lascia tutti deselezionati
       const updated = cleanList.map((g) => ({
         ...g,
@@ -1075,6 +1129,190 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     }
   };
 
+  // Salva Bozza in localStorage per la partita corrente
+  const handleSaveDraft = () => {
+    const matchIdToSave = selectedPartitaId || 'custom_match';
+    const selectedIds = giocatori.filter((g) => g.selezionato).map((g) => g.id);
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const displayDate = `${dateStr} alle ${timeStr}`;
+
+    const draftData: ConvocazioniDraft = {
+      matchId: matchIdToSave,
+      selectedPlayerIds: selectedIds,
+      oraRitrovo,
+      luogoRitrovo: ritrovoLuogo,
+      misterName,
+      noteMister,
+      categoriaCustom,
+      squadraCasaCustom,
+      squadraOspiteCustom,
+      dataGaraCustom,
+      oraGaraCustom,
+      campoCustom,
+      indirizzoCustom,
+      editedWhatsAppText,
+      savedAt: now.toISOString(),
+      displayDate,
+      selectedCount: selectedIds.length,
+    };
+
+    saveDraftForMatch(matchIdToSave, draftData);
+    saveConvocatiForMatch(matchIdToSave, selectedIds);
+    if (misterName) {
+      saveMisterForMatch(matchIdToSave, misterName);
+    }
+
+    setHasCurrentMatchDraft(true);
+    setCurrentMatchDraftSavedAt(displayDate);
+
+    setDraftNotice({
+      message: `Bozza salvata in locale con successo (${selectedIds.length} atleti convocati) alle ${timeStr}! Puoi chiudere la modale e ripristinarla in qualsiasi momento.`,
+      type: 'success',
+    });
+    setTimeout(() => {
+      setDraftNotice((prev) => (prev?.type === 'success' ? null : prev));
+    }, 5000);
+  };
+
+  // Cancella la bozza salvata per la partita corrente
+  const handleClearDraft = () => {
+    const matchIdToSave = selectedPartitaId || 'custom_match';
+    clearDraftForMatch(matchIdToSave);
+    clearConvocatiForMatch(matchIdToSave);
+    setHasCurrentMatchDraft(false);
+    setCurrentMatchDraftSavedAt(null);
+    setDraftNotice({
+      message: 'Bozza eliminata dal dispositivo locale.',
+      type: 'info',
+    });
+    setTimeout(() => {
+      setDraftNotice(null);
+    }, 4000);
+  };
+
+  // Scarica la lista dei giocatori convocati in formato CSV
+  const handleDownloadCsv = () => {
+    const dataPartitaEffettiva = currentPartita?.data || dataGaraCustom || '';
+    const oraGaraEffettiva = currentPartita?.ora || oraGaraCustom || '';
+    const categoriaEffettiva = currentPartita?.campionato || matchedCategory || categoriaCustom || 'ASD Cynthia 1920';
+    const squadraCasaEffettiva = currentPartita?.squadraCasa || squadraCasaCustom || 'Cynthia 1920';
+    const squadraTrasfertaEffettiva = currentPartita?.squadraOspite || squadraOspiteCustom || 'Avversario';
+    const avversarioEffettivo = currentPartita?.avversario || squadraTrasfertaEffettiva;
+    const campoEffettivo = currentPartita?.campo || campoCustom || '';
+    const indirizzoEffettivo = currentPartita?.indirizzo || indirizzoCustom || '';
+    const ritrovoCompleto = oraRitrovo || `${currentRitrovoTime} ${ritrovoLuogo.trim()}`;
+
+    downloadConvocatiCsv({
+      partitaTitle: `${squadraCasaEffettiva} vs ${squadraTrasfertaEffettiva}`,
+      categoria: categoriaEffettiva,
+      dataGara: dataPartitaEffettiva,
+      oraGara: oraGaraEffettiva,
+      squadraCasa: squadraCasaEffettiva,
+      squadraOspite: avversarioEffettivo,
+      campo: campoEffettivo,
+      indirizzo: indirizzoEffettivo,
+      ritrovo: ritrovoCompleto,
+      mister: misterName,
+      note: noteMister,
+      convocati,
+    });
+
+    setCsvNotice(`File CSV scaricato con successo (${convocati.length} atleti convocati con avversario, data e ora)!`);
+    setTimeout(() => {
+      setCsvNotice(null);
+    }, 4500);
+  };
+
+  // Avvia procedura di esportazione su Google Sheets (richiede login e conferma)
+  const handleStartExportGoogleSheet = async () => {
+    if (!isGoogleAuthenticated || !accessToken) {
+      try {
+        const token = await googleLogin();
+        if (!token) return;
+      } catch (err: any) {
+        setGoogleSheetNotice({
+          message: `Accesso Google necessario: ${err?.message || 'Accesso non completato'}`,
+          type: 'error',
+        });
+        return;
+      }
+    }
+    // Apre la finestra di conferma esplicita
+    setShowGoogleSheetConfirmModal(true);
+  };
+
+  // Conferma la creazione del foglio Google Sheets su Google Drive
+  const handleConfirmCreateGoogleSheet = async () => {
+    if (!accessToken) {
+      setGoogleSheetNotice({
+        message: 'Sessione Google scaduta. Effettua nuovamente il login con Google.',
+        type: 'error',
+      });
+      setShowGoogleSheetConfirmModal(false);
+      return;
+    }
+
+    setIsExportingGoogleSheet(true);
+    setGoogleSheetNotice(null);
+    setShowGoogleSheetConfirmModal(false);
+
+    try {
+      const dataPartitaEffettiva = currentPartita?.data || dataGaraCustom || '';
+      const oraGaraEffettiva = currentPartita?.ora || oraGaraCustom || '';
+      const categoriaEffettiva = currentPartita?.campionato || matchedCategory || categoriaCustom || 'ASD Cynthia 1920';
+      const squadraCasaEffettiva = currentPartita?.squadraCasa || squadraCasaCustom || 'Cynthia 1920';
+      const squadraTrasfertaEffettiva = currentPartita?.squadraOspite || squadraOspiteCustom || 'Avversario';
+      const campoEffettivo = currentPartita?.campo || campoCustom || '';
+      const indirizzoEffettivo = currentPartita?.indirizzo || indirizzoCustom || '';
+      const ritrovoCompleto = oraRitrovo || `${currentRitrovoTime} ${ritrovoLuogo.trim()}`;
+
+      const title = `Convocazioni - ${squadraCasaEffettiva} vs ${squadraTrasfertaEffettiva} (${dataPartitaEffettiva || 'Gara'})`;
+
+      const rows: (string | number)[][] = [
+        ['CONVOCAZIONI UFFICIALI - ASD CYNTHIA 1920'],
+        ['GARA', `${squadraCasaEffettiva} vs ${squadraTrasfertaEffettiva}`],
+        ['CATEGORIA', categoriaEffettiva],
+        ['DATA E ORA', `${dataPartitaEffettiva} - Ore ${oraGaraEffettiva}`],
+        ['CAMPO', campoEffettivo ? `${campoEffettivo} (${indirizzoEffettivo})` : 'Da definire'],
+        ['RITROVO', ritrovoCompleto || 'Non specificato'],
+        ['MISTER / DIRIGENTE', misterName || 'Non specificato'],
+        ['NOTE', noteMister || 'Nessuna'],
+        [],
+        ['DISTINTA CONVOCATI', `Totale atleti convocati: ${convocati.length}`],
+        ['N.', 'COGNOME E NOME', 'RUOLO', 'ANNO', 'SQUADRA', 'STATO CONVOCAZIONE'],
+      ];
+
+      convocati.forEach((g, idx) => {
+        rows.push([
+          idx + 1,
+          g.nome,
+          g.ruolo || '-',
+          g.annoNascita || '-',
+          g.squadra || '-',
+          'CONVOCATO',
+        ]);
+      });
+
+      const result = await createGoogleSpreadsheet(title, rows, accessToken);
+      setGoogleSheetCreatedUrl(result.spreadsheetUrl);
+      setGoogleSheetNotice({
+        message: `Nuovo Foglio Google Sheets creato con successo su Google Drive (${convocati.length} atleti convocati)!`,
+        type: 'success',
+      });
+    } catch (err: any) {
+      console.error('Errore durante la creazione del foglio Google Sheets:', err);
+      setGoogleSheetNotice({
+        message: `Errore creazione Google Sheet: ${err?.message || 'Impossibile creare il file su Drive'}`,
+        type: 'error',
+      });
+    } finally {
+      setIsExportingGoogleSheet(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -1108,6 +1346,16 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              id="btn-header-save-draft"
+              type="button"
+              onClick={handleSaveDraft}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+              title="Salva localmente lo stato corrente (lista convocati) per questa partita in localStorage"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Salva Bozza</span>
+            </button>
             <button
               id="btn-header-preview-pdf-mister"
               type="button"
@@ -1210,6 +1458,48 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                         </span>
                       </span>
                     )}
+                  </div>
+
+                  {/* Stato Bozza Partita Corrente */}
+                  <div className="mt-2.5 p-2 rounded-lg bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/80 text-xs flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-200 font-semibold text-[11px]">
+                      {hasCurrentMatchDraft ? (
+                        <>
+                          <BookmarkCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span>
+                            Bozza salvata presente {currentMatchDraftSavedAt ? `(${currentMatchDraftSavedAt})` : ''} • {convocatiCount} convocati memorizzati
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Info className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                          <span className="text-slate-600 dark:text-slate-300 font-normal">
+                            Nessuna bozza salvata per questa partita. Clicca &quot;Salva Bozza&quot; per memorizzare i convocati correnti.
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleSaveDraft}
+                        className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white transition shadow-2xs flex items-center gap-1 cursor-pointer"
+                        title="Salva localmente lo stato corrente (lista convocati) per questa partita in localStorage"
+                      >
+                        <Save className="w-3 h-3" />
+                        <span>{hasCurrentMatchDraft ? 'Aggiorna Bozza' : 'Salva Bozza'}</span>
+                      </button>
+                      {hasCurrentMatchDraft && (
+                        <button
+                          type="button"
+                          onClick={handleClearDraft}
+                          className="text-[11px] font-semibold px-2 py-1 rounded-md text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-950/60 border border-rose-200 dark:border-rose-900/50 transition active:scale-95 cursor-pointer"
+                          title="Elimina la bozza salvata dal dispositivo locale"
+                        >
+                          Elimina Bozza
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1460,6 +1750,36 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                   </ul>
                 </div>
               )}
+
+              {/* Selezione Rapida da Google Drive */}
+              <div className="flex items-center justify-between gap-2 flex-wrap pb-1">
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  Collegamento Google Sheets:
+                </span>
+                {isGoogleAuthenticated ? (
+                  <button
+                    id="btn-pick-convocazioni-sheet-drive"
+                    type="button"
+                    onClick={() => setIsDrivePickerOpenForConvocazioni(true)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border border-emerald-400/60 dark:border-emerald-700/60 text-xs font-semibold cursor-pointer active:scale-95 transition"
+                    title="Sfoglia e scegli direttamente un Foglio Google dal tuo Google Drive"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Scegli da Google Drive</span>
+                  </button>
+                ) : (
+                  <button
+                    id="btn-login-for-drive-convocazioni"
+                    type="button"
+                    onClick={() => googleLogin().catch(() => {})}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 text-sky-800 dark:text-sky-300 border border-sky-300/80 dark:border-sky-800 text-xs font-medium cursor-pointer active:scale-95 transition"
+                    title="Accedi con Google per selezionare direttamente i tuoi file su Google Drive"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                    <span>Accedi a Google per scegliere da Drive</span>
+                  </button>
+                )}
+              </div>
 
               {/* Input URL o ID foglio */}
               <div className="flex flex-col sm:flex-row gap-2">
@@ -1878,8 +2198,42 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                 id="convocati-actions-bar-above-list"
                 className="flex flex-wrap items-center justify-between gap-2 p-2 mb-2 rounded-lg bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs shadow-2xs"
               >
-                {/* Tasti Seleziona tutti, Deseleziona tutti, Esporta Dati Convocati e Filtro Storico */}
+                {/* Tasti Salva Bozza, Scarica CSV, Seleziona tutti, Deseleziona tutti, Esporta Dati Convocati e Filtro Storico */}
                 <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    id="btn-convocazioni-save-draft"
+                    type="button"
+                    onClick={handleSaveDraft}
+                    className="px-2.5 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                    title="Salva localmente lo stato corrente (lista convocati) per questa partita in localStorage, per poter riaprire la modale e ripristinare i dati esattamente come erano"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Salva Bozza</span>
+                  </button>
+
+                  <button
+                    id="btn-convocazioni-download-csv"
+                    type="button"
+                    onClick={handleDownloadCsv}
+                    className="px-2.5 py-1.5 rounded-md bg-emerald-600/15 hover:bg-emerald-600/25 active:scale-95 text-emerald-900 dark:text-emerald-200 border border-emerald-400/80 dark:border-emerald-700/70 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                    title="Scarica la lista dei giocatori convocati in formato CSV con dettagli della partita (data, orario, avversario)"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Scarica CSV</span>
+                  </button>
+
+                  <button
+                    id="btn-convocazioni-export-google-sheets"
+                    type="button"
+                    onClick={handleStartExportGoogleSheet}
+                    disabled={isExportingGoogleSheet}
+                    className="px-2.5 py-1.5 rounded-md bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
+                    title="Crea un nuovo foglio di calcolo Google Sheets su Google Drive con i convocati per questa gara"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-200" />
+                    <span>{isExportingGoogleSheet ? 'Creazione...' : 'Crea Foglio Google'}</span>
+                  </button>
+
                   <button
                     id="btn-convocazioni-select-all"
                     type="button"
@@ -1994,6 +2348,89 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                   >
                     Chiudi
                   </button>
+                </div>
+              )}
+
+              {/* Banner notifica salvataggio bozza locale */}
+              {draftNotice && (
+                <div
+                  id="alert-draft-notice"
+                  className={`p-2.5 mb-2 rounded-lg text-xs font-semibold flex items-center justify-between gap-2 shadow-xs animate-in fade-in ${
+                    draftNotice.type === 'success'
+                      ? 'bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200'
+                      : 'bg-sky-100 dark:bg-sky-950/80 border border-sky-300 dark:border-sky-700 text-sky-900 dark:text-sky-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>{draftNotice.message}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDraftNotice(null)}
+                    className="text-slate-700 dark:text-slate-300 hover:text-slate-950 text-xs font-bold underline cursor-pointer"
+                  >
+                    OK
+                  </button>
+                </div>
+              )}
+
+              {/* Banner notifica scaricamento CSV */}
+              {csvNotice && (
+                <div
+                  id="alert-csv-notice"
+                  className="p-2.5 mb-2 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-semibold flex items-center justify-between gap-2 shadow-xs animate-in fade-in"
+                >
+                  <div className="flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>{csvNotice}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCsvNotice(null)}
+                    className="text-emerald-800 dark:text-emerald-200 hover:text-emerald-950 text-xs font-bold underline cursor-pointer"
+                  >
+                    Chiudi
+                  </button>
+                </div>
+              )}
+
+              {/* Banner notifica Foglio Google Sheets */}
+              {googleSheetNotice && (
+                <div
+                  id="alert-google-sheet-notice"
+                  className={`p-2.5 mb-2 rounded-lg border text-xs font-semibold flex items-center justify-between gap-2 shadow-xs animate-in fade-in ${
+                    googleSheetNotice.type === 'success'
+                      ? 'bg-emerald-100 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200'
+                      : googleSheetNotice.type === 'error'
+                      ? 'bg-rose-100 dark:bg-rose-950/80 border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200'
+                      : 'bg-sky-100 dark:bg-sky-950/80 border-sky-300 dark:border-sky-700 text-sky-900 dark:text-sky-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>{googleSheetNotice.message}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {googleSheetCreatedUrl && (
+                      <a
+                        href={googleSheetCreatedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] shadow-2xs transition"
+                      >
+                        <span>Apri Foglio</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setGoogleSheetNotice(null)}
+                      className="text-slate-600 dark:text-slate-300 hover:text-slate-900 text-xs font-bold underline cursor-pointer"
+                    >
+                      Chiudi
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -2406,6 +2843,37 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <button
+              id="btn-footer-save-draft"
+              type="button"
+              onClick={handleSaveDraft}
+              className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+              title="Salva localmente lo stato corrente (lista convocati) per ogni partita in localStorage, per poter riaprire la modale e ripristinare i dati esattamente come erano"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Salva Bozza</span>
+            </button>
+            <button
+              id="btn-footer-download-csv"
+              type="button"
+              onClick={handleDownloadCsv}
+              className="px-3 py-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-semibold text-xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
+              title="Scarica la lista dei giocatori convocati in formato CSV con dettagli della partita (data, orario, avversario)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+              <span>Scarica CSV</span>
+            </button>
+            <button
+              id="btn-footer-export-google-sheets"
+              type="button"
+              disabled={isExportingGoogleSheet}
+              onClick={handleStartExportGoogleSheet}
+              className="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer disabled:opacity-50"
+              title="Crea un nuovo foglio di calcolo Google Sheets su Google Drive con i convocati per questa gara"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-200" />
+              <span>{isExportingGoogleSheet ? 'Creazione...' : 'Crea Foglio Google'}</span>
+            </button>
+            <button
               id="btn-footer-export-convocati-json"
               type="button"
               onClick={handleExportConvocatiJson}
@@ -2448,6 +2916,69 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         onUpdateRitrovoTime={(newTime) => handleRitrovoTimeChange(newTime)}
         onUpdateMisterName={(newMister) => handleMisterChange(newMister)}
       />
+
+      {/* Modal Selettore Foglio Rose da Google Drive */}
+      <GoogleDrivePickerModal
+        isOpen={isDrivePickerOpenForConvocazioni}
+        onClose={() => setIsDrivePickerOpenForConvocazioni(false)}
+        title="Seleziona Foglio Rose da Google Drive"
+        description="Scegli il foglio Google Sheets con l'elenco dei giocatori e dello staff"
+        onSelectSheet={(selected) => {
+          const fullUrl = `https://docs.google.com/spreadsheets/d/${selected.sheetId}`;
+          setConfig((prev) => ({
+            ...prev,
+            sheetUrl: fullUrl,
+            tabName: selected.tabName || '',
+          }));
+          handleFetchSheet(fullUrl, selected.tabName);
+          setIsDrivePickerOpenForConvocazioni(false);
+        }}
+      />
+
+      {/* Modal di Conferma Esplicita Creazione Foglio Google Sheets */}
+      {showGoogleSheetConfirmModal && (
+        <div className="fixed inset-0 z-60 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <FileSpreadsheet className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Crea Foglio Google Sheets</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Salvataggio distinta su Google Drive</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3.5 text-xs text-slate-700 dark:text-slate-300 space-y-2 border border-slate-200 dark:border-slate-700">
+              <p>
+                Vuoi creare un nuovo foglio di calcolo sul tuo account Google Drive (<strong>{googleUser?.email || 'Google Workspace'}</strong>)?
+              </p>
+              <div className="space-y-1 font-mono text-[11px] pt-1 text-slate-600 dark:text-slate-400">
+                <p>• <strong>Partita:</strong> {currentPartita?.squadraCasa || squadraCasaCustom || 'Cynthia 1920'} vs {currentPartita?.squadraOspite || squadraOspiteCustom || 'Avversario'}</p>
+                <p>• <strong>Data:</strong> {currentPartita?.data || dataGaraCustom || 'Data da definire'}</p>
+                <p>• <strong>Atleti convocati:</strong> {convocati.length} selezionati</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowGoogleSheetConfirmModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCreateGoogleSheet}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm active:scale-95 cursor-pointer"
+              >
+                Conferma e Crea Foglio
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,5 +1,7 @@
 import { GiocatoreConvocato, ConvocazioneConfig, Partita } from '../types';
 import { buildCsvUrl, parseCSV } from './sheetService';
+import { getAccessToken } from './googleAuthService';
+import { extractSpreadsheetId, fetchSpreadsheetValues } from './googleSheetsService';
 import { APP_CONFIG } from '../appConfig';
 import { isDonBoscoGenzanoMatch } from '../utils/donBoscoUtils';
 
@@ -449,6 +451,149 @@ export interface SavedConvocazioneRecord {
   customWhatsAppText?: string | null;
 }
 
+export interface ConvocazioniDraft {
+  matchId: string;
+  selectedPlayerIds: string[];
+  oraRitrovo?: string;
+  luogoRitrovo?: string;
+  misterName?: string;
+  noteMister?: string;
+  categoriaCustom?: string;
+  squadraCasaCustom?: string;
+  squadraOspiteCustom?: string;
+  dataGaraCustom?: string;
+  oraGaraCustom?: string;
+  campoCustom?: string;
+  indirizzoCustom?: string;
+  editedWhatsAppText?: string | null;
+  savedAt: string;
+  displayDate: string;
+  selectedCount: number;
+}
+
+const DRAFT_STORAGE_PREFIX = 'cynthia_convocazioni_draft_';
+
+/**
+ * Salva lo stato corrente e la lista convocati associata all'ID della specifica partita
+ */
+export function saveDraftForMatch(matchId: string, draft: ConvocazioniDraft): void {
+  if (!matchId) return;
+  try {
+    localStorage.setItem(`${DRAFT_STORAGE_PREFIX}${matchId}`, JSON.stringify(draft));
+  } catch (e) {
+    console.warn('Errore salvataggio bozza convocazione per partita', e);
+  }
+}
+
+/**
+ * Carica la bozza salvata per una specifica partita (ritorna null se non presente)
+ */
+export function loadDraftForMatch(matchId: string): ConvocazioniDraft | null {
+  if (!matchId) return null;
+  try {
+    const raw = localStorage.getItem(`${DRAFT_STORAGE_PREFIX}${matchId}`);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.warn('Errore lettura bozza convocazione', e);
+  }
+  return null;
+}
+
+/**
+ * Elimina la bozza salvata per una specifica partita
+ */
+export function clearDraftForMatch(matchId: string): void {
+  if (!matchId) return;
+  try {
+    localStorage.removeItem(`${DRAFT_STORAGE_PREFIX}${matchId}`);
+  } catch (e) {
+    console.warn('Errore cancellazione bozza convocazione', e);
+  }
+}
+
+/**
+ * Scarica la lista dei giocatori convocati in formato CSV con dettagli della partita
+ */
+export function downloadConvocatiCsv(params: {
+  partitaTitle: string;
+  categoria: string;
+  dataGara: string;
+  oraGara: string;
+  squadraCasa: string;
+  squadraOspite: string;
+  campo: string;
+  indirizzo: string;
+  ritrovo: string;
+  mister: string;
+  note: string;
+  convocati: GiocatoreConvocato[];
+}): void {
+  const {
+    partitaTitle,
+    categoria,
+    dataGara,
+    oraGara,
+    squadraCasa,
+    squadraOspite,
+    campo,
+    indirizzo,
+    ritrovo,
+    mister,
+    note,
+    convocati,
+  } = params;
+
+  const escapeCsv = (str: string) => `"${(str || '').replace(/"/g, '""')}"`;
+
+  const rows: string[] = [
+    ['DETTAGLIO GARA', partitaTitle].map(escapeCsv).join(';'),
+    ['CATEGORIA', categoria].map(escapeCsv).join(';'),
+    ['DATA GARA', dataGara].map(escapeCsv).join(';'),
+    ['ORARIO GARA', oraGara].map(escapeCsv).join(';'),
+    ['SQUADRA CASA', squadraCasa].map(escapeCsv).join(';'),
+    ['AVVERSARIO / OSPITE', squadraOspite].map(escapeCsv).join(';'),
+    ['CAMPO DI GIOCO', campo].map(escapeCsv).join(';'),
+    ['INDIRIZZO', indirizzo].map(escapeCsv).join(';'),
+    ['ORARIO RITROVO', ritrovo].map(escapeCsv).join(';'),
+    ['MISTER', mister].map(escapeCsv).join(';'),
+    ['NOTE & INDICAZIONI', note].map(escapeCsv).join(';'),
+    ['TOTALE CONVOCATI', String(convocati.length)].map(escapeCsv).join(';'),
+    '',
+    ['N°', 'NOME ATLETA', 'RUOLO', 'CATEGORIA', 'SOCIETÀ', 'NOTE'].map(escapeCsv).join(';'),
+  ];
+
+  convocati.forEach((g, idx) => {
+    rows.push(
+      [
+        String(g.numero || idx + 1),
+        g.nome.trim().toUpperCase(),
+        g.ruolo || '-',
+        g.categoria || categoria,
+        g.squadra || '',
+        g.note || '',
+      ].map(escapeCsv).join(';')
+    );
+  });
+
+  const csvContent = '\uFEFF' + rows.join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const safeFilename = `convocati_${categoria}_${squadraCasa}_vs_${squadraOspite}`
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '_')
+    .slice(0, 80);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `${safeFilename}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 const SAVED_CONVOCAZIONI_ARCHIVE_KEY = 'cynthia_saved_convocazioni_archive_v2';
 
 /**
@@ -698,13 +843,30 @@ export function formatMisterDisplayName(raw: string): string {
  */
 export async function fetchGiocatoriFromSheet(
   sheetUrlOrId: string,
-  tabName?: string
+  tabName?: string,
+  accessToken?: string | null
 ): Promise<ParsedSheetConvocazioni> {
   const target = (sheetUrlOrId || '').trim();
   if (!target) {
     throw new Error('Specificare l\'URL o l\'ID del foglio Google.');
   }
 
+  // 1. Se abbiamo un access token Google Workspace e sembra un ID/URL Google Sheets, usa Sheets API v4
+  const cleanId = extractSpreadsheetId(target);
+  const activeToken = accessToken || (await getAccessToken());
+
+  if (activeToken && /^[a-zA-Z0-9-_]{20,}$/.test(cleanId)) {
+    try {
+      const values = await fetchSpreadsheetValues(cleanId, tabName || '', activeToken);
+      if (values && values.length > 0) {
+        return parseCsvConvocazioni(values);
+      }
+    } catch (apiErr: any) {
+      console.warn('Google Sheets API v4 rose non riuscita, provo con esportazione CSV:', apiErr?.message);
+    }
+  }
+
+  // 2. Altrimenti esportazione CSV pubblica
   const rawCsvUrl = buildCsvUrl(target, tabName);
   const cacheBuster = `_cb=${Date.now()}`;
   const csvUrl = rawCsvUrl.includes('?') ? `${rawCsvUrl}&${cacheBuster}` : `${rawCsvUrl}?${cacheBuster}`;
@@ -731,8 +893,15 @@ export async function fetchGiocatoriFromSheet(
     csvText.includes('Sign in to your Google Account') ||
     csvText.includes('accounts.google.com')
   ) {
+    if (activeToken && /^[a-zA-Z0-9-_]{20,}$/.test(cleanId)) {
+      const values = await fetchSpreadsheetValues(cleanId, tabName || '', activeToken);
+      if (values && values.length > 0) {
+        return parseCsvConvocazioni(values);
+      }
+    }
+
     throw new Error(
-      'Il foglio Google richiede l\'accesso con account. Assicurati che sia condiviso come "Chiunque abbia il link può visualizzare" oppure "Pubblica sul web" in formato CSV.'
+      'Il foglio Google è privato. Accedi con Google Workspace tramite il pulsante "Accedi con Google" per caricarlo automaticamente.'
     );
   }
 

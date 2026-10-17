@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { SheetConfig } from '../types';
 import { fetchPartiteFromSource, buildCsvUrl, exportPartiteToCSV } from '../services/sheetService';
 import { Partita } from '../types';
-import { X, Sheet, CheckCircle2, AlertCircle, RefreshCw, Download, ExternalLink, HelpCircle } from 'lucide-react';
+import { X, Sheet, CheckCircle2, AlertCircle, RefreshCw, Download, ExternalLink, HelpCircle, FileSpreadsheet } from 'lucide-react';
+import { useGoogleAuth } from '../context/GoogleAuthContext';
+import { GoogleSignInButton } from './GoogleSignInButton';
+import { GoogleDrivePickerModal } from './GoogleDrivePickerModal';
 
 interface SheetConfigModalProps {
   isOpen: boolean;
@@ -21,10 +24,12 @@ export const SheetConfigModal: React.FC<SheetConfigModalProps> = ({
   onSaveConfig,
   onApplyPartite,
 }) => {
+  const { accessToken, isAuthenticated } = useGoogleAuth();
   const [sheetUrl, setSheetUrl] = useState(config.sheetUrl || '');
   const [tabName, setTabName] = useState(config.tabName || '');
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; count?: number } | null>(null);
+  const [isDrivePickerOpen, setIsDrivePickerOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -32,7 +37,7 @@ export const SheetConfigModal: React.FC<SheetConfigModalProps> = ({
     setIsTesting(true);
     setTestResult(null);
     try {
-      const partite = await fetchPartiteFromSource(sheetUrl, tabName);
+      const partite = await fetchPartiteFromSource(sheetUrl, tabName, accessToken);
       setTestResult({
         success: true,
         message: `Connessione riuscita! Rilevate ${partite.length} partite valide.`,
@@ -60,7 +65,7 @@ export const SheetConfigModal: React.FC<SheetConfigModalProps> = ({
 
     try {
       setIsTesting(true);
-      const loaded = await fetchPartiteFromSource(updated.sheetUrl, updated.tabName);
+      const loaded = await fetchPartiteFromSource(updated.sheetUrl, updated.tabName, accessToken);
       onApplyPartite(loaded);
       onClose();
     } catch (err: any) {
@@ -116,12 +121,52 @@ export const SheetConfigModal: React.FC<SheetConfigModalProps> = ({
             </ol>
           </div>
 
+          {/* Sezione Google Workspace & Google Drive */}
+          <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/30 border border-emerald-300 dark:border-emerald-800 space-y-2.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="font-bold text-xs text-emerald-950 dark:text-emerald-100">
+                  Google Workspace & Drive
+                </span>
+              </div>
+              <GoogleSignInButton variant="compact" />
+            </div>
+
+            <p className="text-[11px] text-emerald-900/90 dark:text-emerald-200">
+              Connetti il tuo account per accedere direttamente ai fogli di calcolo salvati su Google Drive senza renderli pubblici.
+            </p>
+
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => setIsDrivePickerOpen(true)}
+                className="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition cursor-pointer"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Sfoglia e scegli un Foglio da Google Drive</span>
+              </button>
+            )}
+          </div>
+
           {/* Form Input URL */}
           <div className="space-y-3">
             <div>
-              <label htmlFor="sheet-url-input" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Link CSV o URL Google Sheet
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="sheet-url-input" className="block font-bold text-slate-700 dark:text-slate-300">
+                  Link CSV o URL Google Sheet
+                </label>
+                {isAuthenticated && (
+                  <button
+                    type="button"
+                    onClick={() => setIsDrivePickerOpen(true)}
+                    className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3 h-3" />
+                    <span>Scegli da Drive</span>
+                  </button>
+                )}
+              </div>
               <input
                 id="sheet-url-input"
                 type="text"
@@ -233,6 +278,20 @@ export const SheetConfigModal: React.FC<SheetConfigModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Picker Google Drive */}
+      <GoogleDrivePickerModal
+        isOpen={isDrivePickerOpen}
+        onClose={() => setIsDrivePickerOpen(false)}
+        title="Seleziona Foglio Programma Gare da Drive"
+        description="Scegli il foglio di calcolo con il calendario delle partite"
+        onSelectSheet={(selected) => {
+          setSheetUrl(`https://docs.google.com/spreadsheets/d/${selected.sheetId}`);
+          if (selected.tabName) {
+            setTabName(selected.tabName);
+          }
+        }}
+      />
     </div>
   );
 };
