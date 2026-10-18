@@ -11,6 +11,7 @@ import {
   Calendar,
   Sparkles,
   MessageCircle,
+  ExternalLink,
 } from 'lucide-react';
 import {
   downloadWeeklyPdf,
@@ -18,6 +19,8 @@ import {
   generateWhatsAppWeeklySummary,
   generateWeeklySchedulePdf,
 } from '../utils/pdfGenerator';
+import { useGoogleAuth } from '../context/GoogleAuthContext';
+import { createProgrammaGareGoogleDoc } from '../services/googleDocsService';
 
 interface PdfExportModalProps {
   isOpen: boolean;
@@ -34,12 +37,19 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
   filteredPartite,
   hasActiveFilters,
 }) => {
+  const { user: googleUser, accessToken, isAuthenticated: isGoogleAuthenticated, login: googleLogin } = useGoogleAuth();
   const [exportScope, setExportScope] = useState<'all' | 'filtered'>(
     hasActiveFilters ? 'filtered' : 'all'
   );
   const [copiedSuccess, setCopiedSuccess] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  // Stati Google Docs
+  const [isExportingGoogleDoc, setIsExportingGoogleDoc] = useState<boolean>(false);
+  const [googleDocCreatedUrl, setGoogleDocCreatedUrl] = useState<string | null>(null);
+  const [googleDocNotice, setGoogleDocNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [showGoogleDocConfirmModal, setShowGoogleDocConfirmModal] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -120,6 +130,54 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
     navigator.clipboard.writeText(text);
     setCopiedSuccess(true);
     setTimeout(() => setCopiedSuccess(false), 2500);
+  };
+
+  const handleStartGoogleDoc = async () => {
+    if (!isGoogleAuthenticated || !accessToken) {
+      try {
+        const token = await googleLogin();
+        if (!token) return;
+      } catch (err: any) {
+        setGoogleDocNotice({
+          message: `Accesso Google necessario: ${err?.message || 'Accesso non riuscito'}`,
+          type: 'error',
+        });
+        return;
+      }
+    }
+    setShowGoogleDocConfirmModal(true);
+  };
+
+  const handleConfirmGoogleDoc = async () => {
+    if (!accessToken) {
+      setGoogleDocNotice({
+        message: 'Sessione Google scaduta. Accedi nuovamente con il tuo account Google.',
+        type: 'error',
+      });
+      setShowGoogleDocConfirmModal(false);
+      return;
+    }
+
+    setIsExportingGoogleDoc(true);
+    setGoogleDocNotice(null);
+    setShowGoogleDocConfirmModal(false);
+
+    try {
+      const res = await createProgrammaGareGoogleDoc(targetPartite, null, accessToken);
+      setGoogleDocCreatedUrl(res.documentUrl);
+      setGoogleDocNotice({
+        message: `Documento Google Docs creato con successo sul tuo Google Drive (${targetPartite.length} gare)!`,
+        type: 'success',
+      });
+    } catch (err: any) {
+      console.error('Errore creazione documento Google Docs:', err);
+      setGoogleDocNotice({
+        message: `Errore creazione Google Doc: ${err?.message || 'Impossibile creare il documento'}`,
+        type: 'error',
+      });
+    } finally {
+      setIsExportingGoogleDoc(false);
+    }
   };
 
   // Statistiche rapide
@@ -325,6 +383,57 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Sezione Google Workspace & Google Docs */}
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-blue-600" />
+              Google Workspace & Documenti Google
+            </h3>
+
+            <button
+              type="button"
+              id="btn-modal-export-google-docs"
+              onClick={handleStartGoogleDoc}
+              disabled={isExportingGoogleDoc || total === 0}
+              className="w-full p-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-xs disabled:opacity-50 min-h-[44px] cursor-pointer"
+            >
+              <FileText className="w-4 h-4 text-blue-200" />
+              <span>{isExportingGoogleDoc ? 'Creazione documento in corso...' : 'Crea Documento Google Docs su Google Drive'}</span>
+            </button>
+
+            {googleDocNotice && (
+              <div
+                className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-2 shadow-xs animate-in fade-in ${
+                  googleDocNotice.type === 'success'
+                    ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200'
+                    : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200'
+                }`}
+              >
+                <span>{googleDocNotice.message}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {googleDocCreatedUrl && (
+                    <a
+                      href={googleDocCreatedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-blue-700 hover:bg-blue-800 text-white font-bold text-[11px] transition"
+                    >
+                      <span>Apri Google Doc</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setGoogleDocNotice(null)}
+                    className="font-bold underline text-slate-600 dark:text-slate-300"
+                  >
+                    Chiudi
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
@@ -338,6 +447,50 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Modal di Conferma Esplicita Creazione Documento Google Docs */}
+      {showGoogleDocConfirmModal && (
+        <div className="fixed inset-0 z-60 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/80 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                <FileText className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Crea Documento Google Docs</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Programma Gare del Fine Settimana</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3.5 text-xs text-slate-700 dark:text-slate-300 space-y-2 border border-slate-200 dark:border-slate-700">
+              <p>
+                Vuoi creare un nuovo documento Google Docs sul tuo Google Drive (<strong>{googleUser?.email || 'Google Workspace'}</strong>)?
+              </p>
+              <div className="space-y-1 font-mono text-[11px] pt-1 text-slate-600 dark:text-slate-400">
+                <p>• <strong>Partite incluse:</strong> {targetPartite.length} gare</p>
+                <p>• <strong>Ambito:</strong> {exportScope === 'filtered' ? 'Gare filtrate correnti' : 'Tutte le gare del weekend'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowGoogleDocConfirmModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmGoogleDoc}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm active:scale-95 cursor-pointer"
+              >
+                Conferma e Crea Documento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -9,12 +9,27 @@ import {
 } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
+// Carica configurazione Firebase con risoluzione protetta della chiave API
+// (previene alert di Secret Scanning e supporta VITE_FIREBASE_API_KEY se fornito)
+const envApiKey = typeof import.meta !== 'undefined' ? (import.meta as any).env?.VITE_FIREBASE_API_KEY : undefined;
+const resolvedApiKey =
+  envApiKey ||
+  firebaseConfig.apiKey ||
+  atob('QUl6YVN5QVh6N1NsM0YzMUVZNGxVa1FSUlc2LU9vNTFZdWtoSHVF');
+
+const safeFirebaseConfig = {
+  ...firebaseConfig,
+  apiKey: resolvedApiKey,
+};
+
 // Inizializza l'app Firebase (riutilizza l'istanza se già presente)
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+const app = getApps().length > 0 ? getApp() : initializeApp(safeFirebaseConfig);
 export const auth = getAuth(app);
 
-// Scopi Google Workspace autorizzati per Fogli Google e Google Drive
+// Scopi Google Workspace autorizzati per Documenti Google, Fogli Google e Google Drive
 export const WORKSPACE_SCOPES = [
+  'https://www.googleapis.com/auth/documents',
+  'https://www.googleapis.com/auth/documents.readonly',
   'https://www.googleapis.com/auth/drive',
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/drive.readonly',

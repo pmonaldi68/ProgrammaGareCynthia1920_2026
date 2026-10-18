@@ -1,7 +1,6 @@
 import React from 'react';
 import { Shield, Calendar, Lock, Sun, Moon, Bell, FileDown, Palette } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { GoogleSignInButton } from './GoogleSignInButton';
 
 interface HeaderProps {
   lastUpdated: string | null;
@@ -123,9 +122,6 @@ export const Header: React.FC<HeaderProps> = ({
                 <Moon className="w-4 h-4 text-sky-200" />
               )}
             </button>
-
-            {/* Accesso Google Workspace */}
-            <GoogleSignInButton variant="compact" />
 
             {/* Pulsante Area Admin */}
             <button

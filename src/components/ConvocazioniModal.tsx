@@ -47,6 +47,7 @@ import { useGoogleAuth } from '../context/GoogleAuthContext';
 import { GoogleSignInButton } from './GoogleSignInButton';
 import { GoogleDrivePickerModal } from './GoogleDrivePickerModal';
 import { createGoogleSpreadsheet } from '../services/googleSheetsService';
+import { createConvocazioniGoogleDoc } from '../services/googleDocsService';
 import { ConvocazioniPdfPreviewModal } from './ConvocazioniPdfPreviewModal';
 import { ArchivioConvocazioniModal } from './ArchivioConvocazioniModal';
 import {
@@ -197,6 +198,12 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   const [showGoogleSheetConfirmModal, setShowGoogleSheetConfirmModal] = useState<boolean>(false);
   const [googleSheetCreatedUrl, setGoogleSheetCreatedUrl] = useState<string | null>(null);
   const [googleSheetNotice, setGoogleSheetNotice] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Integrazione Google Docs
+  const [isExportingGoogleDoc, setIsExportingGoogleDoc] = useState<boolean>(false);
+  const [showGoogleDocConfirmModal, setShowGoogleDocConfirmModal] = useState<boolean>(false);
+  const [googleDocCreatedUrl, setGoogleDocCreatedUrl] = useState<string | null>(null);
+  const [googleDocNotice, setGoogleDocNotice] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Stato copia
   const [copied, setCopied] = useState<boolean>(false);
@@ -1313,6 +1320,82 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     }
   };
 
+  // Avvia procedura di esportazione su Google Docs (richiede login e conferma)
+  const handleStartExportGoogleDoc = async () => {
+    if (!isGoogleAuthenticated || !accessToken) {
+      try {
+        const token = await googleLogin();
+        if (!token) return;
+      } catch (err: any) {
+        setGoogleDocNotice({
+          message: `Accesso Google necessario: ${err?.message || 'Accesso non completato'}`,
+          type: 'error',
+        });
+        return;
+      }
+    }
+    setShowGoogleDocConfirmModal(true);
+  };
+
+  // Conferma la creazione del documento Google Docs su Google Drive
+  const handleConfirmCreateGoogleDoc = async () => {
+    if (!accessToken) {
+      setGoogleDocNotice({
+        message: 'Sessione Google scaduta. Effettua nuovamente il login con Google.',
+        type: 'error',
+      });
+      setShowGoogleDocConfirmModal(false);
+      return;
+    }
+
+    setIsExportingGoogleDoc(true);
+    setGoogleDocNotice(null);
+    setShowGoogleDocConfirmModal(false);
+
+    try {
+      const dataPartitaEffettiva = currentPartita?.data || dataGaraCustom || '';
+      const oraGaraEffettiva = currentPartita?.ora || oraGaraCustom || '';
+      const categoriaEffettiva = currentPartita?.campionato || matchedCategory || categoriaCustom || 'ASD Cynthia 1920';
+      const squadraCasaEffettiva = currentPartita?.squadraCasa || squadraCasaCustom || 'Cynthia 1920';
+      const squadraTrasfertaEffettiva = currentPartita?.squadraOspite || squadraOspiteCustom || 'Avversario';
+      const campoEffettivo = currentPartita?.campo || campoCustom || '';
+      const indirizzoEffettivo = currentPartita?.indirizzo || indirizzoCustom || '';
+      const ritrovoCompleto = oraRitrovo || `${currentRitrovoTime} ${ritrovoLuogo.trim()}`;
+
+      const result = await createConvocazioniGoogleDoc(
+        {
+          partitaTitle: `${squadraCasaEffettiva} vs ${squadraTrasfertaEffettiva}`,
+          categoria: categoriaEffettiva,
+          dataGara: dataPartitaEffettiva,
+          oraGara: oraGaraEffettiva,
+          squadraCasa: squadraCasaEffettiva,
+          squadraOspite: squadraTrasfertaEffettiva,
+          campo: campoEffettivo,
+          indirizzo: indirizzoEffettivo,
+          ritrovo: ritrovoCompleto,
+          mister: misterName,
+          note: noteMister,
+          convocati,
+        },
+        accessToken
+      );
+
+      setGoogleDocCreatedUrl(result.documentUrl);
+      setGoogleDocNotice({
+        message: `Nuovo Documento Google Docs creato con successo su Google Drive (${convocati.length} atleti)!`,
+        type: 'success',
+      });
+    } catch (err: any) {
+      console.error('Errore durante la creazione del documento Google Docs:', err);
+      setGoogleDocNotice({
+        message: `Errore creazione Google Doc: ${err?.message || 'Impossibile creare il documento su Drive'}`,
+        type: 'error',
+      });
+    } finally {
+      setIsExportingGoogleDoc(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -2235,6 +2318,18 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                   </button>
 
                   <button
+                    id="btn-convocazioni-export-google-docs"
+                    type="button"
+                    onClick={handleStartExportGoogleDoc}
+                    disabled={isExportingGoogleDoc}
+                    className="px-2.5 py-1.5 rounded-md bg-blue-700 hover:bg-blue-800 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
+                    title="Crea un documento ufficiale Google Docs su Google Drive con la distinta dei convocati"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-blue-200" />
+                    <span>{isExportingGoogleDoc ? 'Creazione...' : 'Crea Google Doc'}</span>
+                  </button>
+
+                  <button
                     id="btn-convocazioni-select-all"
                     type="button"
                     onClick={handleSelectAll}
@@ -2426,6 +2521,45 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setGoogleSheetNotice(null)}
+                      className="text-slate-600 dark:text-slate-300 hover:text-slate-900 text-xs font-bold underline cursor-pointer"
+                    >
+                      Chiudi
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Banner notifica Documento Google Docs */}
+              {googleDocNotice && (
+                <div
+                  id="alert-google-doc-notice"
+                  className={`p-2.5 mb-2 rounded-lg border text-xs font-semibold flex items-center justify-between gap-2 shadow-xs animate-in fade-in ${
+                    googleDocNotice.type === 'success'
+                      ? 'bg-blue-100 dark:bg-blue-950/80 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-200'
+                      : googleDocNotice.type === 'error'
+                      ? 'bg-rose-100 dark:bg-rose-950/80 border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200'
+                      : 'bg-sky-100 dark:bg-sky-950/80 border-sky-300 dark:border-sky-700 text-sky-900 dark:text-sky-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span>{googleDocNotice.message}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {googleDocCreatedUrl && (
+                      <a
+                        href={googleDocCreatedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-blue-700 hover:bg-blue-800 text-white font-bold text-[11px] shadow-2xs transition"
+                      >
+                        <span>Apri Doc</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setGoogleDocNotice(null)}
                       className="text-slate-600 dark:text-slate-300 hover:text-slate-900 text-xs font-bold underline cursor-pointer"
                     >
                       Chiudi
@@ -2874,6 +3008,17 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
               <span>{isExportingGoogleSheet ? 'Creazione...' : 'Crea Foglio Google'}</span>
             </button>
             <button
+              id="btn-footer-export-google-docs"
+              type="button"
+              disabled={isExportingGoogleDoc}
+              onClick={handleStartExportGoogleDoc}
+              className="px-3 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer disabled:opacity-50"
+              title="Crea un documento ufficiale Google Docs su Google Drive con la distinta dei convocati"
+            >
+              <FileText className="w-3.5 h-3.5 text-blue-200" />
+              <span>{isExportingGoogleDoc ? 'Creazione...' : 'Crea Google Doc'}</span>
+            </button>
+            <button
               id="btn-footer-export-convocati-json"
               type="button"
               onClick={handleExportConvocatiJson}
@@ -2974,6 +3119,51 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm active:scale-95 cursor-pointer"
               >
                 Conferma e Crea Foglio
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal di Conferma Esplicita Creazione Documento Google Docs */}
+      {showGoogleDocConfirmModal && (
+        <div className="fixed inset-0 z-60 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/80 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                <FileText className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Crea Documento Google Docs</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Distinta Ufficiale Convocazioni su Drive</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3.5 text-xs text-slate-700 dark:text-slate-300 space-y-2 border border-slate-200 dark:border-slate-700">
+              <p>
+                Vuoi creare un nuovo documento formattato sul tuo account Google Drive (<strong>{googleUser?.email || 'Google Workspace'}</strong>)?
+              </p>
+              <div className="space-y-1 font-mono text-[11px] pt-1 text-slate-600 dark:text-slate-400">
+                <p>• <strong>Partita:</strong> {currentPartita?.squadraCasa || squadraCasaCustom || 'Cynthia 1920'} vs {currentPartita?.squadraOspite || squadraOspiteCustom || 'Avversario'}</p>
+                <p>• <strong>Data:</strong> {currentPartita?.data || dataGaraCustom || 'Data da definire'}</p>
+                <p>• <strong>Atleti convocati:</strong> {convocati.length} selezionati</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowGoogleDocConfirmModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCreateGoogleDoc}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm active:scale-95 cursor-pointer"
+              >
+                Conferma e Crea Documento
               </button>
             </div>
           </div>

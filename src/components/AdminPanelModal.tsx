@@ -31,9 +31,11 @@ import {
   Archive,
   Download,
   FileCode,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useTheme, COLOR_THEME_OPTIONS, PrimaryColor } from '../context/ThemeContext';
 import { sendWebNotification, requestNotificationPermission } from '../services/notificationService';
+import { GoogleSignInButton } from './GoogleSignInButton';
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -174,17 +176,20 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {isAuthenticated && (
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-sky-200 hover:text-white hover:bg-white/10 transition text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                title="Disconnetti sessione amministratore"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Esci</span>
-              </button>
+              <>
+                <GoogleSignInButton variant="compact" />
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-sky-200 hover:text-white hover:bg-white/10 transition text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  title="Disconnetti sessione amministratore"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:inline">Esci</span>
+                </button>
+              </>
             )}
             <button
               onClick={onClose}
@@ -533,6 +538,26 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 gap-2">
+                    {/* 2.0 ACCESSO GOOGLE WORKSPACE (FOGLI, DRIVE & DOCS) */}
+                    <div className="p-3 sm:p-3.5 rounded-xl border border-emerald-300 dark:border-emerald-800/80 bg-gradient-to-r from-emerald-50/90 to-teal-50/70 dark:from-emerald-950/40 dark:to-teal-950/30 flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2.5 rounded-xl bg-emerald-700 text-white shadow-sm shrink-0">
+                          <FileSpreadsheet className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <span>Google Workspace (Sheets, Drive & Docs)</span>
+                          </div>
+                          <div className="text-xs text-slate-600 dark:text-slate-300 truncate">
+                            Accesso amministrativo per Fogli Google, Google Drive e Documenti
+                          </div>
+                        </div>
+                      </div>
+                      <div className="shrink-0">
+                        <GoogleSignInButton />
+                      </div>
+                    </div>
+
                     {/* 2.1 AGGIORNA DATI ADESSO */}
                     <button
                       id="admin-btn-refresh"
