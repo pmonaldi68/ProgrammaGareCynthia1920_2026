@@ -185,12 +185,17 @@ export function generateFoglioGaraPdf(data: FoglioGaraData): jsPDF {
   // Titoli Centrali
   doc.setTextColor(2, 132, 199); // Blu Cynthia
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(26);
-  doc.text('CYNTHIA 1920', pageWidth / 2, 16.5, { align: 'center' });
+  doc.setFontSize(24);
+  doc.text('CYNTHIA 1920', pageWidth / 2, 14.5, { align: 'center' });
 
   doc.setTextColor(3, 105, 161);
-  doc.setFontSize(9);
-  doc.text('F.I.G.C. - L.N.D. - COMITATO REGIONALE LAZIO', pageWidth / 2, 23, { align: 'center' });
+  doc.setFontSize(8.5);
+  doc.text('F.I.G.C. - L.N.D. - COMITATO REGIONALE LAZIO', pageWidth / 2, 19.5, { align: 'center' });
+
+  doc.setTextColor(71, 85, 105);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.text('STAGIONE SPORTIVA 2026/2027', pageWidth / 2, 23.8, { align: 'center' });
 
   // ==========================================
   // 2. RIGA DATI GARA (DATA, ORE, CAMPO)
@@ -785,7 +790,7 @@ export function generateFoglioGaraPdf(data: FoglioGaraData): jsPDF {
   doc.setFontSize(6);
   doc.setTextColor(100, 116, 139);
   doc.text(
-    `A.S.D. CYNTHIA 1920 • FOGLIO GARA E NOTE PANCHINA UFFICIALE • ${data.campionato || ''} ${data.gara || ''}`,
+    `A.S.D. CYNTHIA 1920 • STAGIONE SPORTIVA 2026/2027 • FOGLIO GARA E NOTE PANCHINA UFFICIALE • ${data.campionato || ''} ${data.gara || ''}`,
     pageWidth / 2,
     290,
     { align: 'center' }
@@ -802,7 +807,7 @@ export async function downloadFoglioGaraPdf(data: FoglioGaraData): Promise<void>
   const cleanCasa = (data.squadraCasa || 'Casa').replace(/\s+/g, '_');
   const cleanOspite = (data.squadraOspite || 'Ospiti').replace(/\s+/g, '_');
   const cleanData = (data.data || '').replace(/\//g, '-');
-  const fileName = `Foglio_Panchina_${cleanCasa}_vs_${cleanOspite}_${cleanData}.pdf`;
+  const fileName = `Foglio_Panchina_2026_2027_${cleanCasa}_vs_${cleanOspite}_${cleanData}.pdf`;
   doc.save(fileName);
 }
 

@@ -73,13 +73,14 @@ export function generateGoogleCalendarUrl(partita: Partita): string {
   const title = `⚽ ${partita.squadraCasa} vs ${partita.squadraOspite} (${partita.campionato})`;
   const location = [partita.campo, partita.indirizzo, partita.comune].filter(Boolean).join(', ');
   const details = [
+    `Stagione Sportiva: 2026/2027`,
     `Campionato: ${partita.campionato} ${partita.girone ? `(${partita.girone})` : ''}`,
     partita.gara ? `Tipo Gara: ${partita.gara}` : '',
     `Fondo: ${partita.tipo || 'Sintetico'}`,
     `Campo: ${partita.campo}`,
     `Indirizzo: ${partita.indirizzo} - ${partita.comune}`,
     partita.lnkMaps ? `Mappa & Indicazioni: ${partita.lnkMaps}` : '',
-    `\nPartita Cynthia 1920 Calcio`,
+    `\nPartita Cynthia 1920 Calcio • Stagione 2026/2027`,
   ]
     .filter(Boolean)
     .join('\n');
@@ -107,6 +108,7 @@ export function downloadIcsFile(partita: Partita): void {
   const title = `⚽ ${partita.squadraCasa} vs ${partita.squadraOspite} (${partita.campionato})`;
   const location = [partita.campo, partita.indirizzo, partita.comune].filter(Boolean).join(', ');
   const description = [
+    `Stagione Sportiva: 2026/2027`,
     `Campionato: ${partita.campionato} ${partita.girone ? `(${partita.girone})` : ''}`,
     partita.gara ? `Gara: ${partita.gara}` : '',
     `Fondo: ${partita.tipo || 'Sintetico'}`,
@@ -120,7 +122,7 @@ export function downloadIcsFile(partita: Partita): void {
   const icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//ASD Cynthia 1920//Programma Gare//IT',
+    'PRODID:-//ASD Cynthia 1920//Programma Gare 2026-2027//IT',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
@@ -140,7 +142,7 @@ export function downloadIcsFile(partita: Partita): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  const cleanFilename = `${partita.campionato}_${partita.squadraCasa}_vs_${partita.squadraOspite}`
+  const cleanFilename = `gara_2026_2027_${partita.campionato}_${partita.squadraCasa}_vs_${partita.squadraOspite}`
     .replace(/[^a-zA-Z0-9_-]/g, '_')
     .toLowerCase();
   link.setAttribute('download', `${cleanFilename}.ics`);

@@ -82,7 +82,7 @@ export const SheetConfigModal: React.FC<SheetConfigModalProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', 'modello_programma_gare_cynthia.csv');
+    link.setAttribute('download', 'modello_programma_gare_cynthia_2026_2027.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

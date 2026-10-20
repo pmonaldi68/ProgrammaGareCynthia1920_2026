@@ -1276,10 +1276,11 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       const indirizzoEffettivo = currentPartita?.indirizzo || indirizzoCustom || '';
       const ritrovoCompleto = oraRitrovo || `${currentRitrovoTime} ${ritrovoLuogo.trim()}`;
 
-      const title = `Convocazioni - ${squadraCasaEffettiva} vs ${squadraTrasfertaEffettiva} (${dataPartitaEffettiva || 'Gara'})`;
+      const title = `Convocazioni 2026/2027 - ${squadraCasaEffettiva} vs ${squadraTrasfertaEffettiva} (${dataPartitaEffettiva || 'Gara'})`;
 
       const rows: (string | number)[][] = [
-        ['CONVOCAZIONI UFFICIALI - ASD CYNTHIA 1920'],
+        ['CONVOCAZIONI UFFICIALI - ASD CYNTHIA 1920', 'STAGIONE SPORTIVA 2026/2027'],
+        ['STAGIONE SPORTIVA', '2026/2027'],
         ['GARA', `${squadraCasaEffettiva} vs ${squadraTrasfertaEffettiva}`],
         ['CATEGORIA', categoriaEffettiva],
         ['DATA E ORA', `${dataPartitaEffettiva} - Ore ${oraGaraEffettiva}`],
@@ -1288,7 +1289,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         ['MISTER / DIRIGENTE', misterName || 'Non specificato'],
         ['NOTE', noteMister || 'Nessuna'],
         [],
-        ['DISTINTA CONVOCATI', `Totale atleti convocati: ${convocati.length}`],
+        ['DISTINTA CONVOCATI (STAGIONE 2026/2027)', `Totale atleti convocati: ${convocati.length}`],
         ['N.', 'COGNOME E NOME', 'RUOLO', 'ANNO', 'SQUADRA', 'STATO CONVOCAZIONE'],
       ];
 

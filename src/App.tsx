@@ -392,7 +392,7 @@ export default function App() {
               C
             </div>
             <p className="font-semibold text-slate-700 dark:text-slate-300">
-              ASD Cynthia 1920
+              ASD Cynthia 1920 • Stagione Sportiva 2026/2027
             </p>
           </div>
 

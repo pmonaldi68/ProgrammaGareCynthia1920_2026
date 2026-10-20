@@ -254,7 +254,10 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="inline-block px-2.5 py-1 rounded bg-sky-100 text-sky-900 text-[10px] font-black uppercase tracking-wider border border-sky-300">
+                  <span className="block text-[11px] font-extrabold text-sky-950 uppercase tracking-tight">
+                    Stagione Sportiva 2026/2027
+                  </span>
+                  <span className="inline-block mt-0.5 px-2.5 py-0.5 rounded bg-sky-100 text-sky-900 text-[10px] font-black uppercase tracking-wider border border-sky-300">
                     PAGINA SINGOLA A4
                   </span>
                 </div>
@@ -503,7 +506,7 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
             {/* PIÈ DI PAGINA FOGLIO A4 */}
             <div className="pt-3 border-t border-slate-200 text-[10px] text-slate-500 flex items-center justify-between mt-4">
               <div>
-                <strong>ASD CYNTHIA 1920</strong> • Distinta Convocati Ufficiale • Pagina 1 di 1
+                <strong>ASD CYNTHIA 1920</strong> • Stagione Sportiva 2026/2027 • Distinta Convocati Ufficiale • Pagina 1 di 1
               </div>
               <div className="font-bold text-sky-800">Forza Cynthia 1920!</div>
             </div>

@@ -44,9 +44,12 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="bg-sky-500/30 text-sky-100 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-sky-300/30">
                   Biancoazzurri
                 </span>
+                <span className="bg-amber-400/25 text-amber-200 text-xs font-bold px-2.5 py-0.5 rounded-full border border-amber-300/40 shadow-xs">
+                  Stagione 2026/2027
+                </span>
               </div>
               <p className="text-sky-100/90 dark:text-sky-200/90 text-sm font-medium mt-0.5">
-                Programma Gare del Fine Settimana • Genzano di Roma
+                Programma Gare del Fine Settimana • Stagione Sportiva 2026/2027 • Genzano di Roma
               </p>
               {lastUpdated && (
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-1">

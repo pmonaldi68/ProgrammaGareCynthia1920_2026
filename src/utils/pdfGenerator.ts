@@ -66,7 +66,7 @@ export function generateWeeklySchedulePdf(partite: Partita[], titleSuffix: strin
 
   doc.setFontSize(8.5);
   doc.setTextColor(71, 85, 105); // slate-600
-  doc.text('Stagione Sportiva 2025/2026', pageWidth - marginX, 17, { align: 'right' });
+  doc.text('Stagione Sportiva 2026/2027', pageWidth - marginX, 17, { align: 'right' });
 
   doc.setFontSize(7.5);
   doc.setTextColor(148, 163, 184); // slate-400
@@ -219,7 +219,7 @@ export function generateWeeklySchedulePdf(partite: Partita[], titleSuffix: strin
       doc.setFontSize(7);
       doc.setTextColor(148, 163, 184); // slate-400
 
-      const footerLeft = 'ASD CYNTHIA 1920 - Documento ufficiale ad uso societario e informativo';
+      const footerLeft = 'ASD CYNTHIA 1920 • Stagione Sportiva 2026/2027 - Documento ufficiale ad uso societario e informativo';
       doc.text(footerLeft, marginX, pageHeight - 6);
 
       const pageNumberStr = `Pagina ${data.pageNumber}`;
@@ -233,7 +233,7 @@ export function generateWeeklySchedulePdf(partite: Partita[], titleSuffix: strin
 /**
  * Scarica il file PDF direttamente sul dispositivo
  */
-export function downloadWeeklyPdf(partite: Partita[], filenamePrefix: string = 'Programma_Gare_Cynthia_1920'): void {
+export function downloadWeeklyPdf(partite: Partita[], filenamePrefix: string = 'Programma_Gare_Cynthia_2026_2027'): void {
   const doc = generateWeeklySchedulePdf(partite);
   const now = new Date();
   const dateSuffix = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
@@ -246,19 +246,19 @@ export function downloadWeeklyPdf(partite: Partita[], filenamePrefix: string = '
  */
 export async function shareWeeklyPdfOrWhatsApp(
   partite: Partita[],
-  title: string = 'Programma Gare Cynthia 1920'
+  title: string = 'Programma Gare Cynthia 1920 - Stagione 2026/2027'
 ): Promise<{ sharedViaNative: boolean; success: boolean }> {
   try {
     const doc = generateWeeklySchedulePdf(partite);
     const pdfBlob = doc.output('blob');
-    const fileName = `Programma_Gare_Cynthia_1920_${Date.now()}.pdf`;
+    const fileName = `Programma_Gare_Cynthia_2026_2027_${Date.now()}.pdf`;
     const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
     // Controlla se il browser supporta navigator.canShare con file (es. Chrome Android, Safari iOS)
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
         title,
-        text: `Programma Gare del Fine Settimana - ASD Cynthia 1920 (${partite.length} partite in programma)`,
+        text: `Programma Gare del Fine Settimana • Stagione Sportiva 2026/2027 - ASD Cynthia 1920 (${partite.length} partite in programma)`,
         files: [file],
       });
       return { sharedViaNative: true, success: true };
@@ -284,6 +284,7 @@ export function generateWhatsAppWeeklySummary(partite: Partita[]): string {
   const inTrasferta = partite.filter(p => p.isCynthiaOspite).length;
 
   let msg = `*ASD CYNTHIA 1920 - PROGRAMMA GARE*\n`;
+  msg += `*Stagione Sportiva 2026/2027*\n`;
   msg += `Weekend Gare • ${total} Partite Totali (${inCasa} Casa | ${inTrasferta} Trasferta)\n`;
   msg += `────────────────────────────\n\n`;
 

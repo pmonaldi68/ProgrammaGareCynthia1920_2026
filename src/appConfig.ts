@@ -4,6 +4,10 @@
  * automaticamente i dati per TUTTI gli utenti senza dover digitare nulla.
  */
 export const APP_CONFIG = {
+  // Stagione Sportiva Ufficiale
+  stagioneSportiva: '2026/2027',
+  stagioneSportivaLabel: 'Stagione Sportiva 2026/2027',
+
   // Foglio Calendario Partite
   defaultSheetUrl:
     (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SHEET_URL) ||

@@ -548,6 +548,8 @@ export function downloadConvocatiCsv(params: {
   const escapeCsv = (str: string) => `"${(str || '').replace(/"/g, '""')}"`;
 
   const rows: string[] = [
+    ['SOCIETÀ', 'ASD CYNTHIA 1920'].map(escapeCsv).join(';'),
+    ['STAGIONE SPORTIVA', '2026/2027'].map(escapeCsv).join(';'),
     ['DETTAGLIO GARA', partitaTitle].map(escapeCsv).join(';'),
     ['CATEGORIA', categoria].map(escapeCsv).join(';'),
     ['DATA GARA', dataGara].map(escapeCsv).join(';'),
@@ -580,7 +582,7 @@ export function downloadConvocatiCsv(params: {
   const csvContent = '\uFEFF' + rows.join('\r\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const safeFilename = `convocati_${categoria}_${squadraCasa}_vs_${squadraOspite}`
+  const safeFilename = `convocati_2026_2027_${categoria}_${squadraCasa}_vs_${squadraOspite}`
     .toLowerCase()
     .replace(/[^a-z0-9_-]/g, '_')
     .slice(0, 80);

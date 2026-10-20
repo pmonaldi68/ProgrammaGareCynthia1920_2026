@@ -101,10 +101,12 @@ export async function createConvocazioniGoogleDoc(
 
   const docLines: string[] = [
     'ASD CYNTHIA 1920 - COMUNICAZIONE UFFICIALE',
+    'STAGIONE SPORTIVA 2026/2027',
     'DISTINTA CONVOCAZIONI GARA',
     `Data Emissione: ${dataCreazione}`,
     divider,
     '',
+    `STAGIONE SPORTIVA: 2026/2027`,
     `GARA: ${params.squadraCasa || 'Cynthia 1920'} vs ${params.squadraOspite || 'Avversario'}`,
     `CATEGORIA / CAMPIONATO: ${params.categoria || 'Non specificata'}`,
     `DATA E ORA INCONTRO: ${params.dataGara || 'Da definire'} - Ore ${params.oraGara || '--:--'}`,
@@ -147,7 +149,7 @@ export async function createConvocazioniGoogleDoc(
   docLines.push('Documento generato dall\'Applicazione ASD Cynthia 1920 con Google Workspace Docs');
 
   const contentText = docLines.join('\n');
-  const title = `Distinta Convocazioni - ${params.squadraCasa || 'Cynthia'} vs ${params.squadraOspite || 'Avversario'} (${params.dataGara || 'Gara'})`;
+  const title = `Distinta Convocazioni 2026/2027 - ${params.squadraCasa || 'Cynthia'} vs ${params.squadraOspite || 'Avversario'} (${params.dataGara || 'Gara'})`;
 
   return createGoogleDoc(title, contentText, accessToken);
 }
@@ -170,6 +172,7 @@ export async function createProgrammaGareGoogleDoc(
 
   const docLines: string[] = [
     'ASD CYNTHIA 1920 - GENZANO DI ROMA',
+    'STAGIONE SPORTIVA 2026/2027',
     'PROGRAMMA GARE DEL FINE SETTIMANA',
     `Data aggiornamento: ${lastUpdated || dataCreazione}`,
     divider,
@@ -192,10 +195,10 @@ export async function createProgrammaGareGoogleDoc(
 
   docLines.push(divider);
   docLines.push(`Totale incontri in calendario: ${partite.length}`);
-  docLines.push('Documento ufficiale generato dall\'Applicazione ASD Cynthia 1920');
+  docLines.push('Documento ufficiale generato dall\'Applicazione ASD Cynthia 1920 • Stagione Sportiva 2026/2027');
 
   const contentText = docLines.join('\n');
-  const title = `Programma Gare Weekend - ASD Cynthia 1920 (${dataCreazione})`;
+  const title = `Programma Gare Weekend - ASD Cynthia 1920 Stagione 2026-2027 (${dataCreazione})`;
 
   return createGoogleDoc(title, contentText, accessToken);
 }

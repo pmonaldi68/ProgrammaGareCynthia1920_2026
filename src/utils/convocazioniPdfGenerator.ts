@@ -78,6 +78,12 @@ export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF 
   doc.setTextColor(12, 74, 110); // sky-900 / Cynthia Blue
   doc.text('ASD CYNTHIA 1920', headerTextX, 11.5);
 
+  // Indicazione Stagione Sportiva 2026/2027 in alto a destra
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Stagione Sportiva 2026/2027', pageWidth - marginX, 11.5, { align: 'right' });
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.5);
   doc.setTextColor(15, 23, 42); // slate-900
@@ -412,8 +418,8 @@ export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF 
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
   const footerLeft = modalita === 'solo_convocati'
-    ? `ASD CYNTHIA 1920 • Distinta Convocati Ufficiale (${targetGiocatori.length} convocati)`
-    : `ASD CYNTHIA 1920 • Foglio di Spunta Rosa Completa (${targetGiocatori.length} atleti)`;
+    ? `ASD CYNTHIA 1920 • Stagione Sportiva 2026/2027 • Distinta Convocati Ufficiale (${targetGiocatori.length} convocati)`
+    : `ASD CYNTHIA 1920 • Stagione Sportiva 2026/2027 • Foglio di Spunta Rosa Completa (${targetGiocatori.length} atleti)`;
   doc.text(footerLeft, marginX, pageHeight - 4.5);
   doc.text('Pagina 1 di 1 • Forza Cynthia 1920!', pageWidth - marginX, pageHeight - 4.5, { align: 'right' });
 
@@ -429,7 +435,7 @@ export function downloadConvocazioniPdf(options: ConvocazioniPdfOptions): void {
     .replace(/[^a-zA-Z0-9]/g, '_')
     .substring(0, 20);
   const data = (options.dataGara || 'Gara').replace(/[^a-zA-Z0-9]/g, '_');
-  const filename = `Convocazioni_${cat}_${data}.pdf`;
+  const filename = `Convocazioni_2026_2027_${cat}_${data}.pdf`;
   doc.save(filename);
 }
 

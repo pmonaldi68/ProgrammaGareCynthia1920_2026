@@ -450,8 +450,8 @@ export const FoglioGaraPanchinaModal: React.FC<FoglioGaraPanchinaModalProps> = (
                 <p className="text-[11px] sm:text-xs font-bold text-sky-800 tracking-wider mt-1 uppercase">
                   F.I.G.C. - L.N.D. - COMITATO REGIONALE LAZIO
                 </p>
-                <p className="text-[9.5px] text-slate-500 font-semibold mt-0.5">
-                  {foglioData.campionato}{' '}
+                <p className="text-[9.5px] text-slate-600 font-bold mt-0.5 uppercase tracking-wide">
+                  STAGIONE SPORTIVA 2026/2027 • {foglioData.campionato}{' '}
                   {foglioData.girone && foglioData.girone !== '#' ? `• Girone ${foglioData.girone}` : ''}{' '}
                   {foglioData.gara ? `• ${foglioData.gara}` : ''}
                 </p>
@@ -959,7 +959,7 @@ export const FoglioGaraPanchinaModal: React.FC<FoglioGaraPanchinaModalProps> = (
 
             {/* Footer A4 */}
             <div className="mt-2.5 pt-1.5 text-[8.5px] text-slate-500 flex items-center justify-between border-t border-slate-200">
-              <span>A.S.D. CYNTHIA 1920 • FOGLIO GARA E NOTE PANCHINA UFFICIALE</span>
+              <span>A.S.D. CYNTHIA 1920 • STAGIONE SPORTIVA 2026/2027 • FOGLIO GARA E NOTE PANCHINA UFFICIALE</span>
               <span>Generato da Programma Gare Cynthia 1920</span>
             </div>
           </div>

@@ -171,7 +171,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 )}
               </div>
               <p className="text-[11px] text-sky-200/80 truncate">
-                Cynthia 1920 • Strumenti & Gestione
+                Cynthia 1920 • Stagione Sportiva 2026/2027
               </p>
             </div>
           </div>

@@ -46,7 +46,7 @@ export const LocandinaModal: React.FC<LocandinaModalProps> = ({
   const [sottotitolo, setSottotitolo] = useState<string>(() => computeWeekendDatesString(partite));
   const [motto, setMotto] = useState<string>('TUTTI AL CAMPO A SOSTENERE I BIANCOAZZURRI!');
   const [notePiePagina, setNotePiePagina] = useState<string>(
-    'A.S.D. CYNTHIA 1920 • GENZANO DI ROMA (RM)'
+    'A.S.D. CYNTHIA 1920 • STAGIONE SPORTIVA 2026/2027 • GENZANO DI ROMA (RM)'
   );
 
   // Logo caricato: default al logo ufficiale Cynthia 1920 (con scudo dorato e arciere)
@@ -442,7 +442,7 @@ export const LocandinaModal: React.FC<LocandinaModalProps> = ({
                   type="text"
                   value={notePiePagina}
                   onChange={(e) => setNotePiePagina(e.target.value)}
-                  placeholder="A.S.D. CYNTHIA 1920 • GENZANO DI ROMA (RM)"
+                  placeholder="A.S.D. CYNTHIA 1920 • STAGIONE SPORTIVA 2026/2027 • GENZANO DI ROMA (RM)"
                   className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-sky-500"
                 />
               </div>

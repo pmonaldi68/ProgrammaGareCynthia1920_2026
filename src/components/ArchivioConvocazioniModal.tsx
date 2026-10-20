@@ -55,7 +55,7 @@ export const ArchivioConvocazioniModal: React.FC<ArchivioConvocazioniModalProps>
       const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(savedRecords, null, 2));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute('href', dataStr);
-      downloadAnchor.setAttribute('download', `cynthia_convocazioni_backup_${new Date().toISOString().slice(0, 10)}.json`);
+      downloadAnchor.setAttribute('download', `cynthia_convocazioni_2026_2027_backup_${new Date().toISOString().slice(0, 10)}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -108,7 +108,7 @@ export const ArchivioConvocazioniModal: React.FC<ArchivioConvocazioniModalProps>
                 </span>
               </div>
               <p className="text-xs text-white/80 mt-0.5">
-                Riapri con 1 click le convocazioni create per modificarle, ristamparle o rinviarle
+                Stagione Sportiva 2026/2027 • Riapri con 1 click le convocazioni create per modificarle, ristamparle o rinviarle
               </p>
             </div>
           </div>

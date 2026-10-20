@@ -196,9 +196,14 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold">Report PDF Programma Gare</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-bold">Report PDF Programma Gare</h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-200 border border-amber-300/30">
+                  Stagione 2026/2027
+                </span>
+              </div>
               <p className="text-[11px] text-sky-200/80">
-                Formattato per stampa A4 orizzontale o condivisione WhatsApp
+                Stagione Sportiva 2026/2027 • Formattato per stampa A4 orizzontale o condivisione WhatsApp
               </p>
             </div>
           </div>

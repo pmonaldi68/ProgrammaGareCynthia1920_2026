@@ -48,7 +48,7 @@ export function buildDefaultLocandinaSingolaData(partita?: Partita | null): Loca
     campo: defaultCampo,
     indirizzo: defaultIndirizzo,
     infoExtra: 'TUTTI ALLO STADIO A TIFARE BIANCOAZZURRO! • INGRESSO LIBERO',
-    hashtag: '#ForzaCynthia • #GenzanoDiRoma • #Biancoazzurri',
+    hashtag: '#ForzaCynthia • Stagione 2026/2027 • #GenzanoDiRoma',
     accentColor: '#38bdf8', // Sky/cyan vibrante Cynthia
     aspectRatio: '1:1',
     bgImageBase64: POSTER_MATCHDAY_BG_BASE64,
@@ -245,7 +245,7 @@ export async function renderLocandinaSingolaToCanvas(
   ctx.letterSpacing = '3px';
   ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
   ctx.shadowBlur = 6;
-  ctx.fillText('A.S.D. CYNTHIA 1920', centerX, headerY);
+  ctx.fillText('A.S.D. CYNTHIA 1920 • STAGIONE 2026/2027', centerX, headerY);
   ctx.shadowBlur = 0;
   ctx.letterSpacing = '0px';
 
@@ -486,7 +486,7 @@ export async function downloadLocandinaSingolaPng(
   const cleanCasa = (data.squadraCasa || 'Cynthia').replace(/[^a-zA-Z0-9]/g, '_');
   const cleanOspite = (data.squadraOspite || 'Avversario').replace(/[^a-zA-Z0-9]/g, '_');
   const cleanDate = (data.dataGara || '').replace(/[^a-zA-Z0-9]/g, '_');
-  const defaultName = `matchday_${cleanCasa}_vs_${cleanOspite}_${cleanDate}.png`;
+  const defaultName = `matchday_2026_2027_${cleanCasa}_vs_${cleanOspite}_${cleanDate}.png`;
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) throw new Error('Impossibile esportare immagine PNG');
@@ -541,7 +541,7 @@ export async function downloadLocandinaSingolaPdf(
 
   const cleanCasa = (data.squadraCasa || 'Cynthia').replace(/[^a-zA-Z0-9]/g, '_');
   const cleanOspite = (data.squadraOspite || 'Avversario').replace(/[^a-zA-Z0-9]/g, '_');
-  const defaultName = `locandina_a4_${cleanCasa}_vs_${cleanOspite}.pdf`;
+  const defaultName = `locandina_a4_2026_2027_${cleanCasa}_vs_${cleanOspite}.pdf`;
 
   pdf.save(filename || defaultName);
 }
@@ -555,7 +555,7 @@ export async function shareLocandinaSingola(
   const canvas = await renderLocandinaSingolaToCanvas(data);
   const cleanCasa = (data.squadraCasa || 'Cynthia').replace(/[^a-zA-Z0-9]/g, '_');
   const cleanOspite = (data.squadraOspite || 'Avversario').replace(/[^a-zA-Z0-9]/g, '_');
-  const fileName = `matchday_${cleanCasa}_vs_${cleanOspite}.png`;
+  const fileName = `matchday_2026_2027_${cleanCasa}_vs_${cleanOspite}.png`;
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) throw new Error('Impossibile generare blob immagine');
@@ -565,8 +565,8 @@ export async function shareLocandinaSingola(
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({
-        title: `⚽ MATCHDAY: ${data.squadraCasa} vs ${data.squadraOspite}`,
-        text: `⚽ ${data.titolo}: ${data.squadraCasa} vs ${data.squadraOspite} - ${data.dataGara} ore ${data.oraGara} presso ${data.campo}! #ForzaCynthia`,
+        title: `⚽ MATCHDAY: ${data.squadraCasa} vs ${data.squadraOspite} (Stagione 2026/2027)`,
+        text: `⚽ ${data.titolo} • Stagione Sportiva 2026/2027: ${data.squadraCasa} vs ${data.squadraOspite} - ${data.dataGara} ore ${data.oraGara} presso ${data.campo}! #ForzaCynthia`,
         files: [file],
       });
       return { sharedViaNative: true };

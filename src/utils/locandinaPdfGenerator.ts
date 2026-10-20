@@ -221,7 +221,7 @@ export function generateLocandinaPdf(options: LocandinaPdfOptions): jsPDF {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.setTextColor(255, 255, 255);
-  const footerLine1 = notePiePagina || 'A.S.D. CYNTHIA 1920 • GENZANO DI ROMA (RM)';
+  const footerLine1 = notePiePagina || 'A.S.D. CYNTHIA 1920 • STAGIONE SPORTIVA 2026/2027 • GENZANO DI ROMA (RM)';
   doc.text(footerLine1, pageWidth / 2, footerY + 4.5, { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
@@ -817,7 +817,7 @@ export async function downloadLocandinaPdf(options: LocandinaPdfOptions): Promis
 
   const now = new Date();
   const dateSuffix = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
-  doc.save(`Locandina_Gare_Cynthia_A4_${dateSuffix}.pdf`);
+  doc.save(`Locandina_Gare_Cynthia_2026_2027_A4_${dateSuffix}.pdf`);
 }
 
 /**
@@ -830,7 +830,7 @@ export async function downloadLocandinaImage(options: LocandinaPdfOptions): Prom
     const link = document.createElement('a');
     const now = new Date();
     const dateSuffix = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
-    link.download = `Locandina_Gare_Cynthia_1920_${dateSuffix}.png`;
+    link.download = `Locandina_Gare_Cynthia_2026_2027_${dateSuffix}.png`;
     link.href = dataUrl;
     link.click();
     return true;
