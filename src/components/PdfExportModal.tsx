@@ -82,16 +82,37 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
     setTimeout(() => {
       try {
         const doc = generateWeeklySchedulePdf(targetPartite);
-        const blobUrl = doc.output('bloburl');
-        const printWindow = window.open(blobUrl as unknown as string, '_blank');
-        if (printWindow) {
-          printWindow.focus();
-        } else {
-          // Fallback se il popup è bloccato
-          downloadWeeklyPdf(targetPartite);
-        }
+        doc.autoPrint();
+        const pdfBlob = doc.output('blob');
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        const printFrame = document.createElement('iframe');
+        printFrame.style.position = 'fixed';
+        printFrame.style.right = '0';
+        printFrame.style.bottom = '0';
+        printFrame.style.width = '0';
+        printFrame.style.height = '0';
+        printFrame.style.border = '0';
+        printFrame.src = blobUrl;
+        document.body.appendChild(printFrame);
+        printFrame.onload = () => {
+          setTimeout(() => {
+            try {
+              printFrame.contentWindow?.focus();
+              printFrame.contentWindow?.print();
+            } catch {
+              downloadWeeklyPdf(targetPartite);
+            }
+            setTimeout(() => {
+              if (document.body.contains(printFrame)) {
+                document.body.removeChild(printFrame);
+                URL.revokeObjectURL(blobUrl);
+              }
+            }, 3000);
+          }, 300);
+        };
       } catch (err) {
         console.error('Errore stampa:', err);
+        downloadWeeklyPdf(targetPartite);
       } finally {
         setIsGenerating(false);
       }

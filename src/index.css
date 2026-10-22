@@ -304,11 +304,28 @@
   body:has(#pdf-sheet-a4) #root > footer,
   body:has(#locandina-sheet-a4) #root > header,
   body:has(#locandina-sheet-a4) #root > main,
-  body:has(#locandina-sheet-a4) #root > footer {
+  body:has(#locandina-sheet-a4) #root > footer,
+  body.print-scheda-convocazioni #root > header,
+  body.print-scheda-convocazioni #root > main,
+  body.print-scheda-convocazioni #root > footer {
     display: none !important;
   }
 
+  body:has(#pdf-sheet-a4) #convocazioni-modal-content,
+  body.print-scheda-convocazioni #convocazioni-modal-content {
+    display: none !important;
+  }
+
+  body:has(#pdf-sheet-a4) #pdf-preview-toolbar,
+  body:has(#pdf-sheet-a4) #pdf-preview-footer,
+  body.print-scheda-convocazioni #pdf-preview-toolbar,
+  body.print-scheda-convocazioni #pdf-preview-footer {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
   body:has(#pdf-sheet-a4) #modal-convocazioni-pdf-preview,
+  body.print-scheda-convocazioni #modal-convocazioni-pdf-preview,
   body:has(#locandina-sheet-a4) #modal-locandina-backdrop {
     display: block !important;
     position: static !important;
@@ -320,6 +337,7 @@
   }
 
   body:has(#pdf-sheet-a4) #modal-pdf-preview-container,
+  body.print-scheda-convocazioni #modal-pdf-preview-container,
   body:has(#locandina-sheet-a4) #modal-locandina-container {
     display: block !important;
     background: transparent !important;
@@ -334,6 +352,7 @@
   }
 
   body:has(#pdf-sheet-a4) #pdf-sheet-a4,
+  body.print-scheda-convocazioni #pdf-sheet-a4,
   body:has(#locandina-sheet-a4) #locandina-sheet-a4 {
     display: flex !important;
     visibility: visible !important;
@@ -347,6 +366,8 @@
     print-color-adjust: exact !important;
   }
 
+  body:has(#pdf-sheet-a4) #pdf-sheet-a4 *,
+  body.print-scheda-convocazioni #pdf-sheet-a4 *,
   body:has(#locandina-sheet-a4) #locandina-sheet-a4,
   body:has(#locandina-sheet-a4) #locandina-sheet-a4 * {
     -webkit-print-color-adjust: exact !important;

@@ -9,6 +9,7 @@ import {
   User,
   FileText,
   Layout,
+  Printer,
 } from 'lucide-react';
 import {
   ConvocazioniPdfOptions,
@@ -90,7 +91,10 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Toolbar Superiore */}
-        <div className="px-4 sm:px-6 py-2.5 bg-gradient-to-r from-sky-950 via-sky-900 to-slate-900 text-white flex flex-wrap items-center justify-between gap-2 border-b border-sky-800/60 shrink-0">
+        <div
+          id="pdf-preview-toolbar"
+          className="print:hidden px-4 sm:px-6 py-2.5 bg-gradient-to-r from-sky-950 via-sky-900 to-slate-900 text-white flex flex-wrap items-center justify-between gap-2 border-b border-sky-800/60 shrink-0"
+        >
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-amber-400/20 text-amber-300 rounded-xl border border-amber-300/30">
               <Eye className="w-5 h-5" />
@@ -188,6 +192,18 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
                 />
               </div>
             )}
+
+            {/* Pulsante Stampa A4 Diretta */}
+            <button
+              id="btn-preview-modal-print"
+              type="button"
+              onClick={() => (onPrintPdf ? onPrintPdf(modalita) : window.print())}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 text-xs font-black transition shadow-xs cursor-pointer"
+              title="Stampa diretta scheda A4 (senza blocchi popup)"
+            >
+              <Printer className="w-3.5 h-3.5 text-slate-950" />
+              <span className="hidden sm:inline">Stampa A4</span>
+            </button>
 
             {/* Pulsante Download PDF */}
             <button
@@ -437,9 +453,14 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
                               {g.numero || idx + 1}
                             </td>
 
-                            {/* Nominativo Calciatore: solo il nome */}
+                            {/* Nominativo Calciatore: nome + anno di nascita a fianco */}
                             <td className="py-2.5 px-3 font-bold text-slate-900 border-r border-slate-200 uppercase text-xs tracking-wide">
                               <span>{g.nome}</span>
+                              {g.annoNascita && !g.nome.includes(g.annoNascita) && (
+                                <span className="ml-1.5 font-bold text-sky-800 tracking-normal text-[11px]">
+                                  ({g.annoNascita})
+                                </span>
+                              )}
                             </td>
 
                             {/* Note Mister: vuoto per appunti a penna o note specifiche */}
@@ -514,7 +535,10 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
         </div>
 
         {/* Footer Modale */}
-        <div className="px-4 py-2.5 bg-slate-900 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0 text-xs">
+        <div
+          id="pdf-preview-footer"
+          className="print:hidden px-4 py-2.5 bg-slate-900 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0 text-xs"
+        >
           <div className="flex items-center gap-3 text-slate-400">
             <span>
               Modalità:{' '}
@@ -535,6 +559,16 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              id="btn-preview-footer-print"
+              type="button"
+              onClick={() => (onPrintPdf ? onPrintPdf(modalita) : window.print())}
+              className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black transition flex items-center gap-1.5 active:scale-95 shadow-xs cursor-pointer"
+              title="Stampa diretta su formato A4"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Stampa Scheda A4</span>
+            </button>
             <button
               type="button"
               onClick={() => onDownloadPdf(modalita)}

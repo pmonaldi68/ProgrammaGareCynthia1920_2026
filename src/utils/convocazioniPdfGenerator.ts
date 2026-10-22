@@ -251,7 +251,8 @@ export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF 
     const spuntaText = g.selezionato ? '[ X ]' : '[   ]';
     const numJersey = g.numero ? String(g.numero) : String(index + 1);
     const nominativo = (g.nome || '').trim().toUpperCase() || 'CALCIATORE';
-    const fullNominativo = nominativo;
+    const annoStr = g.annoNascita && !nominativo.includes(g.annoNascita) ? ` (${g.annoNascita})` : '';
+    const fullNominativo = `${nominativo}${annoStr}`;
     const noteCol = g.note ? g.note.toUpperCase() : '';
 
     return [spuntaText, numJersey, fullNominativo, noteCol];
@@ -443,24 +444,53 @@ export function downloadConvocazioniPdf(options: ConvocazioniPdfOptions): void {
  * Stampa pulita del foglio convocazioni senza iframe blob (che causano blocco pagina in Chrome)
  */
 export function printConvocazioniPdf(options: ConvocazioniPdfOptions): void {
-  // Se l'elemento DOM del foglio A4 è presente, esegue window.print() tramite overlay di stampa
+  // Se l'elemento DOM del foglio A4 è presente nell'anteprima, esegue window.print() con classe dedicata
   const sheetElement = document.getElementById('pdf-sheet-a4');
   if (sheetElement) {
-    window.print();
+    document.body.classList.add('print-scheda-convocazioni');
+    const cleanup = () => {
+      document.body.classList.remove('print-scheda-convocazioni');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    setTimeout(() => {
+      window.print();
+      setTimeout(cleanup, 2000);
+    }, 150);
     return;
   }
 
-  // Fallback se il modale di anteprima non è aperto:
-  // Usa il metodo standard jsPDF autoPrint in una nuova finestra pulita o scarica direttamente
+  // Fallback se il modale di anteprima non è aperto: stampa tramite iframe invisibile standard
   try {
     const doc = generateConvocazioniPdf(options);
     doc.autoPrint();
-    const blobUrl = doc.output('bloburl');
-    const printWindow = window.open(blobUrl, '_blank');
-    if (!printWindow) {
-      // Se il popup viene bloccato da Chrome, scarica il PDF direttamente
-      downloadConvocazioniPdf(options);
-    }
+    const pdfBlob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = '0';
+    printFrame.src = blobUrl;
+    document.body.appendChild(printFrame);
+    printFrame.onload = () => {
+      setTimeout(() => {
+        try {
+          printFrame.contentWindow?.focus();
+          printFrame.contentWindow?.print();
+        } catch {
+          downloadConvocazioniPdf(options);
+        }
+        setTimeout(() => {
+          if (document.body.contains(printFrame)) {
+            document.body.removeChild(printFrame);
+            URL.revokeObjectURL(blobUrl);
+          }
+        }, 3000);
+      }, 300);
+    };
   } catch (err) {
     console.warn('Fallback download PDF per la stampa:', err);
     downloadConvocazioniPdf(options);

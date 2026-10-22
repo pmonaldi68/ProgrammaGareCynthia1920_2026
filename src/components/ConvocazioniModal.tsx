@@ -2881,31 +2881,44 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
               </button>
 
               {/* Pulsanti Azione PDF */}
-              <div className="grid grid-cols-2 gap-2 pt-0.5">
+              <div className="grid grid-cols-3 gap-2 pt-0.5">
                 {/* 1. Scarica PDF */}
                 <button
                   id="btn-download-pdf-mister"
                   type="button"
                   disabled={isGeneratingPdf}
                   onClick={() => handleDownloadPdf()}
-                  className="py-2.5 px-2 rounded-xl bg-sky-700 hover:bg-sky-800 active:scale-95 text-white font-bold text-xs shadow-xs transition flex flex-col items-center justify-center gap-1 disabled:opacity-50"
+                  className="py-2.5 px-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 active:scale-95 text-white font-bold text-xs shadow-xs transition flex flex-col items-center justify-center gap-1 disabled:opacity-50 cursor-pointer"
                   title="Scarica il file PDF per il mister"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Scarica PDF</span>
+                  <span className="truncate">Scarica PDF</span>
                 </button>
 
-                {/* 2. Invia al Mister */}
+                {/* 2. Stampa PDF */}
+                <button
+                  id="btn-print-pdf-mister"
+                  type="button"
+                  disabled={isGeneratingPdf}
+                  onClick={() => handlePrintPdf()}
+                  className="py-2.5 px-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-bold text-xs shadow-xs transition flex flex-col items-center justify-center gap-1 disabled:opacity-50 cursor-pointer"
+                  title="Stampa diretta su formato A4"
+                >
+                  <Printer className="w-4 h-4 text-slate-950" />
+                  <span className="truncate">Stampa PDF</span>
+                </button>
+
+                {/* 3. Invia al Mister */}
                 <button
                   id="btn-share-pdf-mister"
                   type="button"
                   disabled={isGeneratingPdf}
                   onClick={() => handleSharePdf()}
-                  className="py-2.5 px-2 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 active:scale-95 text-slate-800 dark:text-slate-100 font-semibold text-xs shadow-2xs transition flex flex-col items-center justify-center gap-1 disabled:opacity-50"
+                  className="py-2.5 px-1.5 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 active:scale-95 text-slate-800 dark:text-slate-100 font-semibold text-xs shadow-2xs transition flex flex-col items-center justify-center gap-1 disabled:opacity-50 cursor-pointer"
                   title="Invia il file PDF al mister tramite WhatsApp o condivisione nativa"
                 >
                   <Share2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>Invia al Mister</span>
+                  <span className="truncate">Invia al Mister</span>
                 </button>
               </div>
 

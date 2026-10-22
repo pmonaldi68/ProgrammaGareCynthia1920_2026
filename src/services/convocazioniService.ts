@@ -1025,6 +1025,11 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
       } else if (firstRow[1].length <= 3) {
         idxRuolo = 1;
       }
+      firstRow.forEach((val, i) => {
+        if (/^(19\d{2}|20\d{2})$/.test(val.trim())) {
+          idxAnnoNascita = i;
+        }
+      });
     }
   }
 
