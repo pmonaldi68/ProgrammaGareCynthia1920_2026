@@ -2,6 +2,7 @@ import { Partita, SheetConfig } from '../types';
 import { DEFAULT_PARTITE } from '../data/defaultPartite';
 import { APP_CONFIG } from '../appConfig';
 import { extractCoordsFromUrl, resolveMapLinkAsync } from '../utils/geoUtils';
+import { detectPartitaClub } from '../utils/donBoscoUtils';
 
 const CONFIG_STORAGE_KEY = 'cynthia_sheet_config_v1';
 const DATA_STORAGE_KEY = 'cynthia_partite_cache_v1';
@@ -185,6 +186,7 @@ export function mapCsvToPartite(rows: string[][]): Partita[] {
   const idxIndirizzo = findIdx(['indirizzo', 'via']);
   const idxComune = findIdx(['comune', 'citta', 'paese']);
   const idxMaps = findIdx(['lnkmaps', 'linkmaps', 'maps', 'link', 'mappa', 'posizione']);
+  const idxSocieta = findIdx(['societa', 'club', 'entita', 'polisportiva', 'appartenenza']);
   const idxLat = findIdx(['lat', 'latitudine']);
   const idxLng = findIdx(['lng', 'lon', 'longitudine']);
   const idxCoords = findIdx(['coordinate', 'coords', 'gps']);
@@ -252,6 +254,15 @@ export function mapCsvToPartite(rows: string[][]): Partita[] {
     const dataVal = getCol(row, idxData, '').trim();
     const matchSlug = `${r}_${campVal}_${casa}_${ospite}_${dataVal}`.toLowerCase().replace(/[^a-z0-9]/g, '_');
 
+    const rawSocieta = getCol(row, idxSocieta);
+    const societa = detectPartitaClub({
+      societa: rawSocieta,
+      squadraCasa: casa,
+      squadraOspite: ospite,
+      campionato: campVal,
+      gara: getCol(row, idxGara),
+    });
+
     partite.push({
       id: `match_${matchSlug}`,
       campionato: getCol(row, idxCampionato, 'Campionato'),
@@ -270,6 +281,7 @@ export function mapCsvToPartite(rows: string[][]): Partita[] {
       isCynthiaOspite,
       lat,
       lng,
+      societa,
     });
   }
 
@@ -461,6 +473,7 @@ export function exportPartiteToCSV(partite: Partita[]): string {
     'ORA',
     'SQUADRA CASA',
     'SQUADRA OSPITE',
+    'SOCIETÀ',
     'CAMPO',
     'TIPO',
     'INDIRIZZO',
@@ -483,6 +496,7 @@ export function exportPartiteToCSV(partite: Partita[]): string {
     escape(p.ora),
     escape(p.squadraCasa),
     escape(p.squadraOspite),
+    escape(p.societa || ''),
     escape(p.campo),
     escape(p.tipo),
     escape(p.indirizzo),

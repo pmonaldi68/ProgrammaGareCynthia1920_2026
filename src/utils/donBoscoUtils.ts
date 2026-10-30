@@ -85,3 +85,59 @@ export function getDonBoscoPartite<T extends Partial<Pick<Partita, 'squadraCasa'
 ): T[] {
   return (partite || []).filter((p) => isDonBoscoGenzanoMatch(p));
 }
+
+/**
+ * Riconosce la Società / Club associato a una partita (colonna SOCIETA' o dedotta da squadre e campionato).
+ * Restituisce uno dei club ufficiali:
+ * - 'CYNTHIA 1920'
+ * - 'ACADEMY CYNTHIA GENZANO'
+ * - 'ALBACYNTHIA'
+ * - 'P.G.S. DON BOSCO GENZANO'
+ * o il nome esatto specificato nella colonna SOCIETA'.
+ */
+export function detectPartitaClub(
+  partita?: Partial<Pick<Partita, 'societa' | 'squadraCasa' | 'squadraOspite' | 'campionato' | 'gara'>> | null
+): string {
+  if (!partita) return 'CYNTHIA 1920';
+
+  // 1. Se è esplicitamente indicata la società (dalla colonna SOCIETA' del dataset)
+  if (partita.societa && partita.societa.trim()) {
+    const raw = partita.societa.trim();
+    const upper = raw.toUpperCase();
+    if (upper === 'CYNTHIA' || upper === 'CYNTHIA 1920' || upper === 'ASD CYNTHIA 1920') {
+      return 'CYNTHIA 1920';
+    }
+    if (upper === 'ACADEMY' || upper.includes('ACADEMY CYNTHIA') || upper === 'ACADEMY CYNTHIA GENZANO') {
+      return 'ACADEMY CYNTHIA GENZANO';
+    }
+    if (upper === 'ALBA' || upper === 'ALBACYNTHIA' || upper.includes('ALBACYNTHIA')) {
+      return 'ALBACYNTHIA';
+    }
+    if (upper.includes('DON BOSCO') || upper.includes('PGS')) {
+      return 'P.G.S. DON BOSCO GENZANO';
+    }
+    return raw;
+  }
+
+  // 2. Se è identificata come Don Bosco Genzano
+  if (isDonBoscoGenzanoMatch(partita)) {
+    return 'P.G.S. DON BOSCO GENZANO';
+  }
+
+  // 3. Deduzione da squadraCasa, squadraOspite o campionato
+  const casa = (partita.squadraCasa || '').toUpperCase();
+  const ospite = (partita.squadraOspite || '').toUpperCase();
+  const camp = (partita.campionato || '').toUpperCase();
+
+  if (casa.includes('ALBACYNTHIA') || ospite.includes('ALBACYNTHIA') || camp.includes('ALBACYNTHIA')) {
+    return 'ALBACYNTHIA';
+  }
+  if (casa.includes('ACADEMY') || ospite.includes('ACADEMY') || camp.includes('ACADEMY')) {
+    return 'ACADEMY CYNTHIA GENZANO';
+  }
+  if (casa.includes('CYNTHIA') || ospite.includes('CYNTHIA')) {
+    return 'CYNTHIA 1920';
+  }
+
+  return 'CYNTHIA 1920';
+}

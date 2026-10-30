@@ -1,6 +1,7 @@
 import { Partita } from '../types';
+import { detectPartitaClub } from '../utils/donBoscoUtils';
 
-export const DEFAULT_PARTITE: Partita[] = [
+const RAW_DEFAULT_PARTITE: Partita[] = [
   {
     id: 'p-1',
     campionato: 'UNDER16',
@@ -206,3 +207,8 @@ export const DEFAULT_PARTITE: Partita[] = [
     isCynthiaOspite: true,
   },
 ];
+
+export const DEFAULT_PARTITE: Partita[] = RAW_DEFAULT_PARTITE.map(p => ({
+  ...p,
+  societa: p.societa || detectPartitaClub(p),
+}));

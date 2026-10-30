@@ -33,7 +33,7 @@ import { TabellinoModal } from './components/TabellinoModal';
 import { FoglioGaraPanchinaModal } from './components/FoglioGaraPanchinaModal';
 import { LocandinaSingolaModal } from './components/LocandinaSingolaModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
-import { getPublicPartite, getDonBoscoPartite } from './utils/donBoscoUtils';
+import { getPublicPartite, getDonBoscoPartite, detectPartitaClub } from './utils/donBoscoUtils';
 import { AlertCircle, FileCode, BellRing, X, Palette } from 'lucide-react';
 
 export default function App() {
@@ -68,6 +68,7 @@ export default function App() {
 
   const [filters, setFilters] = useState<FilterState>({
     campionato: 'ALL',
+    societa: 'ALL',
     data: 'ALL',
     startDate: '',
     endDate: '',
@@ -162,12 +163,28 @@ export default function App() {
     return list.sort();
   }, [publicPartite]);
 
-  // Partite filtrate per l'area pubblica (supporta Categoria, Data, Range Date, Casa/Fuori, Ricerca)
+  // Società / Club unici per il filtro dell'area pubblica (dalla colonna SOCIETA' o calcolata)
+  const availableSocieta = useMemo(() => {
+    const list = Array.from(
+      new Set(publicPartite.map(p => p.societa || detectPartitaClub(p)))
+    ).filter(Boolean);
+    return list.sort();
+  }, [publicPartite]);
+
+  // Partite filtrate per l'area pubblica (supporta Categoria, Società, Data, Range Date, Casa/Fuori, Ricerca)
   const filteredPartite = useMemo(() => {
     return publicPartite.filter(p => {
       // Filtro Campionato
       if (filters.campionato !== 'ALL' && p.campionato !== filters.campionato) {
         return false;
+      }
+
+      // Filtro Società / Club (corrispondente alla nuova colonna SOCIETA' del dataset)
+      if (filters.societa && filters.societa !== 'ALL') {
+        const pClub = p.societa || detectPartitaClub(p);
+        if (pClub !== filters.societa) {
+          return false;
+        }
       }
 
       // Filtro Data predefinita (selezionata dal menu a tendina classico)
@@ -321,12 +338,13 @@ export default function App() {
         {/* Barra Statistiche Riepilogative */}
         <StatsSummary partite={filteredPartite} totalAvailable={publicPartite.length} />
 
-        {/* Barra Filtri (Campionato, Data, Date Picker Intervallo, Casa/Fuori, Cerca, Switch Vista) */}
+        {/* Barra Filtri (Campionato, Società, Data, Date Picker Intervallo, Casa/Fuori, Cerca, Switch Vista) */}
         <FilterBar
           filters={filters}
           onChangeFilters={setFilters}
           availableCampionati={availableCampionati}
           availableDate={availableDate}
+          availableSocieta={availableSocieta}
           partite={publicPartite}
           viewMode={viewMode}
           onChangeViewMode={setViewMode}
@@ -350,6 +368,7 @@ export default function App() {
               onClick={() =>
                 setFilters({
                   campionato: 'ALL',
+                  societa: 'ALL',
                   data: 'ALL',
                   startDate: '',
                   endDate: '',

@@ -563,7 +563,7 @@ export function downloadConvocatiCsv(params: {
     ['NOTE & INDICAZIONI', note].map(escapeCsv).join(';'),
     ['TOTALE CONVOCATI', String(convocati.length)].map(escapeCsv).join(';'),
     '',
-    ['N°', 'NOME ATLETA', 'RUOLO', 'CATEGORIA', 'SOCIETÀ', 'NOTE'].map(escapeCsv).join(';'),
+    ['N°', 'NOME ATLETA', 'RUOLO', 'ANNO', 'CATEGORIA', 'SOCIETÀ DI APPARTENENZA', 'NOTE'].map(escapeCsv).join(';'),
   ];
 
   convocati.forEach((g, idx) => {
@@ -572,8 +572,9 @@ export function downloadConvocatiCsv(params: {
         String(g.numero || idx + 1),
         g.nome.trim().toUpperCase(),
         g.ruolo || '-',
+        g.annoNascita || '-',
         g.categoria || categoria,
-        g.squadra || '',
+        g.societa || g.squadra || '',
         g.note || '',
       ].map(escapeCsv).join(';')
     );
@@ -931,7 +932,7 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
     [
       'giocatore', 'nominativo', 'nome', 'cognome', 'atleta', 'calciatore',
       'ruolo', 'numero', 'maglia', 'categoria', 'squadra', 'convocato', 'mister', 'allenatore',
-      'anno', 'nascita', 'leva', 'nato', 'annata'
+      'anno', 'nascita', 'leva', 'nato', 'annata', 'societa', 'club', 'appartenenza'
     ].some(k => h.includes(k))
   );
 
@@ -950,18 +951,33 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
   if (hasHeaderKeywords) {
     dataRows = rows.slice(1);
 
-    // Rileva colonna Squadra / Categoria
-    idxCategoria = normalizedFirst.findIndex(h =>
-      ['squadra', 'categoria', 'cat', 'gruppo', 'team'].some(k => h === k || h.includes(k))
-    );
-
-    // Rileva colonna distinta per Società / Club (se diversa da Squadra/Categoria)
-    const distinctSocietaIdx = normalizedFirst.findIndex((h, idx) =>
-      idx !== idxCategoria &&
-      ['societa', 'club', 'entita', 'polisportiva'].some(k => h === k || h.includes(k))
+    // 1. Rileva colonna specifica Società / Società di Appartenenza
+    // Riconosce: SOCIETA', SOCIETÀ, SOCIETA, SOCIETA' DI APPARTENENZA, APPARTENENZA, CLUB
+    const distinctSocietaIdx = normalizedFirst.findIndex(h =>
+      [
+        'societa', 'societadiappartenenza', 'societaappartenenza',
+        'appartenenza', 'club', 'societasportiva', 'polisportiva'
+      ].some(k => h === k || h.includes(k))
     );
     if (distinctSocietaIdx !== -1) {
       idxSquadra = distinctSocietaIdx;
+    }
+
+    // 2. Rileva colonna Categoria / Campionato / Squadra (escludendo la colonna SOCIETA' già trovata)
+    idxCategoria = normalizedFirst.findIndex((h, idx) =>
+      idx !== idxSquadra &&
+      ['categoria', 'campionato', 'gruppo', 'cat', 'team', 'squadra'].some(k => h === k || h.includes(k))
+    );
+
+    // 3. Se idxSquadra non era presente e c'è una colonna 'squadra' distinta da categoria
+    if (idxSquadra === -1) {
+      const fallbackSquadraIdx = normalizedFirst.findIndex((h, idx) =>
+        idx !== idxCategoria &&
+        ['squadra', 'team', 'club', 'societa'].some(k => h === k || h.includes(k))
+      );
+      if (fallbackSquadraIdx !== -1) {
+        idxSquadra = fallbackSquadraIdx;
+      }
     }
 
     // Rileva colonna Anno di Nascita / Annata / Leva / Data di nascita
@@ -1106,7 +1122,21 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
     const misterCell = idxMister !== -1 ? (row[idxMister] || '').trim() : '';
 
     let squadra = idxSquadra !== -1 ? (row[idxSquadra] || '').trim() : '';
-    if (!squadra) {
+    if (squadra) {
+      const squadUp = squadra.toUpperCase();
+      if (squadUp === 'CYNTHIA' || squadUp === 'CYNTHIA 1920' || squadUp.includes('CYNTHIA 1920')) {
+        squadra = 'CYNTHIA 1920';
+      } else if (squadUp === 'ACADEMY' || squadUp.includes('ACADEMY CYNTHIA') || squadUp === 'ACADEMY CYNTHIA GENZANO') {
+        squadra = 'ACADEMY CYNTHIA GENZANO';
+      } else if (squadUp === 'ALBA' || squadUp === 'ALBACYNTHIA' || squadUp.includes('ALBACYNTHIA')) {
+        squadra = 'ALBACYNTHIA';
+      } else if (squadUp.includes('DON BOSCO') || squadUp.includes('PGS')) {
+        squadra = 'P.G.S. DON BOSCO GENZANO';
+      } else {
+        // Preserva fedelmente la società di appartenenza indicata nella colonna SOCIETA'
+        squadra = squadra.toUpperCase();
+      }
+    } else {
       const combined = `${categoria} ${cleanFullName}`.toUpperCase();
       if (combined.includes('ALBA')) {
         squadra = 'ALBACYNTHIA';
@@ -1178,6 +1208,7 @@ export function parseCsvConvocazioni(rows: string[][]): ParsedSheetConvocazioni 
       numero: numero || undefined,
       categoria: categoria,
       squadra: squadra || undefined,
+      societa: squadra || undefined,
       annoNascita: annoNascita || undefined,
       selezionato,
       note: note || (stato && !selezionato ? stato.toUpperCase() : undefined),

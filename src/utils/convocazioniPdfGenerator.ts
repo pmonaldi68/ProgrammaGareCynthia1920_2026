@@ -253,7 +253,13 @@ export function generateConvocazioniPdf(options: ConvocazioniPdfOptions): jsPDF 
     const nominativo = (g.nome || '').trim().toUpperCase() || 'CALCIATORE';
     const annoStr = g.annoNascita && !nominativo.includes(g.annoNascita) ? ` (${g.annoNascita})` : '';
     const fullNominativo = `${nominativo}${annoStr}`;
-    const noteCol = g.note ? g.note.toUpperCase() : '';
+    let noteCol = g.note ? g.note.toUpperCase() : '';
+    if (!noteCol && (g.societa || g.squadra)) {
+      const soc = (g.societa || g.squadra || '').trim().toUpperCase();
+      if (soc && soc !== 'CYNTHIA 1920') {
+        noteCol = soc;
+      }
+    }
 
     return [spuntaText, numJersey, fullNominativo, noteCol];
   });

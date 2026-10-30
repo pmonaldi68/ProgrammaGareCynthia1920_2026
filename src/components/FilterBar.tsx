@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FilterState, ViewMode, LocationFilter, Partita } from '../types';
 import { PredictiveSearchBar } from './PredictiveSearchBar';
+import { detectPartitaClub } from '../utils/donBoscoUtils';
 import {
   Search,
   Filter,
@@ -17,6 +18,7 @@ import {
   SlidersHorizontal,
   RotateCcw,
   Sparkles,
+  Shield,
 } from 'lucide-react';
 
 interface FilterBarProps {
@@ -24,6 +26,7 @@ interface FilterBarProps {
   onChangeFilters: (filters: FilterState) => void;
   availableCampionati: string[];
   availableDate: string[];
+  availableSocieta?: string[];
   partite?: Partita[];
   viewMode: ViewMode;
   onChangeViewMode: (mode: ViewMode) => void;
@@ -35,6 +38,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onChangeFilters,
   availableCampionati,
   availableDate,
+  availableSocieta,
   partite = [],
   viewMode,
   onChangeViewMode,
@@ -44,9 +48,26 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     Boolean(filters.startDate || filters.endDate)
   );
 
+  // Lista ordinata delle società disponibili per il filtro
+  const societaList = useMemo(() => {
+    if (availableSocieta && availableSocieta.length > 0) return availableSocieta;
+    const set = new Set<string>();
+    partite.forEach(p => {
+      const s = p.societa || detectPartitaClub(p);
+      if (s) set.add(s);
+    });
+    if (set.size === 0) {
+      set.add('CYNTHIA 1920');
+      set.add('ACADEMY CYNTHIA GENZANO');
+      set.add('ALBACYNTHIA');
+    }
+    return Array.from(set).sort();
+  }, [availableSocieta, partite]);
+
   // Calcola il numero di filtri attivi
   let activeFilterCount = 0;
   if (filters.campionato !== 'ALL') activeFilterCount++;
+  if (filters.societa && filters.societa !== 'ALL') activeFilterCount++;
   if (filters.data !== 'ALL') activeFilterCount++;
   if (filters.startDate || filters.endDate) activeFilterCount++;
   if (filters.location !== 'all') activeFilterCount++;
@@ -82,6 +103,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   const handleReset = () => {
     onChangeFilters({
       campionato: 'ALL',
+      societa: 'ALL',
       data: 'ALL',
       startDate: '',
       endDate: '',
@@ -238,7 +260,31 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       {isExpanded && (
         <div className="p-4 sm:p-5 space-y-4 animate-in fade-in duration-200 bg-white dark:bg-slate-900">
           {/* Griglia Selettori Filtri */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+            {/* Filtro Società / Club (corrispondente alla nuova colonna SOCIETA') */}
+            <div>
+              <label
+                htmlFor="filter-societa-select"
+                className="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5"
+              >
+                <Shield className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                Società / Club
+              </label>
+              <select
+                id="filter-societa-select"
+                value={filters.societa || 'ALL'}
+                onChange={e => onChangeFilters({ ...filters, societa: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl px-3 py-3 sm:py-2.5 text-base sm:text-sm font-semibold text-slate-900 dark:text-slate-100 transition outline-none"
+              >
+                <option value="ALL">Tutte le Società ({societaList.length})</option>
+                {societaList.map(soc => (
+                  <option key={soc} value={soc}>
+                    {soc}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Filtro Campionato / Categoria */}
             <div>
               <label
@@ -449,6 +495,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                     className="hover:text-rose-600 ml-0.5"
                     title="Rimuovi ricerca"
                   >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {filters.societa && filters.societa !== 'ALL' && (
+                <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-200 border border-sky-200/60 dark:border-sky-800 font-medium">
+                  Club: {filters.societa}
+                  <button type="button" onClick={() => onChangeFilters({ ...filters, societa: 'ALL' })} className="hover:text-rose-600 ml-0.5" title="Rimuovi filtro club">
                     <X className="w-3 h-3" />
                   </button>
                 </span>

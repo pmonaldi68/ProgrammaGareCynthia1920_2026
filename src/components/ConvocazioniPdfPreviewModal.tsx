@@ -461,11 +461,20 @@ export const ConvocazioniPdfPreviewModal: React.FC<ConvocazioniPdfPreviewModalPr
                                   ({g.annoNascita})
                                 </span>
                               )}
+                              {(g.societa || g.squadra) && (g.societa || g.squadra) !== 'CYNTHIA 1920' && (
+                                <span className="ml-1.5 text-[9.5px] font-semibold text-slate-500 tracking-normal">
+                                  [{g.societa || g.squadra}]
+                                </span>
+                              )}
                             </td>
 
-                            {/* Note Mister: vuoto per appunti a penna o note specifiche */}
+                            {/* Note Mister: vuoto per appunti a penna o note specifiche / società */}
                             <td className="py-2.5 px-3 text-slate-600 text-[10.5px]">
-                              {g.note ? g.note.toUpperCase() : ''}
+                              {g.note
+                                ? g.note.toUpperCase()
+                                : (g.societa || g.squadra) && (g.societa || g.squadra) !== 'CYNTHIA 1920'
+                                ? (g.societa || g.squadra)!.toUpperCase()
+                                : ''}
                             </td>
                           </tr>
                         );

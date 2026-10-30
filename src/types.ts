@@ -16,6 +16,7 @@ export interface Partita {
   isCynthiaOspite: boolean;
   lat?: number;
   lng?: number;
+  societa?: string;
 }
 
 export type ViewMode = 'cards' | 'table' | 'map';
@@ -23,6 +24,7 @@ export type LocationFilter = 'all' | 'casa' | 'trasferta';
 
 export interface FilterState {
   campionato: string;
+  societa?: string;
   data: string;
   startDate: string; // formato YYYY-MM-DD per intervallo
   endDate: string;   // formato YYYY-MM-DD per intervallo
@@ -57,7 +59,8 @@ export interface GiocatoreConvocato {
   ruolo?: string;
   numero?: string;
   categoria?: string;
-  squadra?: string; // 'CYNTHIA 1920' | 'ACADEMY CYNTHIA GENZANO' | 'ALBACYNTHIA'
+  squadra?: string; // 'CYNTHIA 1920' | 'ACADEMY CYNTHIA GENZANO' | 'ALBACYNTHIA' o altra società
+  societa?: string; // Società di appartenenza indicata nella colonna SOCIETA' del file delle rose
   annoNascita?: string; // Anno di nascita (es. 2008, 2010, '08, 14/05/2009)
   selezionato: boolean;
   note?: string;

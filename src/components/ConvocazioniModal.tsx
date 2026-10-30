@@ -167,8 +167,8 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
   const [searchPlayer, setSearchPlayer] = useState<string>('');
   const [filterRuolo, setFilterRuolo] = useState<string>('ALL');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('AUTO');
-  // Filtro Società: CYNTHIA 1920, ACADEMY CYNTHIA GENZANO, ALBACYNTHIA
-  const [selectedClubFilter, setSelectedClubFilter] = useState<'ALL' | 'CYNTHIA 1920' | 'ACADEMY CYNTHIA GENZANO' | 'ALBACYNTHIA'>('ALL');
+  // Filtro Società: CYNTHIA 1920, ACADEMY CYNTHIA GENZANO, ALBACYNTHIA o da colonna SOCIETA'
+  const [selectedClubFilter, setSelectedClubFilter] = useState<string>('ALL');
   const [filterOnlyWithHistory, setFilterOnlyWithHistory] = useState<boolean>(false);
   const [convocatiLimitWarning, setConvocatiLimitWarning] = useState<string | null>(null);
 
@@ -348,6 +348,30 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         setSelectedCategoryFilter(matchCat);
       } else {
         setSelectedCategoryFilter(p.campionato || 'AUTO');
+      }
+
+      // Auto-filtra per la società della gara corrente in base alla colonna SOCIETA' del dataset
+      const matchClub = p.societa || detectCynthiaClub(p);
+      if (matchClub) {
+        // Verifica se esistono giocatori registrati per la società di appartenenza nel file delle rose
+        const hasPlayersForClub = cleanList.some((g) => {
+          const s = (g.societa || g.squadra || '').toUpperCase();
+          const target = matchClub.toUpperCase();
+          if (target === 'CYNTHIA 1920') {
+            return s.includes('CYNTHIA') && !s.includes('ACADEMY') && !s.includes('ALBA');
+          }
+          if (target.includes('ACADEMY')) return s.includes('ACADEMY');
+          if (target.includes('ALBA')) return s.includes('ALBA');
+          if (target.includes('DON BOSCO') || target.includes('PGS')) return s.includes('DON BOSCO') || s.includes('PGS');
+          return s === target || s.includes(target) || target.includes(s);
+        });
+
+        if (hasPlayersForClub) {
+          setSelectedClubFilter(matchClub);
+        } else {
+          setSelectedClubFilter('ALL');
+        }
+        setNewPlayerSquadra(matchClub);
       }
 
       // Se esistono convocati salvati nella bozza o in memoria per questa specifica gara, ripristinali esattamente!
@@ -689,6 +713,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
       annoNascita: newPlayerAnnoNascita.trim() || undefined,
       categoria: cat,
       squadra: newPlayerSquadra || 'CYNTHIA 1920',
+      societa: newPlayerSquadra || 'CYNTHIA 1920',
       selezionato: canSelect,
     };
 
@@ -991,14 +1016,54 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     );
   }, [convocati, matchedCategory]);
 
-  // Società del Cynthia identificata per la gara corrente (casa o trasferta)
+  // Società identificata per la gara corrente (dalla colonna SOCIETA' del dataset o dedotta da squadre e campionato)
   const detectedClub = useMemo(() => {
+    if (currentPartita?.societa) return currentPartita.societa;
     return detectCynthiaClub(currentPartita);
   }, [currentPartita]);
 
-  // Giocatori filtrati nella lista UI in base a categoria, società, ruolo, ricerca e storico
+  // Helper per verificare se un atleta appartiene a una determinata società
+  const isPlayerInClub = (player: GiocatoreConvocato, targetClub: string): boolean => {
+    if (!targetClub) return false;
+    const club = (player.societa || player.squadra || '').toUpperCase().trim();
+    const target = targetClub.toUpperCase().trim();
+    if (target === 'CYNTHIA 1920') {
+      return club.includes('CYNTHIA') && !club.includes('ACADEMY') && !club.includes('ALBA');
+    }
+    if (target === 'ACADEMY CYNTHIA GENZANO' || target.includes('ACADEMY')) {
+      return club.includes('ACADEMY');
+    }
+    if (target === 'ALBACYNTHIA' || target.includes('ALBA')) {
+      return club.includes('ALBA');
+    }
+    if (target.includes('DON BOSCO') || target.includes('PGS')) {
+      return club.includes('DON BOSCO') || club.includes('PGS');
+    }
+    return club === target || club.includes(target) || target.includes(club);
+  };
+
+  // Elenco unico di tutte le Società presenti nelle rose (dalla colonna SOCIETA' o squadra)
+  const detectedSocietaList = useMemo(() => {
+    const list: string[] = [];
+    const seen = new Set<string>();
+    giocatori.forEach((g) => {
+      const s = (g.societa || g.squadra || '').trim();
+      if (s && !seen.has(s.toUpperCase())) {
+        seen.add(s.toUpperCase());
+        list.push(s);
+      }
+    });
+    // Garantisci la presenza delle 3 società canoniche se vuoto
+    if (list.length === 0) {
+      list.push('CYNTHIA 1920', 'ACADEMY CYNTHIA GENZANO', 'ALBACYNTHIA');
+    }
+    return list;
+  }, [giocatori]);
+
+  // Giocatori filtrati nella lista UI in base a categoria, società, ruolo, ricerca e storico,
+  // con suggerimento/priorità per gli atleti appartenenti al contesto societario della partita
   const filteredGiocatori = useMemo(() => {
-    return giocatori.filter((g) => {
+    const list = giocatori.filter((g) => {
       // 1. Filtro Categoria: deve essere perfettamente uguale alla categoria della gara selezionata
       if (selectedCategoryFilter !== 'ALL') {
         const cat = g.categoria || '';
@@ -1014,15 +1079,10 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         }
       }
 
-      // 2. Filtro Società (CYNTHIA 1920, ACADEMY CYNTHIA GENZANO, ALBACYNTHIA)
+      // 2. Filtro Società (dalla colonna SOCIETA' o squadra)
       if (selectedClubFilter !== 'ALL') {
-        const club = (g.squadra || '').toUpperCase();
-        if (selectedClubFilter === 'CYNTHIA 1920') {
-          if (!club.includes('CYNTHIA') || club.includes('ACADEMY') || club.includes('ALBA')) return false;
-        } else if (selectedClubFilter === 'ACADEMY CYNTHIA GENZANO') {
-          if (!club.includes('ACADEMY')) return false;
-        } else if (selectedClubFilter === 'ALBACYNTHIA') {
-          if (!club.includes('ALBA')) return false;
+        if (!isPlayerInClub(g, selectedClubFilter)) {
+          return false;
         }
       }
 
@@ -1033,7 +1093,8 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         (g.ruolo && g.ruolo.toLowerCase().includes(searchPlayer.toLowerCase())) ||
         (g.numero && g.numero.includes(searchPlayer)) ||
         (g.categoria && g.categoria.toLowerCase().includes(searchPlayer.toLowerCase())) ||
-        (g.squadra && g.squadra.toLowerCase().includes(searchPlayer.toLowerCase()));
+        (g.squadra && g.squadra.toLowerCase().includes(searchPlayer.toLowerCase())) ||
+        (g.societa && g.societa.toLowerCase().includes(searchPlayer.toLowerCase()));
 
       // 4. Filtro Ruolo
       const matchRuolo =
@@ -1046,7 +1107,23 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
 
       return matchSearch && matchRuolo && matchHistory;
     });
-  }, [giocatori, selectedCategoryFilter, selectedClubFilter, matchedCategory, currentPartita, categoriaCustom, searchPlayer, filterRuolo, filterOnlyWithHistory, historicalConvocazioniStats]);
+
+    // Ordinamento con suggerimento intelligente per la gara selezionata:
+    // 1. I convocati (selezionati) sempre in cima
+    // 2. Gli atleti appartenenti alla società della gara (detectedClub) prima degli altri
+    // 3. Ordine alfabetico per nominativo
+    return list.sort((a, b) => {
+      if (a.selezionato && !b.selezionato) return -1;
+      if (!a.selezionato && b.selezionato) return 1;
+
+      const aInMatchClub = isPlayerInClub(a, detectedClub);
+      const bInMatchClub = isPlayerInClub(b, detectedClub);
+      if (aInMatchClub && !bInMatchClub) return -1;
+      if (!aInMatchClub && bInMatchClub) return 1;
+
+      return a.nome.localeCompare(b.nome);
+    });
+  }, [giocatori, selectedCategoryFilter, selectedClubFilter, matchedCategory, currentPartita, categoriaCustom, searchPlayer, filterRuolo, filterOnlyWithHistory, historicalConvocazioniStats, detectedClub]);
 
   // Numero di atleti nella lista filtrata che hanno già convocazioni registrate nello storico
   const playersWithHistoryCount = useMemo(() => {
@@ -1100,8 +1177,10 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         nome: g.nome,
         cognome: g.cognome || '',
         ruolo: g.ruolo || '',
+        annoNascita: g.annoNascita || '',
         categoria: g.categoria || categoriaEffettiva,
-        squadra: g.squadra || 'CYNTHIA 1920',
+        societaAppartenenza: g.societa || g.squadra || 'CYNTHIA 1920',
+        squadra: g.squadra || g.societa || 'CYNTHIA 1920',
         aggregatoDa:
           g.categoria && matchedCategory && !isCategoryMatch(g.categoria, matchedCategory)
             ? g.categoria
@@ -1290,7 +1369,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         ['NOTE', noteMister || 'Nessuna'],
         [],
         ['DISTINTA CONVOCATI (STAGIONE 2026/2027)', `Totale atleti convocati: ${convocati.length}`],
-        ['N.', 'COGNOME E NOME', 'RUOLO', 'ANNO', 'SQUADRA', 'STATO CONVOCAZIONE'],
+        ['N.', 'COGNOME E NOME', 'RUOLO', 'ANNO', 'SOCIETÀ DI APPARTENENZA', 'STATO CONVOCAZIONE'],
       ];
 
       convocati.forEach((g, idx) => {
@@ -1299,7 +1378,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
           g.nome,
           g.ruolo || '-',
           g.annoNascita || '-',
-          g.squadra || '-',
+          g.societa || g.squadra || '-',
           'CONVOCATO',
         ]);
       });
@@ -2062,51 +2141,108 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                         : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
                     }`}
                   >
-                    <span>Tutte e 3 le Società</span>
+                    <span>Tutte le Società</span>
                     <span className="text-[10px] opacity-80 font-normal">
-                      (Cynthia, Academy, Albacynthia)
+                      ({giocatori.length})
                     </span>
                   </button>
-                  <button
-                    id="filter-club-cynthia"
-                    type="button"
-                    onClick={() => setSelectedClubFilter('CYNTHIA 1920')}
-                    className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition flex items-center gap-1.5 ${
-                      selectedClubFilter === 'CYNTHIA 1920'
-                        ? 'bg-slate-900 text-white shadow-2xs font-bold ring-1 ring-sky-400'
-                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-sky-500 inline-block" />
-                    CYNTHIA 1920
-                  </button>
-                  <button
-                    id="filter-club-academy"
-                    type="button"
-                    onClick={() => setSelectedClubFilter('ACADEMY CYNTHIA GENZANO')}
-                    className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition flex items-center gap-1.5 ${
-                      selectedClubFilter === 'ACADEMY CYNTHIA GENZANO'
-                        ? 'bg-sky-600 text-white shadow-2xs font-bold ring-1 ring-cyan-300'
-                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block" />
-                    ACADEMY CYNTHIA
-                  </button>
-                  <button
-                    id="filter-club-albacynthia"
-                    type="button"
-                    onClick={() => setSelectedClubFilter('ALBACYNTHIA')}
-                    className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition flex items-center gap-1.5 ${
-                      selectedClubFilter === 'ALBACYNTHIA'
-                        ? 'bg-indigo-700 text-white shadow-2xs font-bold ring-1 ring-purple-300'
-                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
-                    ALBACYNTHIA
-                  </button>
+
+                  {detectedSocietaList.map((soc) => {
+                    const socUpper = soc.toUpperCase();
+                    const isSelected = selectedClubFilter === soc;
+                    const isAlba = socUpper.includes('ALBA');
+                    const isAcademy = socUpper.includes('ACADEMY');
+                    const isDonBosco = socUpper.includes('DON BOSCO') || socUpper.includes('PGS');
+                    const isCynthia = socUpper.includes('CYNTHIA') && !isAcademy && !isAlba;
+
+                    const count = giocatori.filter((g) => {
+                      const playerSoc = (g.societa || g.squadra || '').toUpperCase();
+                      if (isCynthia) return playerSoc.includes('CYNTHIA') && !playerSoc.includes('ACADEMY') && !playerSoc.includes('ALBA');
+                      if (isAcademy) return playerSoc.includes('ACADEMY');
+                      if (isAlba) return playerSoc.includes('ALBA');
+                      return playerSoc === socUpper || playerSoc.includes(socUpper);
+                    }).length;
+
+                    return (
+                      <button
+                        key={soc}
+                        id={`filter-club-${soc.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                        type="button"
+                        onClick={() => setSelectedClubFilter(soc)}
+                        className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition flex items-center gap-1.5 ${
+                          isSelected
+                            ? isAlba
+                              ? 'bg-purple-700 text-white shadow-2xs font-bold ring-1 ring-purple-300'
+                              : isAcademy
+                              ? 'bg-cyan-700 text-white shadow-2xs font-bold ring-1 ring-cyan-300'
+                              : isDonBosco
+                              ? 'bg-amber-600 text-white shadow-2xs font-bold ring-1 ring-amber-300'
+                              : isCynthia
+                              ? 'bg-slate-900 text-white shadow-2xs font-bold ring-1 ring-sky-400'
+                              : 'bg-emerald-700 text-white shadow-2xs font-bold ring-1 ring-emerald-300'
+                            : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
+                        }`}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full inline-block ${
+                            isAlba
+                              ? 'bg-purple-400'
+                              : isAcademy
+                              ? 'bg-cyan-400'
+                              : isDonBosco
+                              ? 'bg-amber-400'
+                              : isCynthia
+                              ? 'bg-sky-500'
+                              : 'bg-emerald-400'
+                          }`}
+                        />
+                        <span>{soc}</span>
+                        <span className="text-[10px] opacity-80 font-normal">({count})</span>
+                      </button>
+                    );
+                  })}
                 </div>
+
+                {/* Stato Auto-Filtro / Suggerimento Società Gara */}
+                {detectedClub && (
+                  <div className="mt-2 text-[11px] p-2 rounded-lg border flex items-center justify-between flex-wrap gap-1.5 bg-white/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
+                      {selectedClubFilter === detectedClub ? (
+                        <>
+                          <span className="text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1">
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            Filtro automatico attivo:
+                          </span>
+                          <span>Atleti della società di questa gara (<strong className="text-slate-900 dark:text-white font-bold">{detectedClub}</strong>)</span>
+                        </>
+                      ) : selectedClubFilter === 'ALL' ? (
+                        <>
+                          <span className="text-sky-700 dark:text-sky-300 font-bold flex items-center gap-1">
+                            <Sparkles className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                            Suggerimento attivo:
+                          </span>
+                          <span>Atleti di <strong className="text-slate-900 dark:text-white font-bold">{detectedClub}</strong> posizionati in cima all'elenco</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-purple-700 dark:text-purple-300 font-bold">Filtro selezionato:</span>
+                          <span>Mostrati gli atleti di <strong className="text-slate-900 dark:text-white font-bold">{selectedClubFilter}</strong></span>
+                        </>
+                      )}
+                    </div>
+                    {selectedClubFilter !== detectedClub && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedClubFilter(detectedClub)}
+                        className="text-[10px] font-bold text-sky-700 dark:text-sky-300 hover:underline flex items-center gap-1 bg-sky-50 dark:bg-sky-950/50 px-2 py-0.5 rounded border border-sky-200 dark:border-sky-800 cursor-pointer"
+                        title={`Ripristina il filtro automatico sulla società della gara (${detectedClub})`}
+                      >
+                        <RotateCcw className="w-2.5 h-2.5" />
+                        <span>Filtra solo {detectedClub}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Barra Categorie Squadre (permette di pescare giocatori da qualsiasi squadra) */}
@@ -2206,10 +2342,18 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                     value={newPlayerSquadra}
                     onChange={(e) => setNewPlayerSquadra(e.target.value)}
                     className="text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 font-semibold"
+                    title="Società di appartenenza da inserire per l'atleta (colonna SOCIETA')"
                   >
                     <option value="CYNTHIA 1920">CYNTHIA 1920</option>
                     <option value="ACADEMY CYNTHIA GENZANO">ACADEMY CYNTHIA</option>
                     <option value="ALBACYNTHIA">ALBACYNTHIA</option>
+                    <option value="P.G.S. DON BOSCO GENZANO">DON BOSCO GENZANO</option>
+                    {detectedSocietaList
+                      .filter((s) => !['CYNTHIA 1920', 'ACADEMY CYNTHIA GENZANO', 'ALBACYNTHIA', 'P.G.S. DON BOSCO GENZANO'].includes(s.toUpperCase()))
+                      .map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))
+                    }
                   </select>
                   <input
                     type="text"
@@ -2603,9 +2747,12 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                     const prevConvocazioniCount = historicalConvocazioniStats[g.id] || 0;
                     const hasPreviousConvocazione = prevConvocazioniCount > 0;
 
-                    const squad = (g.squadra || 'CYNTHIA 1920').toUpperCase();
+                    const societaAppartenenza = (g.societa || g.squadra || 'CYNTHIA 1920').trim();
+                    const squad = societaAppartenenza.toUpperCase();
                     const isAlba = squad.includes('ALBA');
                     const isAcademy = squad.includes('ACADEMY');
+                    const isDonBosco = squad.includes('DON BOSCO') || squad.includes('PGS');
+                    const isCynthia = squad.includes('CYNTHIA') && !isAcademy && !isAlba;
 
                     return (
                       <div
@@ -2653,23 +2800,34 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                             </span>
                           )}
 
-                          {/* Badge Società (CYNTHIA 1920, ACADEMY CYNTHIA, ALBACYNTHIA) */}
+                          {/* Badge Società di appartenenza (da colonna SOCIETA' del file delle rose) */}
                           <span
                             className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded-md ${
                               isAlba
                                 ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700/60'
                                 : isAcademy
                                 ? 'bg-cyan-100 dark:bg-cyan-950/60 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700/60'
-                                : 'bg-slate-100 dark:bg-slate-700/70 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600'
+                                : isDonBosco
+                                ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60'
+                                : isCynthia
+                                ? 'bg-slate-100 dark:bg-slate-700/70 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600'
+                                : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/60'
                             }`}
-                            title={`Società di appartenenza: ${g.squadra || 'CYNTHIA 1920'}`}
+                            title={`Società di appartenenza: ${societaAppartenenza}`}
                           >
-                            {isAlba
-                              ? 'ALBACYNTHIA'
-                              : isAcademy
-                              ? 'ACADEMY CYNTHIA'
-                              : 'CYNTHIA 1920'}
+                            {societaAppartenenza}
                           </span>
+
+                          {/* Se appartiene alla società della partita e stiamo guardando tutte le società */}
+                          {isPlayerInClub(g, detectedClub) && selectedClubFilter === 'ALL' && (
+                            <span
+                              className="text-[9.5px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 flex items-center gap-0.5"
+                              title={`Atleta appartenente alla società di questa gara (${detectedClub})`}
+                            >
+                              <span>⭐</span>
+                              <span>Club Gara</span>
+                            </span>
+                          )}
 
                           {/* Indicatore visivo storico convocazioni precedenti richiamato da localStorage */}
                           {hasPreviousConvocazione ? (
