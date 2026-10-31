@@ -28,10 +28,6 @@ import { NotificationModal } from './components/NotificationModal';
 import { PdfExportModal } from './components/PdfExportModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ConvocazioniModal } from './components/ConvocazioniModal';
-import { LocandinaModal } from './components/LocandinaModal';
-import { TabellinoModal } from './components/TabellinoModal';
-import { FoglioGaraPanchinaModal } from './components/FoglioGaraPanchinaModal';
-import { LocandinaSingolaModal } from './components/LocandinaSingolaModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
 import { getPublicPartite, getDonBoscoPartite, detectPartitaClub } from './utils/donBoscoUtils';
 import { AlertCircle, FileCode, BellRing, X, Palette } from 'lucide-react';
@@ -42,6 +38,8 @@ export default function App() {
     return loadCachedPartite() || DEFAULT_PARTITE;
   });
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [justSynced, setJustSynced] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const [lastUpdated, setLastUpdated] = useState<string | null>(() => {
@@ -57,12 +55,6 @@ export default function App() {
   const [isPdfModalOpen, setIsPdfModalOpen] = useState<boolean>(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isConvocazioniModalOpen, setIsConvocazioniModalOpen] = useState<boolean>(false);
-  const [isLocandinaModalOpen, setIsLocandinaModalOpen] = useState<boolean>(false);
-  const [isLocandinaSingolaModalOpen, setIsLocandinaSingolaModalOpen] = useState<boolean>(false);
-  const [isTabellinoModalOpen, setIsTabellinoModalOpen] = useState<boolean>(false);
-  const [isFoglioGaraModalOpen, setIsFoglioGaraModalOpen] = useState<boolean>(false);
-  const [selectedTabellinoPartita, setSelectedTabellinoPartita] = useState<Partita | null>(null);
-  const [selectedLocandinaPartita, setSelectedLocandinaPartita] = useState<Partita | null>(null);
   const [recentVariations, setRecentVariations] = useState<MatchVariation[]>([]);
   const [bannerVariation, setBannerVariation] = useState<MatchVariation | null>(null);
 
@@ -83,6 +75,7 @@ export default function App() {
 
   // Funzione per caricare i dati e verificare variazioni per le categorie seguite
   const refreshData = async (customSheetUrl?: string, customTab?: string, silent: boolean = false) => {
+    setIsSyncing(true);
     if (!silent) {
       setIsLoading(true);
     }
@@ -115,6 +108,10 @@ export default function App() {
       const updatedConfig = { ...config, lastUpdated: nowStr };
       setConfig(updatedConfig);
       saveStoredConfig(updatedConfig);
+
+      // Notifica visiva di avvenuto aggiornamento per feedback immediato
+      setJustSynced(true);
+      setTimeout(() => setJustSynced(false), 3500);
     } catch (err: any) {
       console.warn('Errore durante il recupero dei dati dal foglio:', err);
       if (!silent) {
@@ -124,6 +121,7 @@ export default function App() {
         );
       }
     } finally {
+      setIsSyncing(false);
       if (!silent) {
         setIsLoading(false);
       }
@@ -253,16 +251,6 @@ export default function App() {
     setLastUpdated(nowStr);
   };
 
-  const handleOpenTabellino = (partita?: Partita) => {
-    if (partita) {
-      setSelectedTabellinoPartita(partita);
-    } else if (filteredPartite.length > 0) {
-      setSelectedTabellinoPartita(filteredPartite[0]);
-    } else if (partite.length > 0) {
-      setSelectedTabellinoPartita(partite[0]);
-    }
-    setIsTabellinoModalOpen(true);
-  };
 
   const hasFollowed = getFollowedCategories().length > 0;
 
@@ -276,6 +264,9 @@ export default function App() {
         onOpenPdfExport={() => setIsPdfModalOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
         hasFollowedCategories={hasFollowed}
+        isSyncing={isSyncing}
+        justSynced={justSynced}
+        onRefresh={() => refreshData()}
       />
 
       {/* Contenuto Pagina */}
@@ -486,47 +477,10 @@ export default function App() {
         onOpenGitHubGuide={() => setIsGitHubModalOpen(true)}
         onOpenPdfExport={() => setIsPdfModalOpen(true)}
         onOpenConvocazioni={() => setIsConvocazioniModalOpen(true)}
-        onOpenLocandina={() => setIsLocandinaModalOpen(true)}
-        onOpenLocandinaSingola={() => {
-          setSelectedLocandinaPartita(null);
-          setIsLocandinaSingolaModalOpen(true);
-        }}
-        onOpenTabellino={() => handleOpenTabellino()}
-        onOpenFoglioGara={() => setIsFoglioGaraModalOpen(true)}
         sheetUrl={config.sheetUrl}
         totalPartiteCount={partite.length}
         publicPartiteCount={publicPartite.length}
         donBoscoCount={donBoscoPartite.length}
-      />
-
-      {/* Modale Locandina Singola Partita (Matchday con sfondo palla splash blu) */}
-      <LocandinaSingolaModal
-        isOpen={isLocandinaSingolaModalOpen}
-        onClose={() => setIsLocandinaSingolaModalOpen(false)}
-        partite={partite}
-        initialPartita={selectedLocandinaPartita}
-      />
-
-      {/* Modale Tabellino Gara & Diretta Live */}
-      <TabellinoModal
-        isOpen={isTabellinoModalOpen}
-        onClose={() => setIsTabellinoModalOpen(false)}
-        partite={partite}
-        initialPartita={selectedTabellinoPartita}
-      />
-
-      {/* Modale Foglio Gara Panchina (Referto Note A4) */}
-      <FoglioGaraPanchinaModal
-        isOpen={isFoglioGaraModalOpen}
-        onClose={() => setIsFoglioGaraModalOpen(false)}
-        partite={partite}
-      />
-
-      {/* Modale Locandina Gare A4 */}
-      <LocandinaModal
-        isOpen={isLocandinaModalOpen}
-        onClose={() => setIsLocandinaModalOpen(false)}
-        partite={partite}
       />
 
       {/* Modale Convocazioni Gara & Messaggio WhatsApp */}

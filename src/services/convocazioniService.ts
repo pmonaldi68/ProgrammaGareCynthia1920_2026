@@ -1362,22 +1362,7 @@ export function buildWhatsAppConvocazioniMessage(params: WhatsAppMessageParams):
     convocati.forEach((g) => {
       const nomeUpper = g.nome.trim().toUpperCase();
       let line = `• *${nomeUpper}*`;
-      const extras: string[] = [];
-
-      // Se il giocatore proviene da un'altra categoria rispetto a quella della gara
-      const isAggregato =
-        targetCategoria &&
-        g.categoria &&
-        !isCategoryMatch(g.categoria, targetCategoria);
-
-      if (isAggregato) {
-        extras.push(`PRESTITO ${g.categoria.trim().toUpperCase()}`);
-      }
-
-      if (extras.length > 0) {
-        line += ` (${extras.join(' - ')})`;
-      }
-      if (g.note && g.note.trim()) {
+      if (g.note && g.note.trim() && !g.note.toUpperCase().includes('PRESTITO')) {
         line += ` [${g.note.trim().toUpperCase()}]`;
       }
       msg += `${line}\n`;

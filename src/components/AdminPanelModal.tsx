@@ -10,7 +10,6 @@ import {
   Eye,
   EyeOff,
   LogOut,
-  CheckCircle2,
   AlertCircle,
   Sun,
   Moon,
@@ -20,13 +19,8 @@ import {
   Palette,
   Check,
   Users,
-  FileText,
-  Activity,
-  ClipboardList,
   ChevronRight,
   Layers,
-  Sparkles,
-  Smartphone,
   ExternalLink,
   Archive,
   Download,
@@ -46,10 +40,6 @@ interface AdminPanelModalProps {
   onOpenGitHubGuide: () => void;
   onOpenPdfExport?: () => void;
   onOpenConvocazioni?: () => void;
-  onOpenLocandina?: () => void;
-  onOpenLocandinaSingola?: () => void;
-  onOpenTabellino?: () => void;
-  onOpenFoglioGara?: () => void;
   sheetUrl: string;
   totalPartiteCount?: number;
   publicPartiteCount?: number;
@@ -70,10 +60,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onOpenGitHubGuide,
   onOpenPdfExport,
   onOpenConvocazioni,
-  onOpenLocandina,
-  onOpenLocandinaSingola,
-  onOpenTabellino,
-  onOpenFoglioGara,
   sheetUrl,
   totalPartiteCount,
   publicPartiteCount,
@@ -215,7 +201,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   Accesso Riservato Staff
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
-                  Inserisci la password di amministrazione per accedere a convocazioni, referti gara, locandine e configurazioni.
+                  Inserisci la password di amministrazione per accedere a convocazioni, sincronizzazioni e configurazioni.
                 </p>
               </div>
 
@@ -288,7 +274,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       : 'text-slate-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400'
                   }`}
                 >
-                  <span>⚽ Gara (5)</span>
+                  <span>⚽ Convocazioni</span>
                 </button>
 
                 <button
@@ -334,61 +320,27 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
-                        Le gare della Don Bosco Genzano (colori sociali <strong>Giallo e Blu 🟡🔵</strong>) <strong>non sono visibili nell&apos;area pubblica</strong> ai tifosi. Sono attive ed esclusive <strong>qui nell&apos;Area Admin</strong> per Convocazioni, Fogli Gara, Tabellino Live e Locandine.
+                        Le gare della Don Bosco Genzano (colori sociali <strong>Giallo e Blu 🟡🔵</strong>) <strong>non sono visibili nell&apos;area pubblica</strong> ai tifosi. Sono attive ed esclusive <strong>qui nell&apos;Area Admin</strong> per il modulo Convocazioni.
                       </p>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* GRUPPO 1: ⚽ STRUMENTI GARA & PANCHINA */}
+              {/* GRUPPO 1: ⚽ STRUMENTI GARA & CONVOCAZIONI */}
               {(activeTab === 'all' || activeTab === 'match') && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between px-1">
                     <span className="text-[11px] font-black uppercase tracking-wider text-sky-700 dark:text-sky-300 flex items-center gap-1.5">
-                      <span>⚽ Strumenti Gara & Panchina</span>
-                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200 font-bold">
-                        Giorno della Gara
+                      <span>⚽ Convocazioni Gara & Rose</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 font-bold">
+                        Staff Tecnico
                       </span>
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 gap-2">
-                    {/* 1.1 FOGLIO GARA PANCHINA (REFERTO A4 FEDELE) */}
-                    {onOpenFoglioGara && (
-                      <button
-                        id="admin-btn-foglio-gara"
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          onOpenFoglioGara();
-                        }}
-                        className="w-full flex items-center justify-between p-3 sm:p-3.5 rounded-xl border border-sky-300 dark:border-sky-700/80 bg-gradient-to-r from-sky-50 via-blue-50/70 to-indigo-50/50 dark:from-sky-950/40 dark:via-blue-950/30 dark:to-indigo-950/20 hover:from-sky-100 hover:to-blue-100 dark:hover:from-sky-900/50 dark:hover:to-blue-900/40 text-left transition group shadow-xs active:scale-[0.99] cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="p-2.5 rounded-xl bg-sky-700 text-white shadow-sm shrink-0">
-                            <ClipboardList className="w-5 h-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                              <span>Foglio Gara Panchina (Referto A4)</span>
-                              <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded-md bg-amber-500 text-white shadow-2xs">
-                                Ufficiale A4
-                              </span>
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                              Formazioni, cambi, gol e note mister pronti da stampare o compilare a penna
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-xs font-bold text-sky-700 dark:text-sky-300 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-sky-200 dark:border-sky-700 shadow-2xs shrink-0 flex items-center gap-1 ml-2">
-                          <span>Apri</span>
-                          <ChevronRight className="w-3.5 h-3.5 text-sky-500" />
-                        </span>
-                      </button>
-                    )}
-
-                    {/* 1.2 CONVOCAZIONI GARA & WHATSAPP */}
+                    {/* CONVOCAZIONI GARA & WHATSAPP */}
                     {onOpenConvocazioni && (
                       <button
                         id="admin-btn-convocazioni"
@@ -411,116 +363,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               </span>
                             </div>
                             <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                              Carica rosa della categoria, spunta fino a 25 convocati e invia su WhatsApp
+                              Carica rosa della categoria, convoca anche da altre squadre della stessa società e invia su WhatsApp
                             </div>
                           </div>
                         </div>
                         <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 shadow-2xs shrink-0 flex items-center gap-1 ml-2">
                           <span>Apri</span>
                           <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
-                        </span>
-                      </button>
-                    )}
-
-                    {/* 1.3 TABELLINO GARA & DIRETTA LIVE */}
-                    {onOpenTabellino && (
-                      <button
-                        id="admin-btn-tabellino"
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          onOpenTabellino();
-                        }}
-                        className="w-full flex items-center justify-between p-3 sm:p-3.5 rounded-xl border border-rose-200 dark:border-rose-800/80 bg-gradient-to-r from-rose-50/70 to-amber-50/50 dark:from-rose-950/30 dark:to-amber-950/20 hover:from-rose-100 hover:to-amber-100 dark:hover:from-rose-900/40 dark:hover:to-amber-900/30 text-left transition group shadow-xs active:scale-[0.99] cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="p-2.5 rounded-xl bg-rose-600 text-white shadow-sm shrink-0">
-                            <Activity className="w-5 h-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                              <span>Tabellino Gara & Diretta Live</span>
-                              <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded-md bg-rose-600 text-white shadow-2xs flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                                Live
-                              </span>
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                              Punteggio in tempo reale, cronometro, marcatori e aggiornamenti rapidi
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-xs font-bold text-rose-700 dark:text-rose-300 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-700 shadow-2xs shrink-0 flex items-center gap-1 ml-2">
-                          <span>Live</span>
-                          <ChevronRight className="w-3.5 h-3.5 text-rose-500" />
-                        </span>
-                      </button>
-                    )}
-
-                    {/* 1.4 CREA LOCANDINA GARE A4 (PROGRAMMA) */}
-                    {onOpenLocandina && (
-                      <button
-                        id="admin-btn-locandina"
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          onOpenLocandina();
-                        }}
-                        className="w-full flex items-center justify-between p-3 sm:p-3.5 rounded-xl border border-cyan-200 dark:border-cyan-800/80 bg-gradient-to-r from-cyan-50/70 to-sky-50 dark:from-cyan-950/30 dark:to-sky-950/20 hover:from-cyan-100 hover:to-sky-100 dark:hover:from-cyan-900/40 dark:hover:to-sky-900/30 text-left transition group shadow-xs active:scale-[0.99] cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="p-2.5 rounded-xl bg-cyan-700 text-white shadow-sm shrink-0">
-                            <FileText className="w-5 h-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                              <span>Locandina Programma Gare (A4)</span>
-                              <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded-md bg-cyan-600 text-white shadow-2xs">
-                                Poster
-                              </span>
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                              Genera il manifesto riepilogativo di tutte le partite con logo per la bacheca
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-cyan-200 dark:border-cyan-700 shadow-2xs shrink-0 flex items-center gap-1 ml-2">
-                          <span>Crea</span>
-                          <ChevronRight className="w-3.5 h-3.5 text-cyan-500" />
-                        </span>
-                      </button>
-                    )}
-
-                    {/* 1.5 LOCANDINA SINGOLA PARTITA (SFONDO SPLASH BALL) */}
-                    {onOpenLocandinaSingola && (
-                      <button
-                        id="admin-btn-locandina-singola"
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          onOpenLocandinaSingola();
-                        }}
-                        className="w-full flex items-center justify-between p-3 sm:p-3.5 rounded-xl border border-amber-300 dark:border-amber-700/80 bg-gradient-to-r from-amber-50/80 via-sky-50 to-blue-50 dark:from-amber-950/40 dark:via-sky-950/30 dark:to-blue-950/20 hover:from-amber-100 hover:to-sky-100 dark:hover:from-amber-900/50 dark:hover:to-sky-900/40 text-left transition group shadow-xs active:scale-[0.99] ring-1 ring-amber-400/30 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500 to-sky-600 text-white shadow-sm shrink-0">
-                            <Sparkles className="w-5 h-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                              <span>Locandina Singola Partita (Matchday)</span>
-                              <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded-md bg-amber-500 text-white shadow-2xs">
-                                Sfondo Splash
-                              </span>
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                              Grafica social ufficiale 1:1, Story e A4 con sfondo palla splash blu e dettagli gara
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-xs font-bold text-amber-800 dark:text-amber-200 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 shadow-2xs shrink-0 flex items-center gap-1 ml-2">
-                          <span>Nuovo 🎨</span>
-                          <ChevronRight className="w-3.5 h-3.5 text-amber-500" />
                         </span>
                       </button>
                     )}

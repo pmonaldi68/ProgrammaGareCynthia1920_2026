@@ -601,14 +601,25 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     saveConvocatiForMatch(matchIdToSave, selectedIds);
   };
 
-  // Toggle selezione singolo atleta con limite a 25 e salvataggio automatico per la gara
+  // Toggle selezione singolo atleta con limite a 25 e verifica appartenenza alla stessa società della gara
   const togglePlayer = (id: string) => {
     setGiocatori((prev) => {
       const target = prev.find((g) => g.id === id);
       if (!target) return prev;
 
-      // Se si sta provando a selezionare e si è già raggiunto il limite di 25
+      // Se si sta provando a selezionare
       if (!target.selezionato) {
+        // Verifica che l'atleta appartenga alla stessa società della partita corrente (detectedClub)
+        if (!isPlayerInClub(target, detectedClub)) {
+          const clubAtleta = target.societa || target.squadra || 'altra società';
+          setConvocatiLimitWarning(
+            `Non è possibile convocare ${target.nome}: appartiene a "${clubAtleta}". È consentito convocare atleti da altre squadre purché appartengano alla stessa società della gara ("${detectedClub}").`
+          );
+          setTimeout(() => setConvocatiLimitWarning(null), 5500);
+          return prev;
+        }
+
+        // Se si è già raggiunto il limite di 25
         const currentlySelectedCount = prev.filter((g) => g.selezionato).length;
         if (currentlySelectedCount >= MAX_CONVOCATI_LIMIT) {
           setConvocatiLimitWarning(`Limite massimo di ${MAX_CONVOCATI_LIMIT} convocati raggiunto per la distinta di gara.`);
@@ -625,17 +636,30 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     });
   };
 
-  // Seleziona tutti i giocatori visibili nell'elenco (fino al limite massimo di 25 convocati)
+  // Seleziona tutti i giocatori visibili nell'elenco (verificando che siano della stessa società della gara)
   const handleSelectAll = () => {
     setGiocatori((prev) => {
       const visible = filteredGiocatori;
-      const alreadySelectedNonVisible = prev.filter((g) => g.selezionato && !visible.some((v) => v.id === g.id));
+      const sameClubVisible = visible.filter((g) => isPlayerInClub(g, detectedClub));
+
+      if (sameClubVisible.length === 0 && visible.length > 0) {
+        setConvocatiLimitWarning(
+          `Nessun atleta selezionabile: gli atleti mostrati non appartengono alla società della gara ("${detectedClub}"). È possibile convocare atleti da altre squadre solo se della stessa società.`
+        );
+        setTimeout(() => setConvocatiLimitWarning(null), 5000);
+        return prev;
+      }
+
+      const alreadySelectedNonVisible = prev.filter((g) => g.selezionato && !sameClubVisible.some((v) => v.id === g.id));
       const availableSlots = Math.max(0, MAX_CONVOCATI_LIMIT - alreadySelectedNonVisible.length);
 
-      const toSelectIds = new Set(visible.slice(0, availableSlots).map((g) => g.id));
+      const toSelectIds = new Set(sameClubVisible.slice(0, availableSlots).map((g) => g.id));
 
-      if (visible.length > availableSlots) {
+      if (sameClubVisible.length > availableSlots) {
         setConvocatiLimitWarning(`Selezionati ${toSelectIds.size} atleti: raggiunto il limite massimo ufficiale di ${MAX_CONVOCATI_LIMIT} convocati.`);
+        setTimeout(() => setConvocatiLimitWarning(null), 5000);
+      } else if (visible.length > sameClubVisible.length) {
+        setConvocatiLimitWarning(`Selezionati ${toSelectIds.size} atleti di "${detectedClub}". Gli atleti di altre società non possono essere convocati per questa gara.`);
         setTimeout(() => setConvocatiLimitWarning(null), 5000);
       } else {
         setConvocatiLimitWarning(null);
@@ -643,7 +667,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
 
       const updated = prev.map((g) => {
         if (toSelectIds.has(g.id)) return { ...g, selezionato: true };
-        if (visible.some((v) => v.id === g.id)) return { ...g, selezionato: false };
+        if (sameClubVisible.some((v) => v.id === g.id)) return { ...g, selezionato: false };
         return g;
       });
 
@@ -2754,28 +2778,42 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                     const isDonBosco = squad.includes('DON BOSCO') || squad.includes('PGS');
                     const isCynthia = squad.includes('CYNTHIA') && !isAcademy && !isAlba;
 
+                    const isFromSameClub = isPlayerInClub(g, detectedClub);
+
                     return (
                       <div
                         key={g.id}
                         onClick={() => togglePlayer(g.id)}
-                        className={`flex items-center justify-between p-2.5 cursor-pointer transition select-none ${
-                          g.selezionato
-                            ? 'bg-sky-50/80 dark:bg-sky-950/40 text-slate-900 dark:text-slate-100 font-semibold'
-                            : 'bg-transparent text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        className={`flex items-center justify-between p-2.5 transition select-none ${
+                          !isFromSameClub
+                            ? 'opacity-60 cursor-not-allowed bg-slate-50/50 dark:bg-slate-900/40'
+                            : g.selezionato
+                            ? 'bg-sky-50/80 dark:bg-sky-950/40 text-slate-900 dark:text-slate-100 font-semibold cursor-pointer'
+                            : 'bg-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer'
                         }`}
+                        title={
+                          !isFromSameClub
+                            ? `Non convocabile: appartiene a ${societaAppartenenza}, mentre la gara è di ${detectedClub}. È possibile convocare atleti da altre squadre solo se della stessa società.`
+                            : undefined
+                        }
                       >
                         <div className="flex items-center gap-2 flex-wrap">
                           <input
                             type="checkbox"
                             checked={g.selezionato}
+                            disabled={!isFromSameClub}
                             onChange={() => {}} // gestito da onClick contenitore
-                            className={`w-4 h-4 rounded-sm cursor-pointer transition ${
-                              hasPreviousConvocazione
-                                ? 'accent-emerald-600 text-emerald-600 focus:ring-emerald-500 ring-1 ring-emerald-500/40'
-                                : 'accent-sky-600 text-sky-600 focus:ring-sky-500'
+                            className={`w-4 h-4 rounded-sm transition ${
+                              !isFromSameClub
+                                ? 'opacity-30 cursor-not-allowed'
+                                : hasPreviousConvocazione
+                                ? 'accent-emerald-600 text-emerald-600 focus:ring-emerald-500 ring-1 ring-emerald-500/40 cursor-pointer'
+                                : 'accent-sky-600 text-sky-600 focus:ring-sky-500 cursor-pointer'
                             }`}
                             title={
-                              hasPreviousConvocazione
+                              !isFromSameClub
+                                ? 'Non convocabile: atleta appartenente ad altra società'
+                                : hasPreviousConvocazione
                                 ? `Giocatore già convocato in precedenza (${prevConvocazioniCount} gare nello storico)`
                                 : 'Nessuna convocazione registrata nelle gare precedenti'
                             }
@@ -2818,14 +2856,25 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                             {societaAppartenenza}
                           </span>
 
-                          {/* Se appartiene alla società della partita e stiamo guardando tutte le società */}
-                          {isPlayerInClub(g, detectedClub) && selectedClubFilter === 'ALL' && (
+                          {/* Se appartiene alla società della partita ed è visualizzata la lista complessiva */}
+                          {isFromSameClub && selectedClubFilter === 'ALL' && (
                             <span
                               className="text-[9.5px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 flex items-center gap-0.5"
                               title={`Atleta appartenente alla società di questa gara (${detectedClub})`}
                             >
                               <span>⭐</span>
                               <span>Club Gara</span>
+                            </span>
+                          )}
+
+                          {/* Se non appartiene alla società della partita: badge Altra Società */}
+                          {!isFromSameClub && (
+                            <span
+                              className="text-[9.5px] font-bold px-1.5 py-0.2 rounded-md bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800 flex items-center gap-1"
+                              title={`Atleta di ${societaAppartenenza}. Non convocabile: la partita appartiene a ${detectedClub}.`}
+                            >
+                              <Lock className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400" />
+                              <span>Altra Società</span>
                             </span>
                           )}
 
@@ -2847,10 +2896,13 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
                             </span>
                           )}
 
-                          {/* Badge se appartiene ad un'altra categoria (aggregato) */}
-                          {isFromOtherTeam && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60">
-                              da {g.categoria}
+                          {/* Badge se appartiene ad un'altra squadra/categoria della STESSA società */}
+                          {isFromSameClub && isFromOtherTeam && (
+                            <span
+                              className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-800 flex items-center gap-0.5"
+                              title={`Atleta aggregabile da altra squadra della stessa società (${g.categoria})`}
+                            >
+                              <span>da {g.categoria}</span>
                             </span>
                           )}
 

@@ -1,7 +1,28 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-slate-850: #172033;
+}
+
+@keyframes headerSyncBar {
+  0% {
+    transform: translateX(-100%);
+    width: 35%;
+  }
+  50% {
+    transform: translateX(60%);
+    width: 65%;
+  }
+  100% {
+    transform: translateX(220%);
+    width: 35%;
+  }
+}
+
+.animate-sync-bar {
+  animation: headerSyncBar 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 /* ==========================================================================
