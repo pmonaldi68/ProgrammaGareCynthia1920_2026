@@ -19,7 +19,7 @@ export interface Partita {
   societa?: string;
 }
 
-export type ViewMode = 'cards' | 'table' | 'map';
+export type ViewMode = 'cards' | 'table' | 'map' | 'calendar';
 export type LocationFilter = 'all' | 'casa' | 'trasferta';
 
 export interface FilterState {

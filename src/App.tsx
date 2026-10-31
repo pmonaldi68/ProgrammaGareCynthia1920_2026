@@ -19,6 +19,7 @@ import { FilterBar } from './components/FilterBar';
 import { MatchCard } from './components/MatchCard';
 import { MatchTable } from './components/MatchTable';
 import { MatchMapView } from './components/MatchMapView';
+import { MatchCalendarView } from './components/MatchCalendarView';
 import { MatchSkeleton } from './components/MatchSkeleton';
 import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { SheetConfigModal } from './components/SheetConfigModal';
@@ -386,6 +387,10 @@ export default function App() {
             <MatchTable
               partite={filteredPartite}
             />
+          </div>
+        ) : viewMode === 'calendar' ? (
+          <div className="animate-in fade-in duration-200">
+            <MatchCalendarView partite={filteredPartite} />
           </div>
         ) : (
           <div className="animate-in fade-in duration-200">

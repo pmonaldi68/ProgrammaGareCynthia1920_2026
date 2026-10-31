@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   X,
+  Lock,
   Send,
   Copy,
   Check,
@@ -1161,7 +1162,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     const categoriaEffettiva = currentPartita?.campionato || matchedCategory || categoriaCustom || 'ASD Cynthia 1920';
     const squadraCasaEffettiva = currentPartita?.squadraCasa || squadraCasaCustom || 'Cynthia 1920';
     const squadraTrasfertaEffettiva = currentPartita?.squadraOspite || squadraOspiteCustom || 'Avversario';
-    const avversarioEffettivo = currentPartita?.avversario || squadraTrasfertaEffettiva;
+    const avversarioEffettivo = (currentPartita as any)?.avversario || squadraTrasfertaEffettiva;
 
     const exportData = {
       applicazione: 'ASD Cynthia 1920 - Gestione Convocazioni',
@@ -1185,7 +1186,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         },
         campo: currentPartita?.campo || campoCustom || '',
         indirizzo: currentPartita?.indirizzo || indirizzoCustom || '',
-        linkMaps: currentPartita?.linkMaps || linkMapsCustom || '',
+        linkMaps: currentPartita?.lnkMaps || (currentPartita as any)?.linkMaps || linkMapsCustom || '',
       },
       staff: {
         mister: misterName,
@@ -1199,7 +1200,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
         id: g.id,
         numero: g.numero || '',
         nome: g.nome,
-        cognome: g.cognome || '',
+        cognome: (g as any).cognome || '',
         ruolo: g.ruolo || '',
         annoNascita: g.annoNascita || '',
         categoria: g.categoria || categoriaEffettiva,
@@ -1310,7 +1311,7 @@ export const ConvocazioniModal: React.FC<ConvocazioniModalProps> = ({
     const categoriaEffettiva = currentPartita?.campionato || matchedCategory || categoriaCustom || 'ASD Cynthia 1920';
     const squadraCasaEffettiva = currentPartita?.squadraCasa || squadraCasaCustom || 'Cynthia 1920';
     const squadraTrasfertaEffettiva = currentPartita?.squadraOspite || squadraOspiteCustom || 'Avversario';
-    const avversarioEffettivo = currentPartita?.avversario || squadraTrasfertaEffettiva;
+    const avversarioEffettivo = (currentPartita as any)?.avversario || squadraTrasfertaEffettiva;
     const campoEffettivo = currentPartita?.campo || campoCustom || '';
     const indirizzoEffettivo = currentPartita?.indirizzo || indirizzoCustom || '';
     const ritrovoCompleto = oraRitrovo || `${currentRitrovoTime} ${ritrovoLuogo.trim()}`;
