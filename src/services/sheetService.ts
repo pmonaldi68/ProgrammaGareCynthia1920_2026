@@ -187,6 +187,8 @@ export function mapCsvToPartite(rows: string[][]): Partita[] {
   const idxComune = findIdx(['comune', 'citta', 'paese']);
   const idxMaps = findIdx(['lnkmaps', 'linkmaps', 'maps', 'link', 'mappa', 'posizione']);
   const idxSocieta = findIdx(['societa', 'club', 'entita', 'polisportiva', 'appartenenza']);
+  const idxArbitro = findIdx(['arbitro', 'direttoredigara', 'referee', 'ufficialedigara', 'fischietto', 'sezione']);
+  const idxNote = findIdx(['note', 'annotazioni', 'dettagli', 'avvisi', 'info', 'comunicazioni', 'osservazioni']);
   const idxLat = findIdx(['lat', 'latitudine']);
   const idxLng = findIdx(['lng', 'lon', 'longitudine']);
   const idxCoords = findIdx(['coordinate', 'coords', 'gps']);
@@ -282,6 +284,8 @@ export function mapCsvToPartite(rows: string[][]): Partita[] {
       lat,
       lng,
       societa,
+      arbitro: getCol(row, idxArbitro) || undefined,
+      note: getCol(row, idxNote) || undefined,
     });
   }
 

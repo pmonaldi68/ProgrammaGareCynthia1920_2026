@@ -29,6 +29,7 @@ import { NotificationModal } from './components/NotificationModal';
 import { PdfExportModal } from './components/PdfExportModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ConvocazioniModal } from './components/ConvocazioniModal';
+import { PecManagerModal } from './components/PecManagerModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
 import { getPublicPartite, getDonBoscoPartite, detectPartitaClub } from './utils/donBoscoUtils';
 import { AlertCircle, FileCode, BellRing, X, Palette } from 'lucide-react';
@@ -56,6 +57,7 @@ export default function App() {
   const [isPdfModalOpen, setIsPdfModalOpen] = useState<boolean>(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isConvocazioniModalOpen, setIsConvocazioniModalOpen] = useState<boolean>(false);
+  const [isPecModalOpen, setIsPecModalOpen] = useState<boolean>(false);
   const [recentVariations, setRecentVariations] = useState<MatchVariation[]>([]);
   const [bannerVariation, setBannerVariation] = useState<MatchVariation | null>(null);
 
@@ -482,10 +484,17 @@ export default function App() {
         onOpenGitHubGuide={() => setIsGitHubModalOpen(true)}
         onOpenPdfExport={() => setIsPdfModalOpen(true)}
         onOpenConvocazioni={() => setIsConvocazioniModalOpen(true)}
+        onOpenPecManager={() => setIsPecModalOpen(true)}
         sheetUrl={config.sheetUrl}
         totalPartiteCount={partite.length}
         publicPartiteCount={publicPartite.length}
         donBoscoCount={donBoscoPartite.length}
+      />
+
+      {/* Modale Gestione PEC Societaria (Posta Elettronica Certificata) */}
+      <PecManagerModal
+        isOpen={isPecModalOpen}
+        onClose={() => setIsPecModalOpen(false)}
       />
 
       {/* Modale Convocazioni Gara & Messaggio WhatsApp */}

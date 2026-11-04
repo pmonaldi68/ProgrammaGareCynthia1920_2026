@@ -17,6 +17,8 @@ export interface Partita {
   lat?: number;
   lng?: number;
   societa?: string;
+  arbitro?: string;
+  note?: string;
 }
 
 export type ViewMode = 'cards' | 'table' | 'map' | 'calendar';

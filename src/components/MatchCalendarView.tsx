@@ -5,21 +5,13 @@ import { it } from 'date-fns/locale/it';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { Partita } from '../types';
 import { parseMatchDateTime } from '../utils/calendarUtils';
-import { formatMatchDateAndDay } from '../utils/dateFormatter';
 import { MatchCard } from './MatchCard';
+import { MatchDetailModal } from './MatchDetailModal';
 import {
   CalendarDays,
   Calendar as CalendarIcon,
-  Clock,
-  MapPin,
-  ChevronLeft,
-  ChevronRight,
   X,
-  ExternalLink,
-  Shield,
-  Layers,
-  Sparkles,
-  Info,
+  Eye,
 } from 'lucide-react';
 
 const locales = {
@@ -63,6 +55,26 @@ const italianMessages = {
   showMore: (total: number) => `+ Altre ${total} gare`,
 };
 
+// Componente personalizzato per rendere le gare nelle caselle del calendario
+const CustomCalendarEvent: React.FC<{ event: CalendarMatchEvent }> = ({ event }) => {
+  const p = event.partita;
+  return (
+    <div
+      className="flex items-center gap-1.5 overflow-hidden text-left py-0.5 select-none w-full"
+      title={`${p.ora || ''} • ${p.campionato}: ${p.squadraCasa} vs ${p.squadraOspite} (Clicca per dettagli completi e mappa campo)`}
+    >
+      {p.ora && (
+        <span className="font-mono text-[9.5px] bg-black/25 px-1 py-0.5 rounded shrink-0 font-bold tracking-tight">
+          {p.ora}
+        </span>
+      )}
+      <span className="truncate font-bold text-[11px] leading-tight">
+        {p.squadraCasa} vs {p.squadraOspite}
+      </span>
+    </div>
+  );
+};
+
 export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite }) => {
   // Converti tutte le partite in eventi del calendario
   const events: CalendarMatchEvent[] = useMemo(() => {
@@ -83,10 +95,8 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
   // Calcola la data iniziale: la data della prima partita se presente, altrimenti la data odierna
   const initialDate = useMemo(() => {
     if (events.length > 0) {
-      // Ordina per data per trovare la più vicina
       const sorted = [...events].sort((a, b) => a.start.getTime() - b.start.getTime());
       const now = new Date();
-      // Trova la prima partita >= a oggi o la prima in assoluto
       const upcoming = sorted.find((e) => e.start.getTime() >= now.getTime() - 24 * 60 * 60 * 1000);
       return upcoming ? upcoming.start : sorted[0].start;
     }
@@ -140,7 +150,7 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
     };
   };
 
-  // Navigazione
+  // Navigazione calendario
   const handleNavigate = (newDate: Date) => {
     setCurrentDate(newDate);
   };
@@ -149,16 +159,25 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
     setCurrentView(newView);
   };
 
-  // Click su un evento specifico: apri sia il giorno che il dettaglio partita
+  // Click su un evento specifico: apri direttamente la modale di dettaglio completo
   const handleSelectEvent = (event: CalendarMatchEvent) => {
-    setSelectedDay(event.start);
     setSelectedPartita(event.partita);
   };
 
-  // Click su uno slot di giorno/ora
+  // Click su una casella/slot del giorno
   const handleSelectSlot = (slotInfo: { start: Date; end: Date }) => {
-    setSelectedDay(slotInfo.start);
-    setSelectedPartita(null);
+    const matchesOnSlot = partite.filter((p) => {
+      const { start } = parseMatchDateTime(p.data, p.ora);
+      return isSameDay(start, slotInfo.start);
+    });
+
+    if (matchesOnSlot.length === 1) {
+      // Se c'è una sola partita in quel giorno, apri direttamente i dettagli completi
+      setSelectedPartita(matchesOnSlot[0]);
+    } else {
+      // Se ci sono più partite o zero partite, mostra la panoramica della giornata
+      setSelectedDay(slotInfo.start);
+    }
   };
 
   return (
@@ -166,7 +185,7 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
       {/* Barra Informativa Calendario & Controlli Rapidi */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-sky-600 text-white shadow-xs">
+          <div className="p-2.5 rounded-xl bg-sky-600 text-white shadow-xs shrink-0">
             <CalendarDays className="w-5 h-5" />
           </div>
           <div>
@@ -177,7 +196,7 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
               </span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Clicca su una casella o su una gara per visualizzare formazioni, orari, campo e dettagli completi
+              Clicca su una partita nel calendario per aprire la scheda con campo, mappa, orario e navigazione
             </p>
           </div>
         </div>
@@ -201,7 +220,7 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
 
       {/* Box Principale Calendario React-Big-Calendar */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-3 sm:p-5 shadow-xs overflow-hidden">
-        <div className="h-[620px] sm:h-[720px] w-full text-slate-800 dark:text-slate-100">
+        <div className="h-[640px] sm:h-[740px] w-full text-slate-800 dark:text-slate-100">
           <Calendar
             localizer={localizer}
             events={events}
@@ -215,6 +234,9 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
             date={currentDate}
             onNavigate={handleNavigate}
             eventPropGetter={eventPropGetter}
+            components={{
+              event: CustomCalendarEvent,
+            }}
             selectable
             onSelectEvent={handleSelectEvent}
             onSelectSlot={handleSelectSlot}
@@ -224,19 +246,23 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
         </div>
       </div>
 
-      {/* Modale / Dettaglio Giorno Selezionato */}
-      {selectedDay && (
+      {/* 1. Modale Dettagli Completi Partita (Click Diretto su Partita) */}
+      <MatchDetailModal
+        partita={selectedPartita}
+        isOpen={Boolean(selectedPartita)}
+        onClose={() => setSelectedPartita(null)}
+      />
+
+      {/* 2. Modale Elenco Gare del Giorno (Click su casella vuota o con più partite) */}
+      {selectedDay && !selectedPartita && (
         <div
           id="calendar-day-modal-backdrop"
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200"
-          onClick={() => {
-            setSelectedDay(null);
-            setSelectedPartita(null);
-          }}
+          onClick={() => setSelectedDay(null)}
         >
           <div
             id="calendar-day-modal"
-            className="relative w-full max-w-2xl max-h-[90vh] flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-800 dark:text-slate-100 animate-in zoom-in-95 duration-150"
+            className="relative w-full max-w-2xl max-h-[90vh] flex flex-col bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-800 dark:text-slate-100 animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header Finestra Dettaglio Giorno */}
@@ -260,12 +286,9 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedDay(null);
-                  setSelectedPartita(null);
-                }}
+                onClick={() => setSelectedDay(null)}
                 className="p-2 rounded-xl text-sky-200 hover:text-white hover:bg-white/10 transition cursor-pointer"
-                title="Chiudi"
+                title="Chiudi finestra"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -282,21 +305,22 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
                     Nessuna gara in questa data
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-                    Non risultano partite da disputare per la giornata selezionata. Clicca sulle caselle del calendario contrassegnate con le etichette azzurre o dorate.
+                    Non risultano partite da disputare per la giornata selezionata. Clicca sulle caselle del calendario con etichette colorate per visualizzare le partite.
                   </p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {dayMatches.map((partita) => (
-                    <div
-                      key={partita.id}
-                      className={`transition-all ${
-                        selectedPartita?.id === partita.id
-                          ? 'ring-2 ring-sky-500 rounded-2xl shadow-md'
-                          : ''
-                      }`}
-                    >
+                    <div key={partita.id} className="space-y-2">
                       <MatchCard partita={partita} />
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPartita(partita)}
+                        className="w-full py-2 px-3 rounded-xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Visualizza Scheda Dettagliata & Mappa Campo</span>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -308,10 +332,7 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
               <span>ASD Cynthia 1920 • Stagione 2026/2027</span>
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedDay(null);
-                  setSelectedPartita(null);
-                }}
+                onClick={() => setSelectedDay(null)}
                 className="px-3.5 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold text-slate-800 dark:text-white transition cursor-pointer"
               >
                 Chiudi

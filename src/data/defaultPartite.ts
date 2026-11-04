@@ -18,6 +18,8 @@ const RAW_DEFAULT_PARTITE: Partita[] = [
     lnkMaps: 'https://maps.app.goo.gl/k42YrqtFcqK8KGWBA',
     isCynthiaCasa: true,
     isCynthiaOspite: false,
+    arbitro: 'Rossi M. (Sez. AIA Albano Laziale)',
+    note: 'Ritrovo atleti ore 14:15 presso lo spogliatoio. Divisa gara ufficiale biancoazzurra.',
   },
   {
     id: 'p-2',
@@ -35,6 +37,8 @@ const RAW_DEFAULT_PARTITE: Partita[] = [
     lnkMaps: 'https://maps.app.goo.gl/H7bQcfBRpiw5kEUk7',
     isCynthiaCasa: true,
     isCynthiaOspite: false,
+    arbitro: 'Bianchi G. (Sez. AIA Roma 2)',
+    note: 'Torneo Grifone Cup - Fase a gironi. In caso di parità calci di rigore.',
   },
   {
     id: 'p-3',
@@ -86,6 +90,8 @@ const RAW_DEFAULT_PARTITE: Partita[] = [
     lnkMaps: 'https://maps.app.goo.gl/k42YrqtFcqK8KGWBA',
     isCynthiaCasa: true,
     isCynthiaOspite: false,
+    arbitro: 'Ferrari L. (Sez. AIA Ciampino)',
+    note: 'Presentarsi con documento di riconoscimento e cartellino federale in regola.',
   },
   {
     id: 'p-6',
@@ -103,6 +109,8 @@ const RAW_DEFAULT_PARTITE: Partita[] = [
     lnkMaps: 'https://maps.app.goo.gl/KSdPYgK4FFYPfCkd6',
     isCynthiaCasa: false,
     isCynthiaOspite: true,
+    arbitro: 'De Luca A. (Sez. AIA Aprilia)',
+    note: 'Partenza pullman societario ore 15:45 dal piazzale del Palazzetto di Genzano.',
   },
   {
     id: 'p-7',

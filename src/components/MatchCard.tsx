@@ -18,6 +18,8 @@ import {
   MessageCircle,
   Send,
   Mail,
+  UserCheck,
+  FileText,
 } from 'lucide-react';
 
 interface MatchCardProps {
@@ -218,6 +220,26 @@ export const MatchCard: React.FC<MatchCardProps> = ({ partita }) => {
                 <span className="truncate">Apri su Google Maps</span>
                 <ExternalLink className="w-3 h-3 opacity-70 flex-shrink-0" />
               </a>
+            </div>
+          )}
+
+          {/* Arbitro / Direttore di Gara se disponibile */}
+          {partita.arbitro && partita.arbitro.trim() && (
+            <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300">
+              <UserCheck className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span className="font-bold text-slate-500 dark:text-slate-400">Arbitro:</span>
+              <span className="font-semibold text-slate-900 dark:text-slate-100 truncate">{partita.arbitro}</span>
+            </div>
+          )}
+
+          {/* Note / Avvisi Gara se presenti */}
+          {partita.note && partita.note.trim() && (
+            <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-start gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+              <FileText className="w-3.5 h-3.5 text-sky-500 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <span className="font-bold text-slate-500 dark:text-slate-400 mr-1">Note:</span>
+                <span className="italic">{partita.note}</span>
+              </div>
             </div>
           )}
         </div>
