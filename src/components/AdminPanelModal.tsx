@@ -399,13 +399,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           </div>
                           <div className="min-w-0">
                             <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                              <span>Gestione PEC Societaria</span>
+                              <span>PEC & Forza Pubblica Gare</span>
                               <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded-md bg-blue-600 text-white shadow-2xs">
                                 Posta Certificata
                               </span>
                             </div>
                             <div className="text-xs text-slate-600 dark:text-slate-300">
-                              App dedicata per PEC societaria, comunicazioni ufficiali LND/FIGC e protocollo
+                              Richieste Forza Pubblica per gare, comunicazioni ufficiali LND/FIGC e protocollo
                             </div>
                           </div>
                         </div>
@@ -414,13 +414,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       <div className="flex flex-wrap items-center gap-2 pt-1">
                         <a
                           id="admin-btn-open-pec"
-                          href="https://ai.studio/apps/c21f37da-c792-4730-b67a-b80cc22c9d43"
+                          href="https://gestione-pec-forza-pubblica-gare-asd.ai.studio"
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex-1 min-w-[150px] py-2.5 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/20 cursor-pointer"
                         >
                           <Mail className="w-4 h-4" />
-                          <span>Apri App PEC</span>
+                          <span>Apri App PEC & Forza Pubblica</span>
                           <ExternalLink className="w-3.5 h-3.5 opacity-80" />
                         </a>
 

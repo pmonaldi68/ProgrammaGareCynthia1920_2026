@@ -339,7 +339,7 @@ export default function App() {
           availableCampionati={availableCampionati}
           availableDate={availableDate}
           availableSocieta={availableSocieta}
-          partite={publicPartite}
+          partite={filteredPartite}
           viewMode={viewMode}
           onChangeViewMode={setViewMode}
           onOpenPdfExport={() => setIsPdfModalOpen(true)}
@@ -450,8 +450,10 @@ export default function App() {
         onClose={() => setIsPdfModalOpen(false)}
         allPartite={publicPartite}
         filteredPartite={filteredPartite}
+        filters={filters}
         hasActiveFilters={
           filters.campionato !== 'ALL' ||
+          (Boolean(filters.societa) && filters.societa !== 'ALL') ||
           filters.data !== 'ALL' ||
           Boolean(filters.startDate) ||
           Boolean(filters.endDate) ||

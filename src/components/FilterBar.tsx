@@ -195,17 +195,29 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
         {/* Azioni Rapide Sempre Visibili: Report PDF & Switch Vista */}
         <div className="flex items-center gap-2 ml-auto">
-          {/* Pulsante Esporta / Report PDF */}
+          {/* Pulsante Esporta / Report PDF (dinamico con conteggio quando filtrato) */}
           <button
             id="btn-filterbar-export-pdf"
             type="button"
             onClick={onOpenPdfExport}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-sky-700 hover:bg-sky-800 active:scale-[0.98] text-white shadow-2xs transition"
-            title="Genera e scarica il report PDF settimanale per stampa o WhatsApp"
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer ${
+              hasActiveFilters
+                ? 'bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white ring-2 ring-emerald-400/30'
+                : 'bg-sky-700 hover:bg-sky-800 active:scale-[0.98] text-white'
+            }`}
+            title={
+              hasActiveFilters
+                ? `Esporta in PDF il programma gare filtrato (${partite.length} partite)`
+                : 'Genera e scarica il report PDF per stampa A4 o condivisione'
+            }
           >
-            <FileDown className="w-3.5 h-3.5 text-sky-200" />
-            <span className="hidden sm:inline">Report PDF</span>
-            <span className="sm:hidden">PDF</span>
+            <FileDown className={`w-3.5 h-3.5 ${hasActiveFilters ? 'text-emerald-100' : 'text-sky-200'}`} />
+            <span className="hidden sm:inline">
+              {hasActiveFilters ? `Esporta PDF (${partite.length})` : 'Report PDF'}
+            </span>
+            <span className="sm:hidden">
+              {hasActiveFilters ? `PDF (${partite.length})` : 'PDF'}
+            </span>
           </button>
 
           {/* Switch Vista Schede / Tabella / Mappa / Calendario */}
@@ -490,15 +502,27 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2 flex-wrap">
               {hasActiveFilters && (
-                <button
-                  id="btn-reset-filters"
-                  type="button"
-                  onClick={handleReset}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  Azzera Tutti i Filtri
-                </button>
+                <>
+                  <button
+                    id="btn-export-filtered-pdf-quick"
+                    type="button"
+                    onClick={onOpenPdfExport}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-100/90 dark:bg-emerald-950/70 hover:bg-emerald-200 dark:hover:bg-emerald-900/80 border border-emerald-300/80 dark:border-emerald-800 transition cursor-pointer"
+                    title="Scarica o stampa direttamente il PDF con solo le gare attualmente filtrate"
+                  >
+                    <FileDown className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-300" />
+                    <span>Esporta PDF Filtrato ({partite.length})</span>
+                  </button>
+                  <button
+                    id="btn-reset-filters"
+                    type="button"
+                    onClick={handleReset}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Azzera Tutti i Filtri
+                  </button>
+                </>
               )}
               {filters.search && (
                 <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-200 border border-sky-200/60 dark:border-sky-800 font-medium">

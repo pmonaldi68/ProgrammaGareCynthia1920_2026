@@ -18,7 +18,7 @@ interface PecManagerModalProps {
   onClose: () => void;
 }
 
-const PEC_APP_URL = 'https://ai.studio/apps/c21f37da-c792-4730-b67a-b80cc22c9d43';
+const PEC_APP_URL = 'https://gestione-pec-forza-pubblica-gare-asd.ai.studio';
 
 export const PecManagerModal: React.FC<PecManagerModalProps> = ({ isOpen, onClose }) => {
   const [copied, setCopied] = useState<boolean>(false);
@@ -49,7 +49,7 @@ export const PecManagerModal: React.FC<PecManagerModalProps> = ({ isOpen, onClos
         className="relative w-full max-w-xl flex flex-col bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-800 dark:text-slate-100 animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header Modale Gestione PEC */}
+        {/* Header Modale Gestione PEC & Forza Pubblica */}
         <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white px-5 py-4 flex items-center justify-between border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="p-2.5 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-400/30 shrink-0 shadow-inner">
@@ -58,7 +58,7 @@ export const PecManagerModal: React.FC<PecManagerModalProps> = ({ isOpen, onClos
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 id="pec-manager-title" className="font-extrabold text-sm sm:text-base leading-tight truncate">
-                  Gestione PEC Societaria
+                  PEC & Forza Pubblica Gare ASD
                 </h3>
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                   <ShieldCheck className="w-3 h-3 text-emerald-400" />
@@ -66,7 +66,7 @@ export const PecManagerModal: React.FC<PecManagerModalProps> = ({ isOpen, onClos
                 </span>
               </div>
               <p className="text-[11px] text-blue-200/80 truncate">
-                ASD Cynthia 1920 • Stagione Sportiva 2026/2027
+                ASD Cynthia 1920 • Richieste Ordine Pubblico & Comunicazioni FIGC/LND
               </p>
             </div>
           </div>
@@ -92,10 +92,10 @@ export const PecManagerModal: React.FC<PecManagerModalProps> = ({ isOpen, onClos
 
             <div className="space-y-1">
               <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                Applicazione PEC ASD Cynthia 1920
+                Gestione PEC & Forza Pubblica Gare
               </h4>
               <p className="text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
-                Piattaforma dedicata alla gestione della posta elettronica certificata societaria, comunicazioni ufficiali FIGC/LND, tesseramenti e protocollo.
+                App dedicata per le richieste ufficiali di Forza Pubblica (Carabinieri, Polizia di Stato, Polizia Locale), comunicazioni federali FIGC/LND e protocollo societario.
               </p>
             </div>
 
@@ -107,7 +107,7 @@ export const PecManagerModal: React.FC<PecManagerModalProps> = ({ isOpen, onClos
               onClick={handleOpenApp}
               className="w-full py-3.5 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>Accedi all&apos;App PEC</span>
+              <span>Accedi all&apos;App PEC & Forza Pubblica</span>
               <ExternalLink className="w-4 h-4" />
             </a>
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useGoogleAuth } from '../context/GoogleAuthContext';
-import { LogOut, CheckCircle2, ShieldCheck, RefreshCw } from 'lucide-react';
+import { LogOut, CheckCircle2, ShieldCheck, RefreshCw, AlertTriangle } from 'lucide-react';
+import { FirebaseUnauthorizedDomainModal } from './FirebaseUnauthorizedDomainModal';
 
 interface GoogleSignInButtonProps {
   onSuccess?: (token: string) => void;
@@ -16,6 +17,7 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   const { user, isAuthenticated, isLoading, login, logout } = useGoogleAuth();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isUnauthorizedModalOpen, setIsUnauthorizedModalOpen] = useState(false);
 
   const handleSignIn = async () => {
     setIsLoggingIn(true);
@@ -26,7 +28,13 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
         onSuccess(token);
       }
     } catch (err: any) {
-      if (err?.code !== 'auth/popup-closed-by-user') {
+      if (
+        err?.code === 'auth/unauthorized-domain' ||
+        (typeof err?.message === 'string' && err.message.includes('unauthorized-domain'))
+      ) {
+        setIsUnauthorizedModalOpen(true);
+        setErrorMsg('Dominio non autorizzato in Firebase Auth');
+      } else if (err?.code !== 'auth/popup-closed-by-user') {
         setErrorMsg(err?.message || 'Errore di connessione a Google');
       }
     } finally {
@@ -152,10 +160,25 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
       </button>
 
       {errorMsg && (
-        <span className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">
-          {errorMsg}
-        </span>
+        <button
+          type="button"
+          onClick={() => setIsUnauthorizedModalOpen(true)}
+          className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-1.5 rounded-lg mt-1 text-left flex items-center justify-between gap-1.5 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition cursor-pointer"
+        >
+          <span className="flex items-center gap-1 font-semibold truncate">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span className="truncate">{errorMsg}</span>
+          </span>
+          <span className="text-[10px] font-bold underline shrink-0">Risolvi 🛠️</span>
+        </button>
       )}
+
+      {/* Modale di Risoluzione per Dominio Non Autorizzato Firebase */}
+      <FirebaseUnauthorizedDomainModal
+        isOpen={isUnauthorizedModalOpen}
+        onClose={() => setIsUnauthorizedModalOpen(false)}
+        onRetry={handleSignIn}
+      />
     </div>
   );
 };
