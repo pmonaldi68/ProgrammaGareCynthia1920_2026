@@ -34,7 +34,7 @@ import { PecManagerModal } from './components/PecManagerModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
 import { getPublicPartite, getDonBoscoPartite, detectPartitaClub } from './utils/donBoscoUtils';
 import { runWithViewTransition } from './utils/viewTransition';
-import { AlertCircle, FileCode, BellRing, X, Palette } from 'lucide-react';
+import { AlertCircle, FileCode, BellRing, X, Palette, GanttChart } from 'lucide-react';
 
 export default function App() {
   const [config, setConfig] = useState<SheetConfig>(loadStoredConfig);
@@ -52,6 +52,11 @@ export default function App() {
   });
 
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [previousViewMode, setPreviousViewMode] = useState<ViewMode>('cards');
+  const [showWeeklySummary, setShowWeeklySummary] = useState<boolean>(() => {
+    const saved = localStorage.getItem('cynthia_show_weekly_summary');
+    return saved !== 'false';
+  });
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
   const [isSheetModalOpen, setIsSheetModalOpen] = useState<boolean>(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState<boolean>(false);
@@ -365,7 +370,12 @@ export default function App() {
           availableSocieta={availableSocieta}
           partite={filteredPartite}
           viewMode={viewMode}
-          onChangeViewMode={(nextMode) => runWithViewTransition(() => setViewMode(nextMode))}
+          onChangeViewMode={(nextMode) => {
+            if (nextMode !== 'timeline') {
+              setPreviousViewMode(nextMode);
+            }
+            runWithViewTransition(() => setViewMode(nextMode));
+          }}
           onOpenPdfExport={() => setIsPdfModalOpen(true)}
         />
 
@@ -403,10 +413,34 @@ export default function App() {
         ) : (
           <div className="view-transition-schedule">
             {viewMode !== 'timeline' && (
-              <WeeklySummaryStrip
-                partite={filteredPartite}
-                onOpenTimeline={() => runWithViewTransition(() => setViewMode('timeline'))}
-              />
+              showWeeklySummary ? (
+                <WeeklySummaryStrip
+                  partite={filteredPartite}
+                  onOpenTimeline={() => {
+                    setPreviousViewMode(viewMode);
+                    runWithViewTransition(() => setViewMode('timeline'));
+                  }}
+                  onClose={() => {
+                    setShowWeeklySummary(false);
+                    localStorage.setItem('cynthia_show_weekly_summary', 'false');
+                  }}
+                />
+              ) : (
+                <div className="flex justify-end mb-3">
+                  <button
+                    id="btn-reopen-weekly-summary"
+                    type="button"
+                    onClick={() => {
+                      setShowWeeklySummary(true);
+                      localStorage.setItem('cynthia_show_weekly_summary', 'true');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 hover:bg-white dark:hover:bg-slate-900 border border-transparent hover:border-slate-200 dark:hover:border-slate-800 transition-colors cursor-pointer"
+                  >
+                    <GanttChart className="w-3.5 h-3.5" />
+                    <span>Mostra timeline settimana</span>
+                  </button>
+                </div>
+              )
             )}
 
             {viewMode === 'cards' ? (
@@ -421,7 +455,14 @@ export default function App() {
             ) : viewMode === 'table' ? (
               <MatchTable partite={filteredPartite} />
             ) : viewMode === 'timeline' ? (
-              <WeeklyTimeline partite={filteredPartite} />
+              <WeeklyTimeline
+                partite={filteredPartite}
+                onClose={() =>
+                  runWithViewTransition(() =>
+                    setViewMode(previousViewMode === 'timeline' ? 'cards' : previousViewMode)
+                  )
+                }
+              />
             ) : viewMode === 'calendar' ? (
               <MatchCalendarView partite={filteredPartite} />
             ) : (

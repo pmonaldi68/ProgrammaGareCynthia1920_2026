@@ -23,6 +23,7 @@ import {
   GanttChart,
   Eye,
   EyeOff,
+  X,
 } from 'lucide-react';
 
 interface TimelineMatch {
@@ -46,11 +47,13 @@ interface WeekOption {
 
 interface WeeklyTimelineProps {
   partite: Partita[];
+  onClose?: () => void;
 }
 
 interface WeeklySummaryStripProps {
   partite: Partita[];
   onOpenTimeline: () => void;
+  onClose?: () => void;
 }
 
 const DAY_NAMES_SHORT = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
@@ -144,6 +147,7 @@ function pickInitialWeekStart(weekOptions: WeekOption[]): Date {
 export const WeeklySummaryStrip: React.FC<WeeklySummaryStripProps> = ({
   partite,
   onOpenTimeline,
+  onClose,
 }) => {
   const weekOptions = useMemo(() => buildWeekOptions(partite), [partite]);
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(() =>
@@ -330,6 +334,19 @@ export const WeeklySummaryStrip: React.FC<WeeklySummaryStripProps> = ({
             <GanttChart className="w-3.5 h-3.5" />
             <span>Apri Timeline</span>
           </button>
+
+          {onClose && (
+            <button
+              id="btn-close-weekly-summary"
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+              title="Chiudi riepilogo timeline gare"
+              aria-label="Chiudi riepilogo timeline gare"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </section>
@@ -342,7 +359,7 @@ export const WeeklySummaryStrip: React.FC<WeeklySummaryStripProps> = ({
  * - Impacchettamento automatico su corsie senza sovrapposizioni per gare simultanee.
  * - Riepilogo grafico dei carichi settimanali e click su ogni gara per modale dettagli.
  */
-export const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({ partite }) => {
+export const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({ partite, onClose }) => {
   const weekOptions = useMemo(() => buildWeekOptions(partite), [partite]);
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(() =>
     pickInitialWeekStart(weekOptions)
@@ -575,6 +592,20 @@ export const WeeklyTimeline: React.FC<WeeklyTimelineProps> = ({ partite }) => {
               {hideEmptyDays ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
               <span>{hideEmptyDays ? 'Mostra tutti i 7 giorni' : 'Solo giorni con gare'}</span>
             </button>
+
+            {onClose && (
+              <button
+                id="btn-close-full-timeline"
+                type="button"
+                onClick={onClose}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-slate-700 dark:text-slate-200 hover:text-rose-700 dark:hover:text-rose-300 border border-slate-200 dark:border-slate-700 hover:border-rose-200 dark:hover:border-rose-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                title="Chiudi vista timeline gare"
+                aria-label="Chiudi vista timeline gare"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Chiudi timeline</span>
+              </button>
+            )}
           </div>
         </div>
 
