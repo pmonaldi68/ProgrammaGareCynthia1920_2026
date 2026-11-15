@@ -36,6 +36,11 @@ export function buildFilterSummaryString(filters?: FilterState): string {
       parts.push(`Fino al: ${filters.endDate}`);
     }
   }
+  if (filters.timeWindow === '24h') {
+    parts.push('Finestra: Prossime 24 ore');
+  } else if (filters.timeWindow === '48h') {
+    parts.push('Finestra: Prossime 48 ore');
+  }
   if (filters.location === 'casa') {
     parts.push('Gare: In Casa');
   } else if (filters.location === 'trasferta') {

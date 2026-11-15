@@ -51,6 +51,29 @@ export const MatchSkeleton: React.FC<MatchSkeletonProps> = ({ viewMode = 'cards'
     );
   }
 
+  if (viewMode === 'timeline') {
+    return (
+      <div className="space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 animate-pulse space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="h-6 w-48 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+            <div className="h-8 w-52 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+          </div>
+          <div className="grid grid-cols-7 gap-2">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="h-14 bg-slate-100 dark:bg-slate-800 rounded-xl" />
+            ))}
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 space-y-3 animate-pulse">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-20 bg-slate-100 dark:bg-slate-800 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs font-medium text-slate-600 dark:text-slate-300">

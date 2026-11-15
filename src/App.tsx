@@ -12,7 +12,7 @@ import {
   getFollowedCategories,
   checkPartiteVariations,
 } from './services/notificationService';
-import { getMatchIsoDate } from './utils/calendarUtils';
+import { getMatchIsoDate, parseMatchDateTime } from './utils/calendarUtils';
 import { Header } from './components/Header';
 import { StatsSummary } from './components/StatsSummary';
 import { FilterBar } from './components/FilterBar';
@@ -20,6 +20,7 @@ import { MatchCard } from './components/MatchCard';
 import { MatchTable } from './components/MatchTable';
 import { MatchMapView } from './components/MatchMapView';
 import { MatchCalendarView } from './components/MatchCalendarView';
+import { WeeklyTimeline, WeeklySummaryStrip } from './components/WeeklyTimeline';
 import { MatchSkeleton } from './components/MatchSkeleton';
 import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { SheetConfigModal } from './components/SheetConfigModal';
@@ -69,6 +70,7 @@ export default function App() {
     startDate: '',
     endDate: '',
     location: 'all',
+    timeWindow: 'all',
     search: '',
   });
 
@@ -173,8 +175,16 @@ export default function App() {
     return list.sort();
   }, [publicPartite]);
 
-  // Partite filtrate per l'area pubblica (supporta Categoria, Società, Data, Range Date, Casa/Fuori, Ricerca)
+  // Partite filtrate per l'area pubblica (supporta Categoria, Società, Data, Range Date, Casa/Fuori, 24h/48h, Ricerca)
   const filteredPartite = useMemo(() => {
+    const nowMs = Date.now();
+    const maxWindowMs =
+      filters.timeWindow === '24h'
+        ? 24 * 60 * 60 * 1000
+        : filters.timeWindow === '48h'
+        ? 48 * 60 * 60 * 1000
+        : null;
+
     return publicPartite.filter(p => {
       // Filtro Campionato
       if (filters.campionato !== 'ALL' && p.campionato !== filters.campionato) {
@@ -204,6 +214,19 @@ export default function App() {
           if (filters.endDate && matchIso > filters.endDate) {
             return false;
           }
+        }
+      }
+
+      // Filtro Rapido Prossime 24h / 48h rispetto al momento attuale
+      if (maxWindowMs !== null) {
+        const { start } = parseMatchDateTime(p.data, p.ora);
+        const startMs = start.getTime();
+        if (isNaN(startMs)) {
+          return false;
+        }
+        const diffMs = startMs - nowMs;
+        if (diffMs < 0 || diffMs > maxWindowMs) {
+          return false;
         }
       }
 
@@ -368,6 +391,7 @@ export default function App() {
                   startDate: '',
                   endDate: '',
                   location: 'all',
+                  timeWindow: 'all',
                   search: '',
                 })
               }
@@ -378,6 +402,13 @@ export default function App() {
           </div>
         ) : (
           <div className="view-transition-schedule">
+            {viewMode !== 'timeline' && (
+              <WeeklySummaryStrip
+                partite={filteredPartite}
+                onOpenTimeline={() => runWithViewTransition(() => setViewMode('timeline'))}
+              />
+            )}
+
             {viewMode === 'cards' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {filteredPartite.map(partita => (
@@ -389,6 +420,8 @@ export default function App() {
               </div>
             ) : viewMode === 'table' ? (
               <MatchTable partite={filteredPartite} />
+            ) : viewMode === 'timeline' ? (
+              <WeeklyTimeline partite={filteredPartite} />
             ) : viewMode === 'calendar' ? (
               <MatchCalendarView partite={filteredPartite} />
             ) : (
@@ -458,6 +491,7 @@ export default function App() {
           Boolean(filters.startDate) ||
           Boolean(filters.endDate) ||
           filters.location !== 'all' ||
+          (Boolean(filters.timeWindow) && filters.timeWindow !== 'all') ||
           Boolean(filters.search)
         }
       />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FilterState, ViewMode, LocationFilter, Partita } from '../types';
+import { FilterState, ViewMode, LocationFilter, TimeWindowFilter, Partita } from '../types';
 import { PredictiveSearchBar } from './PredictiveSearchBar';
 import { detectPartitaClub } from '../utils/donBoscoUtils';
 import {
@@ -18,6 +18,8 @@ import {
   SlidersHorizontal,
   RotateCcw,
   Shield,
+  GanttChart,
+  Clock,
 } from 'lucide-react';
 
 interface FilterBarProps {
@@ -62,22 +64,26 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     return Array.from(set).sort();
   }, [availableSocieta, partite]);
 
-  let activeFilterCount = 0;
-  if (filters.campionato !== 'ALL') activeFilterCount++;
-  if (filters.societa && filters.societa !== 'ALL') activeFilterCount++;
-  if (filters.data !== 'ALL') activeFilterCount++;
-  if (filters.startDate || filters.endDate) activeFilterCount++;
-  if (filters.location !== 'all') activeFilterCount++;
-  if (filters.search.trim() !== '') activeFilterCount++;
+  let drawerFilterCount = 0;
+  if (filters.campionato !== 'ALL') drawerFilterCount++;
+  if (filters.societa && filters.societa !== 'ALL') drawerFilterCount++;
+  if (filters.data !== 'ALL') drawerFilterCount++;
+  if (filters.startDate || filters.endDate) drawerFilterCount++;
+  if (filters.location !== 'all') drawerFilterCount++;
+  if (filters.search.trim() !== '') drawerFilterCount++;
 
+  const activeTimeWindow: TimeWindowFilter = filters.timeWindow || 'all';
+  const activeFilterCount = drawerFilterCount + (activeTimeWindow !== 'all' ? 1 : 0);
+
+  const hasDrawerFilters = drawerFilterCount > 0;
   const hasActiveFilters = activeFilterCount > 0;
 
   const [isExpanded, setIsExpanded] = useState<boolean>(() => {
     const saved = localStorage.getItem('cynthia_filters_expanded');
     if (saved !== null) {
-      return saved === 'true' || hasActiveFilters;
+      return saved === 'true' || hasDrawerFilters;
     }
-    return hasActiveFilters;
+    return hasDrawerFilters;
   });
 
   const toggleExpanded = () => {
@@ -89,10 +95,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   };
 
   useEffect(() => {
-    if (hasActiveFilters && !isExpanded) {
+    if (hasDrawerFilters && !isExpanded) {
       setIsExpanded(true);
     }
-  }, [hasActiveFilters]);
+  }, [hasDrawerFilters]);
 
   const handleReset = () => {
     onChangeFilters({
@@ -102,9 +108,18 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       startDate: '',
       endDate: '',
       location: 'all',
+      timeWindow: 'all',
       search: '',
     });
     setShowDatePicker(false);
+  };
+
+  const handleTimeWindowChange = (nextWindow: TimeWindowFilter) => {
+    const resolved = activeTimeWindow === nextWindow && nextWindow !== 'all' ? 'all' : nextWindow;
+    onChangeFilters({
+      ...filters,
+      timeWindow: resolved,
+    });
   };
 
   const handleSelectPredefinedDate = (dateVal: string) => {
@@ -170,6 +185,63 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <ChevronDown className="w-4 h-4 opacity-75" />
             )}
           </button>
+
+          {/* Filtro Rapido Prossime 24h / 48h */}
+          <div
+            role="group"
+            aria-label="Filtro rapido prossime 24 o 48 ore"
+            className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 min-h-[40px]"
+          >
+            <span className="hidden md:inline-flex items-center gap-1 pl-2 pr-1 text-[11px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+              <Clock className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+              <span>Imminenti:</span>
+            </span>
+            <button
+              id="btn-quick-filter-all-hours"
+              type="button"
+              onClick={() => handleTimeWindowChange('all')}
+              aria-pressed={activeTimeWindow === 'all'}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition duration-150 cursor-pointer whitespace-nowrap ${
+                activeTimeWindow === 'all'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+              title="Mostra tutte le date in programma"
+            >
+              Tutte
+            </button>
+            <button
+              id="btn-quick-filter-24h"
+              type="button"
+              onClick={() => handleTimeWindowChange('24h')}
+              aria-pressed={activeTimeWindow === '24h'}
+              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition duration-150 cursor-pointer whitespace-nowrap tabular-nums ${
+                activeTimeWindow === '24h'
+                  ? 'bg-sky-700 dark:bg-sky-600 text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+              title="Mostra solo le gare nelle prossime 24 ore"
+            >
+              <Clock className="w-3 h-3 md:hidden" />
+              <span className="hidden sm:inline">Prossime 24h</span>
+              <span className="sm:hidden">24h</span>
+            </button>
+            <button
+              id="btn-quick-filter-48h"
+              type="button"
+              onClick={() => handleTimeWindowChange('48h')}
+              aria-pressed={activeTimeWindow === '48h'}
+              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition duration-150 cursor-pointer whitespace-nowrap tabular-nums ${
+                activeTimeWindow === '48h'
+                  ? 'bg-sky-700 dark:bg-sky-600 text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+              title="Mostra solo le gare nelle prossime 48 ore"
+            >
+              <span className="hidden sm:inline">Prossime 48h</span>
+              <span className="sm:hidden">48h</span>
+            </button>
+          </div>
 
           {!isExpanded && hasActiveFilters && (
             <button
@@ -245,6 +317,22 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             >
               <Table className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Tabella</span>
+            </button>
+            <button
+              id="btn-view-timeline"
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'timeline'}
+              onClick={() => onChangeViewMode('timeline')}
+              className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition duration-150 cursor-pointer whitespace-nowrap ${
+                viewMode === 'timeline'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+              title="Visualizza timeline orizzontale della settimana"
+            >
+              <GanttChart className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Timeline</span>
             </button>
             <button
               id="btn-view-calendar"
@@ -575,6 +663,16 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 font-medium cursor-pointer"
                 >
                   <span>Luogo: {filters.location === 'casa' ? 'In casa' : 'Trasferta'}</span>
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+              {activeTimeWindow !== 'all' && (
+                <button
+                  type="button"
+                  onClick={() => onChangeFilters({ ...filters, timeWindow: 'all' })}
+                  className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200 hover:bg-sky-200 dark:hover:bg-sky-800 font-semibold cursor-pointer tabular-nums"
+                >
+                  <span>Finestra: Prossime {activeTimeWindow === '24h' ? '24 ore' : '48 ore'}</span>
                   <X className="w-3 h-3" />
                 </button>
               )}
