@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { runWithViewTransition } from '../utils/viewTransition';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type PrimaryColor = 'sky' | 'blue' | 'emerald' | 'rose' | 'violet' | 'amber' | 'slate';
@@ -109,17 +110,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return resolveTheme(getStoredTheme());
   });
 
-  // Funzione unificata per impostare il tema con persistenza garantita
+  // Funzione unificata per impostare il tema con persistenza garantita e View Transition API
   const setTheme = useCallback((mode: ThemeMode) => {
-    setThemeState(mode);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, mode);
     } catch (err) {
       console.warn('Errore salvataggio tema in localStorage:', err);
     }
     const isDark = resolveTheme(mode) === 'dark';
-    setResolvedTheme(isDark ? 'dark' : 'light');
-    applyThemeToDom(isDark);
+    runWithViewTransition(() => {
+      setThemeState(mode);
+      setResolvedTheme(isDark ? 'dark' : 'light');
+      applyThemeToDom(isDark);
+    });
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -127,7 +130,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [resolvedTheme, setTheme]);
 
   const setPrimaryColor = useCallback((color: PrimaryColor) => {
-    setPrimaryColorState(color);
+    runWithViewTransition(() => {
+      setPrimaryColorState(color);
+    });
   }, []);
 
   // Sincronizzazione al montaggio e reazione ai cambi OS (quando tema è 'system')

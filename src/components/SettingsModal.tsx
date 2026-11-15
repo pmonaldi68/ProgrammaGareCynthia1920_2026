@@ -40,23 +40,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   return (
     <div
       id="settings-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200"
+      className="modern-backdrop-enter fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Impostazioni e aspetto"
     >
       <div
         id="settings-modal-content"
-        className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-800 dark:text-slate-100 animate-in zoom-in-95 duration-150"
+        className="modern-modal-enter relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-800 dark:text-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Modale */}
-        <div className="bg-gradient-to-r from-sky-900 via-sky-800 to-sky-700 dark:from-slate-950 dark:via-sky-950 dark:to-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-white/10 dark:border-slate-800">
+        <div className="bg-slate-900 dark:bg-slate-950 text-white px-6 py-4 flex items-center justify-between border-b border-white/10 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-white/10 border border-white/20">
-              <Palette className="w-5 h-5 text-sky-200" />
+            <div className="p-2 rounded-xl bg-white/10 border border-white/15">
+              <Palette className="w-5 h-5 text-sky-300" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-extrabold tracking-tight">Impostazioni & Aspetto</h3>
-              <p className="text-xs text-sky-200/80">Personalizza tonalità e modalità visiva</p>
+              <h3 className="text-base sm:text-lg font-extrabold tracking-tight">Aspetto e tema</h3>
+              <p className="text-xs text-slate-300/80">Tonalità principale e modalità visiva</p>
             </div>
           </div>
           <button

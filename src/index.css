@@ -4,6 +4,130 @@
 
 @theme {
   --color-slate-850: #172033;
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* ==========================================================================
+   MODERN WEB PLATFORM BASELINE PRIMITIVES (modern-web-guidance)
+   ========================================================================== */
+:root {
+  color-scheme: light;
+  --surface-canvas: #f8fafc;
+  --surface-card: #ffffff;
+  --surface-muted: #f1f5f9;
+  --border-hairline: color-mix(in oklab, #0f172a 9%, transparent);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root.dark {
+  color-scheme: dark;
+  --surface-canvas: #020617;
+  --surface-card: #0f172a;
+  --surface-muted: #1e293b;
+  --border-hairline: color-mix(in oklab, #f8fafc 10%, transparent);
+}
+
+html {
+  scrollbar-gutter: stable;
+  text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: light-dark(#f8fafc, #020617);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+h1, h2, h3, h4 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Tabular numerals helper for schedules, scores, countdowns & metrics */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Accessible focus-visible standard across interactive controls */
+:where(button, a, select, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-sky-500, #0ea5e9);
+  outline-offset: 2px;
+}
+
+/* View Transitions API smooth crossfade */
+.view-transition-schedule {
+  view-transition-name: main-schedule;
+}
+
+::view-transition-old(root),
+::view-transition-new(root),
+::view-transition-old(main-schedule),
+::view-transition-new(main-schedule) {
+  animation-duration: 180ms;
+  animation-timing-function: var(--ease-out-expo);
+}
+
+/* Baseline @starting-style transitions for popovers, menus & modals */
+.modern-popover-enter {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity 160ms var(--ease-out-expo),
+    transform 160ms var(--ease-out-expo),
+    display 160ms allow-discrete;
+}
+
+@starting-style {
+  .modern-popover-enter {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+}
+
+.modern-modal-enter {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity 200ms var(--ease-out-expo),
+    transform 200ms var(--ease-out-expo);
+}
+
+@starting-style {
+  .modern-modal-enter {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+.modern-backdrop-enter {
+  opacity: 1;
+  transition: opacity 180ms ease-out;
+}
+
+@starting-style {
+  .modern-backdrop-enter {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+  }
+  .modern-popover-enter,
+  .modern-modal-enter,
+  .modern-backdrop-enter {
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @keyframes headerSyncBar {

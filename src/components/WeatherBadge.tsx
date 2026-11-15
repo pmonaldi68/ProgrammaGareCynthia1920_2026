@@ -129,7 +129,7 @@ export const WeatherBadge: React.FC<WeatherBadgeProps> = ({ partita, compact = f
             setShowDetails(true);
           }}
           title={`Meteo Open-Meteo: ${weather.conditionText}, ${weather.temperature}°C, Pioggia ${weather.precipitationProbability}%, Vento ${weather.windSpeed} km/h (Clicca per dettagli)`}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/60 dark:hover:bg-sky-900/80 border border-sky-200/80 dark:border-sky-800/80 text-sky-900 dark:text-sky-200 shadow-2xs transition cursor-pointer"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 transition-colors cursor-pointer tabular-nums"
         >
           {renderWeatherIcon(weather.iconType, 'w-3 h-3')}
           <span>{weather.temperature}°C</span>
@@ -142,18 +142,15 @@ export const WeatherBadge: React.FC<WeatherBadgeProps> = ({ partita, compact = f
             setShowDetails(true);
           }}
           title="Clicca per visualizzare le previsioni meteo dettagliate sul campo di gara (Open-Meteo)"
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 hover:border-sky-300 dark:hover:border-sky-700 hover:bg-sky-50/50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition shadow-2xs group cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100/90 dark:bg-slate-800/90 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 transition-colors group cursor-pointer tabular-nums"
         >
           <span className="group-hover:scale-110 transition-transform">
             {renderWeatherIcon(weather.iconType, 'w-3.5 h-3.5')}
           </span>
-          <span className="font-extrabold text-slate-900 dark:text-slate-100">{weather.temperature}°C</span>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium hidden xs:inline">
-            {weather.conditionText}
-          </span>
+          <span className="font-bold text-slate-900 dark:text-slate-100">{weather.temperature}°C</span>
           {weather.precipitationProbability > 20 && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400">
-              <Droplets className="w-2.5 h-2.5" />
+            <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+              <Droplets className="w-3 h-3" />
               {weather.precipitationProbability}%
             </span>
           )}
@@ -161,14 +158,16 @@ export const WeatherBadge: React.FC<WeatherBadgeProps> = ({ partita, compact = f
       )}
 
       {/* FINESTRA MODALE DETTAGLI METEO (MONTATA SU DOCUMENT.BODY TRAMITE PORTAL) */}
-      {/* Risolve il problema del taglio causato da overflow-hidden dei contenitori padri */}
       {showDetails && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200"
+          className="modern-backdrop-enter fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto"
           onClick={() => setShowDetails(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Previsioni meteo sul campo di gara"
         >
           <div
-            className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-800 dark:text-slate-100 flex flex-col my-auto max-h-[92vh]"
+            className="modern-modal-enter relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-800 dark:text-slate-100 flex flex-col my-auto max-h-[92vh]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header Finestra con Tema Meteo Dinamico */}

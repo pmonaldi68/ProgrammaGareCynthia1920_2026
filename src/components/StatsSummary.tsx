@@ -13,51 +13,57 @@ export const StatsSummary: React.FC<StatsSummaryProps> = ({ partite, totalAvaila
   const categoriesCount = new Set(partite.map(p => p.campionato)).size;
 
   return (
-    <div id="stats-summary" className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3 shadow-xs flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 flex items-center justify-center font-bold">
-          <Shield className="w-5 h-5" />
+    <section
+      id="stats-summary"
+      aria-label="Riepilogo numerico gare"
+      className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 my-4 overflow-hidden"
+    >
+      <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-slate-800">
+        <div className="p-4 sm:px-5 flex items-center justify-between gap-3 border-r lg:border-r-0 border-slate-100 dark:border-slate-800">
+          <div>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Gare in programma</p>
+            <p className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight tabular-nums mt-0.5">
+              {partite.length}
+              {totalAvailable !== partite.length && (
+                <span className="text-xs font-medium text-slate-400 dark:text-slate-500 ml-1.5">
+                  su {totalAvailable}
+                </span>
+              )}
+            </p>
+          </div>
+          <Shield className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0 opacity-85" />
         </div>
-        <div>
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Partite</p>
-          <p className="text-lg font-bold text-slate-800 dark:text-slate-100">
-            {partite.length}
-            {totalAvailable !== partite.length && (
-              <span className="text-xs font-normal text-slate-400 dark:text-slate-500 ml-1">su {totalAvailable}</span>
-            )}
-          </p>
-        </div>
-      </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3 shadow-xs flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold">
-          <Home className="w-5 h-5" />
+        <div className="p-4 sm:px-5 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">In casa</p>
+            <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 tracking-tight tabular-nums mt-0.5">
+              {homeCount}
+            </p>
+          </div>
+          <Home className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 opacity-85" />
         </div>
-        <div>
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">In Casa</p>
-          <p className="text-lg font-bold text-emerald-800 dark:text-emerald-400">{homeCount}</p>
-        </div>
-      </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3 shadow-xs flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold">
-          <Bus className="w-5 h-5" />
+        <div className="p-4 sm:px-5 flex items-center justify-between gap-3 border-r lg:border-r-0 border-slate-100 dark:border-slate-800">
+          <div>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">In trasferta</p>
+            <p className="text-2xl font-extrabold text-amber-700 dark:text-amber-400 tracking-tight tabular-nums mt-0.5">
+              {awayCount}
+            </p>
+          </div>
+          <Bus className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 opacity-85" />
         </div>
-        <div>
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trasferta</p>
-          <p className="text-lg font-bold text-amber-800 dark:text-amber-400">{awayCount}</p>
-        </div>
-      </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3 shadow-xs flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold">
-          <Calendar className="w-5 h-5" />
-        </div>
-        <div>
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Categorie</p>
-          <p className="text-lg font-bold text-indigo-900 dark:text-indigo-300">{categoriesCount}</p>
+        <div className="p-4 sm:px-5 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Categorie attive</p>
+            <p className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight tabular-nums mt-0.5">
+              {categoriesCount}
+            </p>
+          </div>
+          <Calendar className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0 opacity-85" />
         </div>
       </div>
-    </div>
+    </section>
   );
 };

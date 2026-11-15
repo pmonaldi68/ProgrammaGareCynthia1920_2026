@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Partita } from '../types';
 import { formatMatchDateAndDay } from '../utils/dateFormatter';
 import { generateGoogleCalendarUrl, downloadIcsFile } from '../utils/calendarUtils';
+import { buildMatchSharePayload, triggerNativeMatchShare } from '../utils/shareUtils';
 import { Countdown } from './Countdown';
 import { WeatherBadge } from './WeatherBadge';
 import {
@@ -53,38 +54,28 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
   const dateInfo = formatMatchDateAndDay(partita.data, partita.ora);
 
-  const matchSummaryText =
-    `🏆 ${partita.campionato}${partita.girone && partita.girone !== '#' ? ` (Girone ${partita.girone})` : ''} - ${partita.gara || 'Gara Ufficiale'}\n` +
-    `⚔️ ${partita.squadraCasa} vs ${partita.squadraOspite}\n` +
-    `📅 ${dateInfo.compactDisplay} ore ${dateInfo.oraFormatted}\n` +
-    `📍 Campo: ${partita.campo} (${partita.tipo || 'Sintetico'})\n` +
-    `🏠 Indirizzo: ${partita.indirizzo ? `${partita.indirizzo}, ` : ''}${partita.comune}\n` +
-    (partita.lnkMaps ? `🗺️ Indicazioni Mappa: ${partita.lnkMaps}\n` : '') +
-    `🔵⚪ ASD Cynthia 1920 • Stagione 2026/2027`;
+  const sharePayload = buildMatchSharePayload(partita);
+  const matchSummaryText = sharePayload.text;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(matchSummaryText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(matchSummaryText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API non disponibile
+    }
   };
 
   const handleShare = async () => {
-    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-      try {
-        await navigator.share({
-          title: `Gara: ${partita.squadraCasa} vs ${partita.squadraOspite}`,
-          text: matchSummaryText,
-        });
-        setShareSuccess(true);
-        setTimeout(() => setShareSuccess(false), 2000);
-        return;
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') return;
-      }
+    const result = await triggerNativeMatchShare(partita);
+    if (result.status === 'shared') {
+      setShareSuccess(true);
+      setTimeout(() => setShareSuccess(false), 2000);
+      return;
     }
-    // Fallback: apri WhatsApp Web / App
-    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(matchSummaryText)}`;
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    if (result.status === 'aborted') return;
+    await handleCopy();
   };
 
   const googleCalendarUrl = generateGoogleCalendarUrl(partita);
@@ -95,10 +86,19 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     partita.squadraOspite.toUpperCase().includes('DON BOSCO') ||
     (partita.societa && partita.societa.toUpperCase().includes('DON BOSCO'));
 
+  const roundMeta = [
+    partita.campionato,
+    partita.girone && partita.girone !== '#' ? `Girone ${partita.girone}` : '',
+    partita.gara || '',
+    partita.societa || '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
     <div
       id="match-detail-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200"
+      className="modern-backdrop-enter fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -106,50 +106,33 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     >
       <div
         id="match-detail-modal-container"
-        className="relative w-full max-w-xl max-h-[92vh] flex flex-col bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-800 dark:text-slate-100 animate-in zoom-in-95 duration-150"
+        className="modern-modal-enter relative w-full max-w-xl max-h-[92vh] flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-800 dark:text-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header Modale: Colori sociali Cynthia / Don Bosco */}
+        {/* Header Modale: Clean Athletic Header without Pill Clutter */}
         <div
           className={`px-5 py-4 text-white flex items-start justify-between border-b border-white/10 shrink-0 ${
             isDonBosco
-              ? 'bg-gradient-to-r from-amber-700 via-amber-600 to-yellow-600 dark:from-amber-950 dark:via-blue-950 dark:to-slate-900'
-              : 'bg-gradient-to-r from-sky-900 via-sky-800 to-cyan-800 dark:from-slate-950 dark:via-sky-950 dark:to-slate-900'
+              ? 'bg-gradient-to-r from-amber-700 to-amber-800 dark:from-amber-950 dark:to-slate-900'
+              : 'bg-slate-900 dark:bg-slate-950'
           }`}
         >
-          <div className="space-y-1.5 min-w-0 pr-2">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white font-black text-[11px] uppercase tracking-wider backdrop-blur-xs">
-                {partita.campionato}
-              </span>
-              {partita.girone && partita.girone !== '#' && (
-                <span className="px-2 py-0.5 rounded-full bg-white/15 text-white/90 font-bold text-[10px] uppercase">
-                  Girone {partita.girone}
-                </span>
-              )}
-              {partita.gara && (
-                <span className="px-2 py-0.5 rounded-full bg-amber-400/30 text-amber-100 border border-amber-300/40 font-bold text-[10px]">
-                  {partita.gara}
-                </span>
-              )}
-              {partita.societa && (
-                <span className="px-2 py-0.5 rounded-full bg-sky-400/20 text-sky-100 border border-sky-300/30 font-semibold text-[10px]">
-                  {partita.societa}
-                </span>
-              )}
-            </div>
+          <div className="space-y-1 min-w-0 pr-3">
+            <p className="text-xs font-semibold text-sky-300/90 truncate tabular-nums">
+              {roundMeta}
+            </p>
             <h2 id="match-detail-title" className="text-lg sm:text-xl font-extrabold tracking-tight truncate leading-tight">
-              Scheda Dettagli Partita
+              Dettagli Incontro
             </h2>
-            <p className="text-xs text-white/75 truncate">
-              Stagione Sportiva 2026/2027 • ASD Cynthia 1920
+            <p className="text-xs text-slate-300/80 truncate">
+              ASD Cynthia 1920 · Stagione 2026/2027
             </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition cursor-pointer shrink-0"
+            className="p-2 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
             title="Chiudi dettagli (Esc)"
             aria-label="Chiudi finestra dettagli"
           >
@@ -160,41 +143,38 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
         {/* Corpo Scrollabile dei Dettagli */}
         <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4">
           {/* 1. Box Squadre a Confronto (Casa vs Ospite) */}
-          <div className="bg-gradient-to-br from-slate-50 to-sky-50/50 dark:from-slate-800/80 dark:to-sky-950/20 rounded-2xl p-4 border border-slate-200/90 dark:border-slate-700/80 shadow-xs">
+          <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-700/80">
             <div className="grid grid-cols-1 sm:grid-cols-[1fr,auto,1fr] items-center gap-3 text-center">
-              {/* Squadra Casa */}
               <div
-                className={`p-3.5 rounded-xl border transition ${
+                className={`p-3.5 rounded-xl transition ${
                   partita.isCynthiaCasa
-                    ? 'bg-sky-600 text-white border-sky-700 shadow-xs font-black'
-                    : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 font-bold'
+                    ? 'bg-sky-700 text-white font-extrabold'
+                    : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 font-bold'
                 }`}
               >
-                <span className="text-[10px] font-black uppercase tracking-wider block opacity-80 mb-0.5">
-                  Casa {partita.isCynthiaCasa ? '• Biancoazzurri' : ''}
+                <span className="text-[11px] font-medium block opacity-80 mb-0.5">
+                  Casa
                 </span>
                 <span className="text-sm sm:text-base leading-tight block">
                   {partita.squadraCasa}
                 </span>
               </div>
 
-              {/* Separatore VS */}
               <div className="flex flex-col items-center justify-center">
-                <span className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-black text-xs flex items-center justify-center shadow-inner">
-                  VS
+                <span className="text-xs font-bold tracking-widest text-slate-400 dark:text-slate-500 uppercase px-1">
+                  vs
                 </span>
               </div>
 
-              {/* Squadra Ospite */}
               <div
-                className={`p-3.5 rounded-xl border transition ${
+                className={`p-3.5 rounded-xl transition ${
                   partita.isCynthiaOspite
-                    ? 'bg-sky-600 text-white border-sky-700 shadow-xs font-black'
-                    : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 font-bold'
+                    ? 'bg-sky-700 text-white font-extrabold'
+                    : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 font-bold'
                 }`}
               >
-                <span className="text-[10px] font-black uppercase tracking-wider block opacity-80 mb-0.5">
-                  Trasferta {partita.isCynthiaOspite ? '• Biancoazzurri' : ''}
+                <span className="text-[11px] font-medium block opacity-80 mb-0.5">
+                  Ospite
                 </span>
                 <span className="text-sm sm:text-base leading-tight block">
                   {partita.squadraOspite}
@@ -204,32 +184,31 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
           </div>
 
           {/* 2. Data, Orario, Conto alla rovescia & Meteo */}
-          <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-700/80">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300">
+                <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950 text-sky-700 dark:text-sky-300">
                   <Calendar className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                    Giorno e Data
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">
+                    Data incontro
                   </span>
-                  <span className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white capitalize">
-                    {dateInfo.dayOfWeek} {dateInfo.dayNumber} {dateInfo.monthName} {dateInfo.year}
+                  <span className="font-bold text-sm sm:text-base text-slate-900 dark:text-white capitalize tabular-nums">
+                    {dateInfo.dayOfWeek.toLowerCase()} {dateInfo.dayNumber} {dateInfo.monthName} {dateInfo.year}
                   </span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
                 <WeatherBadge partita={partita} />
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 text-white font-black text-sm shadow-xs">
-                  <Clock className="w-4 h-4 text-amber-100" />
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-sky-500/15 text-white dark:text-sky-200 border border-transparent dark:border-sky-500/30 font-mono font-bold text-sm tabular-nums">
+                  <Clock className="w-3.5 h-3.5 text-amber-400 dark:text-sky-300" />
                   <span>{dateInfo.oraFormatted}</span>
                 </div>
               </div>
             </div>
 
-            {/* Countdown Incontro */}
             <Countdown data={partita.data} ora={partita.ora} />
           </div>
 
@@ -295,16 +274,28 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
         {/* Footer Azioni Rapide */}
         <div className="p-4 bg-slate-50 dark:bg-slate-800/90 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
           <div className="flex flex-wrap items-center gap-2">
-            {/* Condivisione WhatsApp */}
+            {/* Condivisione Nativa Web Share API */}
             <button
               type="button"
               onClick={handleShare}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-sky-700 hover:bg-sky-600 text-white transition shadow-xs cursor-pointer active:scale-95"
+              title="Condividi dettagli gara tramite app native"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>{shareSuccess ? 'Condiviso' : 'Condividi'}</span>
+            </button>
+
+            {/* Condivisione Diretta WhatsApp */}
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs cursor-pointer active:scale-95"
-              title="Condividi dettagli della gara su WhatsApp"
+              title="Invia dettagli della gara su WhatsApp"
             >
               <MessageCircle className="w-3.5 h-3.5" />
-              <span>{shareSuccess ? 'Condiviso!' : 'WhatsApp'}</span>
-            </button>
+              <span>WhatsApp</span>
+            </a>
 
             {/* Aggiungi a Google Calendar */}
             <a

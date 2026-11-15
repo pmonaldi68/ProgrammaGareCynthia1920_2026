@@ -32,6 +32,7 @@ import { ConvocazioniModal } from './components/ConvocazioniModal';
 import { PecManagerModal } from './components/PecManagerModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
 import { getPublicPartite, getDonBoscoPartite, detectPartitaClub } from './utils/donBoscoUtils';
+import { runWithViewTransition } from './utils/viewTransition';
 import { AlertCircle, FileCode, BellRing, X, Palette } from 'lucide-react';
 
 export default function App() {
@@ -341,7 +342,7 @@ export default function App() {
           availableSocieta={availableSocieta}
           partite={filteredPartite}
           viewMode={viewMode}
-          onChangeViewMode={setViewMode}
+          onChangeViewMode={(nextMode) => runWithViewTransition(() => setViewMode(nextMode))}
           onOpenPdfExport={() => setIsPdfModalOpen(true)}
         />
 
@@ -375,28 +376,24 @@ export default function App() {
               Mostra Tutte le Gare
             </button>
           </div>
-        ) : viewMode === 'cards' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 animate-in fade-in duration-200">
-            {filteredPartite.map(partita => (
-              <MatchCard
-                key={partita.id}
-                partita={partita}
-              />
-            ))}
-          </div>
-        ) : viewMode === 'table' ? (
-          <div className="animate-in fade-in duration-200">
-            <MatchTable
-              partite={filteredPartite}
-            />
-          </div>
-        ) : viewMode === 'calendar' ? (
-          <div className="animate-in fade-in duration-200">
-            <MatchCalendarView partite={filteredPartite} />
-          </div>
         ) : (
-          <div className="animate-in fade-in duration-200">
-            <MatchMapView partite={filteredPartite} />
+          <div className="view-transition-schedule">
+            {viewMode === 'cards' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredPartite.map(partita => (
+                  <MatchCard
+                    key={partita.id}
+                    partita={partita}
+                  />
+                ))}
+              </div>
+            ) : viewMode === 'table' ? (
+              <MatchTable partite={filteredPartite} />
+            ) : viewMode === 'calendar' ? (
+              <MatchCalendarView partite={filteredPartite} />
+            ) : (
+              <MatchMapView partite={filteredPartite} />
+            )}
           </div>
         )}
       </main>
@@ -404,12 +401,15 @@ export default function App() {
       {/* Footer */}
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 py-6 text-xs text-slate-500 dark:text-slate-400 mt-10 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-sky-700 text-white font-bold flex items-center justify-center text-xs">
-              C
-            </div>
-            <p className="font-semibold text-slate-700 dark:text-slate-300">
-              ASD Cynthia 1920 • Stagione Sportiva 2026/2027
+          <div className="flex items-center gap-2.5">
+            <img
+              src="./assets/cynthia_logo.png"
+              alt="ASD Cynthia 1920"
+              className="h-6 w-auto object-contain opacity-90"
+              referrerPolicy="no-referrer"
+            />
+            <p className="font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
+              ASD Cynthia 1920 · Stagione Sportiva 2026/2027
             </p>
           </div>
 
@@ -417,28 +417,28 @@ export default function App() {
             <button
               type="button"
               onClick={() => setIsPdfModalOpen(true)}
-              className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 transition flex items-center gap-1 font-semibold"
+              className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 hover:underline transition-colors flex items-center gap-1.5 font-semibold cursor-pointer"
             >
               <FileCode className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-              Report PDF Settimanale
+              <span>Report PDF</span>
             </button>
-            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
             <button
               type="button"
               onClick={() => setIsNotificationModalOpen(true)}
-              className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 transition flex items-center gap-1 font-semibold"
+              className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 hover:underline transition-colors flex items-center gap-1.5 font-semibold cursor-pointer"
             >
               <BellRing className="w-3.5 h-3.5 text-amber-500" />
-              Avvisi Variazioni Web Push
+              <span>Avvisi Variazioni</span>
             </button>
-            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
             <button
               type="button"
               onClick={() => setIsSettingsModalOpen(true)}
-              className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 transition flex items-center gap-1 font-semibold"
+              className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 hover:underline transition-colors flex items-center gap-1.5 font-semibold cursor-pointer"
             >
               <Palette className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-              Impostazioni & Tema
+              <span>Aspetto & Tema</span>
             </button>
           </div>
         </div>

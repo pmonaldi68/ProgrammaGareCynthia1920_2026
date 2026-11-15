@@ -112,33 +112,33 @@ export const Countdown: React.FC<CountdownProps> = ({
     return null;
   }
 
-  // Partita in corso
+  // Partita in corso (Live match)
   if (state.isInProgress) {
     if (compact) {
       return (
         <span
-          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-black text-[10px] uppercase bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-400 dark:border-emerald-700 shadow-2xs animate-pulse ${className}`}
+          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-bold text-[11px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-400/50 dark:border-emerald-700 ${className}`}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          <span>In Corso</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span>In corso</span>
         </span>
       );
     }
 
     return (
       <div
-        className={`flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-500/15 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-emerald-950/40 border border-emerald-400/60 dark:border-emerald-600/60 text-emerald-900 dark:text-emerald-200 shadow-xs ${className}`}
+        className={`flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 ${className}`}
       >
         <div className="flex items-center gap-2">
-          <span className="relative flex h-2.5 w-2.5">
+          <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
-          <span className="text-xs font-black uppercase tracking-wider">
-            Partita Iniziata • Live in Corso ⚽
+          <span className="text-xs font-bold">
+            Partita in corso
           </span>
         </div>
-        <Play className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 fill-current animate-pulse" />
+        <Play className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 fill-current" />
       </div>
     );
   }
@@ -150,13 +150,13 @@ export const Countdown: React.FC<CountdownProps> = ({
     return (
       <span
         title={`Kick-off tra ${state.formatted}`}
-        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono font-bold text-[11px] ${
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono font-semibold text-[11px] tabular-nums ${
           isUrgent
-            ? 'bg-rose-500/15 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-700'
-            : 'bg-amber-500/15 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700'
+            ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-200 border border-rose-200 dark:border-rose-800'
+            : 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800'
         } ${className}`}
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+        <Clock className="w-3 h-3 shrink-0" />
         <span>-{state.formatted}</span>
       </span>
     );
@@ -164,53 +164,39 @@ export const Countdown: React.FC<CountdownProps> = ({
 
   return (
     <div
-      className={`flex items-center justify-between p-2.5 rounded-xl border transition-all duration-300 ${
+      className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-colors ${
         isUrgent
-          ? 'bg-gradient-to-r from-rose-500/15 via-orange-500/15 to-amber-500/15 dark:from-rose-950/40 dark:via-orange-950/30 dark:to-amber-950/40 border-rose-300/80 dark:border-rose-700/80 shadow-xs ring-1 ring-rose-400/20'
-          : 'bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-yellow-500/15 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-yellow-950/30 border-amber-300/80 dark:border-amber-700/80 shadow-xs'
+          ? 'bg-rose-50/90 dark:bg-rose-950/35 border-rose-200 dark:border-rose-800/80'
+          : 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-200/80 dark:border-amber-800/70'
       } ${className}`}
     >
       <div className="flex items-center gap-2">
         <div
           className={`p-1.5 rounded-lg ${
-            isUrgent ? 'bg-rose-500 text-white animate-pulse' : 'bg-amber-500 text-white'
+            isUrgent ? 'bg-rose-600 text-white' : 'bg-amber-500 text-white'
           }`}
         >
           {isUrgent ? <Flame className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
         </div>
         <div>
-          <div className="flex items-center gap-1.5">
-            <span
-              className={`text-[10px] font-black uppercase tracking-wider ${
-                isUrgent ? 'text-rose-700 dark:text-rose-300' : 'text-amber-800 dark:text-amber-300'
-              }`}
-            >
-              {isUrgent ? 'Kick-Off Imminente' : 'Incontro Nelle 24 Ore'}
-            </span>
-            <span className="relative flex h-2 w-2">
-              <span
-                className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                  isUrgent ? 'bg-rose-400' : 'bg-amber-400'
-                }`}
-              />
-              <span
-                className={`relative inline-flex rounded-full h-2 w-2 ${
-                  isUrgent ? 'bg-rose-500' : 'bg-amber-500'
-                }`}
-              />
-            </span>
+          <div
+            className={`text-xs font-bold leading-tight ${
+              isUrgent ? 'text-rose-800 dark:text-rose-200' : 'text-amber-900 dark:text-amber-200'
+            }`}
+          >
+            {isUrgent ? 'Fischio d’inizio imminente' : 'Incontro entro 24 ore'}
           </div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-none">
-            Tempo mancante all&apos;inizio
+          <div className="text-[11px] text-slate-500 dark:text-slate-400">
+            Conto alla rovescia
           </div>
         </div>
       </div>
 
       <div
-        className={`font-mono font-black text-xs sm:text-sm px-2.5 py-1 rounded-lg border shadow-2xs ${
+        className={`font-mono font-bold text-xs sm:text-sm px-2.5 py-1 rounded-lg border tabular-nums ${
           isUrgent
-            ? 'bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-700'
-            : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-amber-300 dark:border-amber-700'
+            ? 'bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+            : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-amber-200 dark:border-amber-800'
         }`}
       >
         {state.formatted}
