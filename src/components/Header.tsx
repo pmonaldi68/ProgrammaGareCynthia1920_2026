@@ -1,5 +1,15 @@
-import React from 'react';
-import { Shield, Sun, Moon, Bell, FileDown, Palette, RefreshCw, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+  Shield,
+  Sun,
+  Moon,
+  Bell,
+  FileDown,
+  Palette,
+  RefreshCw,
+  CheckCircle2,
+  WifiOff,
+} from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
@@ -26,6 +36,20 @@ export const Header: React.FC<HeaderProps> = ({
   onRefresh,
 }) => {
   const { resolvedTheme, toggleTheme } = useTheme();
+  const [isOnline, setIsOnline] = useState<boolean>(() =>
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   return (
     <header className="relative bg-slate-900 dark:bg-slate-950 text-white border-b border-slate-800/80 transition-colors overflow-hidden">
@@ -35,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
         className="pointer-events-none absolute inset-0 opacity-90"
         style={{
           background:
-            'radial-gradient(900px circle at 12% -20%, color-mix(in oklab, var(--color-sky-600) 42%, transparent), transparent 65%), radial-gradient(650px circle at 92% 110%, color-mix(in oklab, var(--color-sky-700) 24%, transparent), transparent 70%)',
+            'radial-gradient(900px circle at 12% -20%, color-mix(in oklab, var(--color-sky-600) 42%, transparent), transparent 65%), radial-gradient(650px circle at 92% 110%, color-mix(in oklab, var(--color-amber-500) 14%, transparent), transparent 70%)',
         }}
       />
 
@@ -53,8 +77,8 @@ export const Header: React.FC<HeaderProps> = ({
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          {/* Brand & Schedule Context (Zero-Pill Clean Editorial Lockup) */}
-          <div className="flex items-center gap-4 min-w-0">
+          {/* Brand & Schedule Context */}
+          <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
             <img
               id="header-cynthia-logo"
               src="./assets/cynthia_logo.png"
@@ -67,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <h1 className="text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-tight text-white leading-none">
                   ASD Cynthia 1920
                 </h1>
-                <span className="text-xs font-medium text-sky-300/90 whitespace-nowrap">
+                <span className="text-xs font-bold text-amber-300 whitespace-nowrap">
                   Biancoazzurri
                 </span>
               </div>
@@ -80,46 +104,61 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="hidden sm:inline text-slate-400">Genzano di Roma</span>
               </div>
 
-              {/* Clean Sync Status & Manual Refresh Action */}
-              {lastUpdated && (
-                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-2 text-xs">
-                  <span className="text-slate-400 tabular-nums">
-                    Ultimo aggiornamento: <strong className="text-slate-200 font-semibold">{lastUpdated}</strong>
-                  </span>
+              {/* Compact Last Updated Indicator + Manual Refresh Icon + Offline State */}
+              <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] sm:text-xs">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.07] border border-white/10 text-slate-200 tabular-nums">
+                  <span className="text-slate-400">Ultimo aggiornamento:</span>
+                  <strong className="text-white font-bold">
+                    {lastUpdated || '--/-- --:--'}
+                  </strong>
 
-                  {isSyncing ? (
-                    <span
-                      id="badge-sync-loading"
-                      className="inline-flex items-center gap-1.5 text-amber-300 font-semibold"
+                  {onRefresh && (
+                    <button
+                      id="btn-header-refresh"
+                      type="button"
+                      onClick={onRefresh}
+                      disabled={isSyncing}
+                      title="Ricarica manualmente i dati aggiornati dalla rete"
+                      aria-label="Ricarica manualmente i dati"
+                      className="ml-0.5 p-1 rounded-md text-sky-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-60"
                     >
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
-                      <span>Sincronizzazione Google Sheets...</span>
-                    </span>
-                  ) : justSynced ? (
-                    <span
-                      id="badge-sync-success"
-                      className="inline-flex items-center gap-1 text-emerald-300 font-semibold"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                      <span>Dati aggiornati</span>
-                    </span>
-                  ) : (
-                    onRefresh && (
-                      <button
-                        id="btn-header-refresh"
-                        type="button"
-                        onClick={onRefresh}
-                        disabled={isSyncing}
-                        title="Aggiorna manualmente i dati dal foglio Google"
-                        className="inline-flex items-center gap-1 text-sky-300 hover:text-white font-semibold transition-colors duration-150 cursor-pointer disabled:opacity-50"
-                      >
-                        <RefreshCw className="w-3 h-3" />
-                        <span>Aggiorna</span>
-                      </button>
-                    )
+                      <RefreshCw
+                        className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-amber-300' : ''}`}
+                      />
+                    </button>
                   )}
                 </div>
-              )}
+
+                {isSyncing && (
+                  <span
+                    id="badge-sync-loading"
+                    className="inline-flex items-center gap-1 text-amber-300 font-semibold"
+                  >
+                    <span>Aggiornamento...</span>
+                  </span>
+                )}
+
+                {!isSyncing && justSynced && (
+                  <span
+                    id="badge-sync-success"
+                    className="inline-flex items-center gap-1 text-emerald-300 font-semibold"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Dati aggiornati</span>
+                  </span>
+                )}
+
+                {!isOnline && (
+                  <span
+                    id="badge-offline-mode"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/40 text-amber-200 font-semibold"
+                    title="Connessione assente: visualizzazione dalla cache locale"
+                  >
+                    <WifiOff className="w-3 h-3 shrink-0" />
+                    <span>Offline</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -184,9 +223,9 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={onOpenAdmin}
               title="Area Amministrazione protetta"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-sky-600 hover:bg-sky-500 active:scale-[0.98] text-white border border-sky-400/30 shadow-xs transition duration-150 min-h-[44px] whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-sky-600 hover:bg-sky-500 active:scale-[0.98] text-white border border-amber-400/40 shadow-xs transition duration-150 min-h-[44px] whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <Shield className="w-4 h-4 text-white shrink-0" />
+              <Shield className="w-4 h-4 text-amber-300 shrink-0" />
               <span>Area Admin</span>
             </button>
           </div>

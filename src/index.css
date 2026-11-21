@@ -53,6 +53,15 @@ p {
   font-variant-numeric: tabular-nums;
 }
 
+/* Hide scrollbars on swipeable mobile pill filter strips */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Accessible focus-visible standard across interactive controls */
 :where(button, a, select, input, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--color-sky-500, #0ea5e9);
@@ -305,8 +314,8 @@ p {
    ========================================================================== */
 
 @page {
-  size: auto;
-  margin: 10mm 12mm 12mm 12mm;
+  size: A4 portrait;
+  margin: 10mm 11mm 12mm 11mm;
 }
 
 /* ==========================================================================
@@ -360,29 +369,33 @@ p {
 }
 
 @media print {
-  /* 1. Rimozione Elementi Interattivi e UI (Pulsanti, Filtri, Modali, Banner) */
+  /* 1. Rimozione Elementi Interattivi e UI (Pulsanti, Filtri, Modali, Banner, Barre navigazione) */
   button,
   input,
   select,
   nav,
   aside,
+  .no-print,
+  .no-print-inline,
   #filter-bar,
   #banner-variation,
   #banner-error,
   #pwa-install-prompt,
+  #btn-reopen-weekly-summary,
+  #btn-print-impegno-campi,
   [role="dialog"],
   [aria-modal="true"],
   .fixed,
   .sticky,
-  /* Bottoni azioni nella testata (PDF, Notifiche, Tema) */
-  header .flex.items-center.justify-center.gap-2,
+  /* Bottoni azioni nella testata (PDF, Notifiche, Tema, Refresh) */
+  header .flex.items-center.flex-wrap,
   header button,
-  /* Barra pulsanti interattivi in fondo alle schede gara (Mappa, Calendario, Condivisione, Copia) */
-  [id^="match-card-"] > div:last-child,
+  /* Barra pulsanti interattivi in fondo alle schede gara */
+  [id^="match-card-"] > div:last-child > div:last-child,
   [id^="match-card-"] button,
-  /* Colonna 'Azioni' e relativi pulsanti nella vista tabella */
-  table th:last-child,
-  table td:last-child,
+  /* Colonna 'Azioni' nella vista tabella classica */
+  table:not(#impegno-campi-view table) th:last-child,
+  table:not(#impegno-campi-view table) td:last-child,
   table button,
   /* Anteprime mappe dinamiche */
   [id^="lazy-map-"],
@@ -390,11 +403,25 @@ p {
   /* Link e pulsanti interattivi nel footer */
   footer .flex.flex-wrap,
   footer button,
-  footer a,
-  /* Badge 'Live Sync' e indicatori animati */
-  span.inline-flex.items-center.gap-1.px-2 {
+  footer a {
     display: none !important;
     visibility: hidden !important;
+  }
+
+  /* Mantieni visibile ultima colonna (Rotazione Spogliatoi) nella vista Impegno Campi */
+  #impegno-campi-view th:last-child,
+  #impegno-campi-view td:last-child {
+    display: table-cell !important;
+    visibility: visible !important;
+  }
+
+  #impegno-campi-view article.impegno-venue-card {
+    border: 1px solid #cbd5e1 !important;
+    border-left: 4px solid #0284c7 !important;
+    border-radius: 6px !important;
+    margin-bottom: 10px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   /* 2. Reset Globale e Ottimizzazione Inchiostro (Ink-Friendly) */

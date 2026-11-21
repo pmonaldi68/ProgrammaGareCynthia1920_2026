@@ -21,7 +21,7 @@ export interface Partita {
   note?: string;
 }
 
-export type ViewMode = 'cards' | 'table' | 'timeline' | 'map' | 'calendar';
+export type ViewMode = 'cards' | 'table' | 'fields' | 'timeline' | 'map' | 'calendar';
 export type LocationFilter = 'all' | 'casa' | 'trasferta';
 export type TimeWindowFilter = 'all' | '24h' | '48h';
 
@@ -29,6 +29,7 @@ export interface FilterState {
   campionato: string;
   societa?: string;
   data: string;
+  dayOfWeek?: string; // 'ALL' oppure 'SABATO', 'DOMENICA', ecc.
   startDate: string; // formato YYYY-MM-DD per intervallo
   endDate: string;   // formato YYYY-MM-DD per intervallo
   location: LocationFilter;

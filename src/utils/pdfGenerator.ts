@@ -27,6 +27,9 @@ export function buildFilterSummaryString(filters?: FilterState): string {
   if (filters.data && filters.data !== 'ALL') {
     parts.push(`Data: ${filters.data}`);
   }
+  if (filters.dayOfWeek && filters.dayOfWeek !== 'ALL') {
+    parts.push(`Giorno: ${filters.dayOfWeek}`);
+  }
   if (filters.startDate || filters.endDate) {
     if (filters.startDate && filters.endDate) {
       parts.push(`Periodo: dal ${filters.startDate} al ${filters.endDate}`);

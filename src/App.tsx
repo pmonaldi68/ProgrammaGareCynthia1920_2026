@@ -13,11 +13,13 @@ import {
   checkPartiteVariations,
 } from './services/notificationService';
 import { getMatchIsoDate, parseMatchDateTime } from './utils/calendarUtils';
+import { formatMatchDateAndDay } from './utils/dateFormatter';
 import { Header } from './components/Header';
 import { StatsSummary } from './components/StatsSummary';
 import { FilterBar } from './components/FilterBar';
 import { MatchCard } from './components/MatchCard';
 import { MatchTable } from './components/MatchTable';
+import { ImpegnoCampiView } from './components/ImpegnoCampiView';
 import { MatchMapView } from './components/MatchMapView';
 import { MatchCalendarView } from './components/MatchCalendarView';
 import { WeeklyTimeline, WeeklySummaryStrip } from './components/WeeklyTimeline';
@@ -36,19 +38,58 @@ import { getPublicPartite, getDonBoscoPartite, detectPartitaClub } from './utils
 import { runWithViewTransition } from './utils/viewTransition';
 import { AlertCircle, FileCode, BellRing, X, Palette, GanttChart } from 'lucide-react';
 
+const SAVED_FILTERS_KEY = 'cynthia_saved_filters_v1';
+
+const DEFAULT_FILTERS: FilterState = {
+  campionato: 'ALL',
+  societa: 'ALL',
+  data: 'ALL',
+  dayOfWeek: 'ALL',
+  startDate: '',
+  endDate: '',
+  location: 'all',
+  timeWindow: 'all',
+  search: '',
+};
+
+function loadInitialFilters(): FilterState {
+  try {
+    const raw = localStorage.getItem(SAVED_FILTERS_KEY);
+    if (!raw) return DEFAULT_FILTERS;
+    const parsed = JSON.parse(raw);
+    return {
+      ...DEFAULT_FILTERS,
+      ...parsed,
+    };
+  } catch {
+    return DEFAULT_FILTERS;
+  }
+}
+
+function formatLastUpdatedTimestamp(date: Date = new Date()): string {
+  const gg = date.getDate().toString().padStart(2, '0');
+  const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+  const hh = date.getHours().toString().padStart(2, '0');
+  const min = date.getMinutes().toString().padStart(2, '0');
+  return `${gg}/${mm} ${hh}:${min}`;
+}
+
 export default function App() {
   const [config, setConfig] = useState<SheetConfig>(loadStoredConfig);
-  const [partite, setPartite] = useState<Partita[]>(() => {
-    return loadCachedPartite() || DEFAULT_PARTITE;
-  });
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const cachedAtBoot = useMemo(() => loadCachedPartite(), []);
+  const [partite, setPartite] = useState<Partita[]>(() => cachedAtBoot || []);
+  const [isLoading, setIsLoading] = useState<boolean>(() => !cachedAtBoot);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [justSynced, setJustSynced] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const [lastUpdated, setLastUpdated] = useState<string | null>(() => {
     const cfg = loadStoredConfig();
-    return cfg.lastUpdated || new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    if (cfg.lastUpdated && /^\d{2}\/\d{2}\s+\d{2}:\d{2}/.test(cfg.lastUpdated)) {
+      return cfg.lastUpdated;
+    }
+    return formatLastUpdatedTimestamp();
   });
 
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
@@ -68,23 +109,23 @@ export default function App() {
   const [recentVariations, setRecentVariations] = useState<MatchVariation[]>([]);
   const [bannerVariation, setBannerVariation] = useState<MatchVariation | null>(null);
 
-  const [filters, setFilters] = useState<FilterState>({
-    campionato: 'ALL',
-    societa: 'ALL',
-    data: 'ALL',
-    startDate: '',
-    endDate: '',
-    location: 'all',
-    timeWindow: 'all',
-    search: '',
-  });
+  const [filters, setFilters] = useState<FilterState>(loadInitialFilters);
 
-  // Registrazione iniziale del Service Worker per Web Push
+  // Salvataggio automatico preferenze filtro su localStorage (genitore/mister ritrova subito la propria squadra)
+  useEffect(() => {
+    try {
+      localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(filters));
+    } catch {
+      // Storage non disponibile
+    }
+  }, [filters]);
+
+  // Registrazione iniziale del Service Worker PWA (Network-First + Web Push)
   useEffect(() => {
     registerServiceWorker();
   }, []);
 
-  // Funzione per caricare i dati e verificare variazioni per le categorie seguite
+  // Funzione per caricare i dati Network-First e verificare variazioni per le categorie seguite
   const refreshData = async (customSheetUrl?: string, customTab?: string, silent: boolean = false) => {
     setIsSyncing(true);
     if (!silent) {
@@ -113,7 +154,7 @@ export default function App() {
         setError(null);
       }
 
-      const nowStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const nowStr = formatLastUpdatedTimestamp();
       setLastUpdated(nowStr);
 
       const updatedConfig = { ...config, lastUpdated: nowStr };
@@ -125,6 +166,7 @@ export default function App() {
       setTimeout(() => setJustSynced(false), 3500);
     } catch (err: any) {
       console.warn('Errore durante il recupero dei dati dal foglio:', err);
+      setPartite(prev => (prev.length > 0 ? prev : DEFAULT_PARTITE));
       if (!silent) {
         setError(
           err?.message ||
@@ -133,15 +175,13 @@ export default function App() {
       }
     } finally {
       setIsSyncing(false);
-      if (!silent) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     }
   };
 
-  // Caricamento iniziale e polling automatico ogni 5 minuti
+  // Caricamento iniziale (mostra skeleton se non presente cache) e polling automatico ogni 5 minuti
   useEffect(() => {
-    refreshData(undefined, undefined, true);
+    refreshData(undefined, undefined, Boolean(cachedAtBoot));
 
     const intervalId = setInterval(() => {
       refreshData(undefined, undefined, true);
@@ -172,7 +212,7 @@ export default function App() {
     return list.sort();
   }, [publicPartite]);
 
-  // Società / Club unici per il filtro dell'area pubblica (dalla colonna SOCIETA' o calcolata)
+  // Società / Club unici per il filtro dell'area pubblica
   const availableSocieta = useMemo(() => {
     const list = Array.from(
       new Set(publicPartite.map(p => p.societa || detectPartitaClub(p)))
@@ -180,7 +220,7 @@ export default function App() {
     return list.sort();
   }, [publicPartite]);
 
-  // Partite filtrate per l'area pubblica (supporta Categoria, Società, Data, Range Date, Casa/Fuori, 24h/48h, Ricerca)
+  // Partite filtrate per l'area pubblica
   const filteredPartite = useMemo(() => {
     const nowMs = Date.now();
     const maxWindowMs =
@@ -191,12 +231,12 @@ export default function App() {
         : null;
 
     return publicPartite.filter(p => {
-      // Filtro Campionato
+      // Filtro Campionato / Categoria
       if (filters.campionato !== 'ALL' && p.campionato !== filters.campionato) {
         return false;
       }
 
-      // Filtro Società / Club (corrispondente alla nuova colonna SOCIETA' del dataset)
+      // Filtro Società / Club
       if (filters.societa && filters.societa !== 'ALL') {
         const pClub = p.societa || detectPartitaClub(p);
         if (pClub !== filters.societa) {
@@ -204,12 +244,20 @@ export default function App() {
         }
       }
 
-      // Filtro Data predefinita (selezionata dal menu a tendina classico)
+      // Filtro Giorno rapido (Sabato, Domenica o infrasettimanale)
+      if (filters.dayOfWeek && filters.dayOfWeek !== 'ALL') {
+        const { dayOfWeek } = formatMatchDateAndDay(p.data, p.ora);
+        if (dayOfWeek.toUpperCase() !== filters.dayOfWeek.toUpperCase()) {
+          return false;
+        }
+      }
+
+      // Filtro Data predefinita
       if (filters.data !== 'ALL' && p.data !== filters.data) {
         return false;
       }
 
-      // Filtro Intervallo Date (Date Picker personalizzato Da / A)
+      // Filtro Intervallo Date
       if (filters.startDate || filters.endDate) {
         const matchIso = getMatchIsoDate(p.data);
         if (matchIso) {
@@ -243,7 +291,7 @@ export default function App() {
         return false;
       }
 
-      // Filtro di ricerca testuale potenziato (supporta ricerca predittiva per squadra, categoria, campo e token multipli)
+      // Ricerca testuale predittiva
       if (filters.search.trim()) {
         const query = filters.search.toLowerCase().trim();
         const compactQuery = query.replace(/\s+/g, '');
@@ -279,10 +327,9 @@ export default function App() {
       setBannerVariation(detectedVariations[0]);
     }
     setPartite(newPartite);
-    const nowStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const nowStr = formatLastUpdatedTimestamp();
     setLastUpdated(nowStr);
   };
-
 
   const hasFollowed = getFollowedCategories().length > 0;
 
@@ -361,13 +408,14 @@ export default function App() {
         {/* Barra Statistiche Riepilogative */}
         <StatsSummary partite={filteredPartite} totalAvailable={publicPartite.length} />
 
-        {/* Barra Filtri (Campionato, Società, Data, Date Picker Intervallo, Casa/Fuori, Cerca, Switch Vista) */}
+        {/* Barra Filtri (Selettore Vista Elenco/Impegno Campi, Pillole Rapide Scrollabili Luogo/Giorno/Categoria, Ricerca Predittiva) */}
         <FilterBar
           filters={filters}
           onChangeFilters={setFilters}
           availableCampionati={availableCampionati}
           availableDate={availableDate}
           availableSocieta={availableSocieta}
+          allPartite={publicPartite}
           partite={filteredPartite}
           viewMode={viewMode}
           onChangeViewMode={(nextMode) => {
@@ -379,7 +427,7 @@ export default function App() {
           onOpenPdfExport={() => setIsPdfModalOpen(true)}
         />
 
-        {/* Visualizzazione Partite: Skeleton Screen durante il fetch, altrimenti Schede o Tabella */}
+        {/* Visualizzazione Partite: Skeleton Screen durante il fetch iniziale, altrimenti vista scelta */}
         {isLoading ? (
           <MatchSkeleton viewMode={viewMode} count={6} />
         ) : filteredPartite.length === 0 ? (
@@ -393,40 +441,31 @@ export default function App() {
             </p>
             <button
               type="button"
-              onClick={() =>
-                setFilters({
-                  campionato: 'ALL',
-                  societa: 'ALL',
-                  data: 'ALL',
-                  startDate: '',
-                  endDate: '',
-                  location: 'all',
-                  timeWindow: 'all',
-                  search: '',
-                })
-              }
-              className="mt-4 px-4 py-2 rounded-xl text-xs font-bold bg-sky-700 hover:bg-sky-800 text-white transition shadow-xs"
+              onClick={() => setFilters(DEFAULT_FILTERS)}
+              className="mt-4 px-4 py-2 rounded-xl text-xs font-bold bg-sky-700 hover:bg-sky-800 text-white transition shadow-xs cursor-pointer"
             >
               Mostra Tutte le Gare
             </button>
           </div>
         ) : (
           <div className="view-transition-schedule">
-            {viewMode !== 'timeline' && (
+            {viewMode !== 'timeline' && viewMode !== 'fields' && (
               showWeeklySummary ? (
-                <WeeklySummaryStrip
-                  partite={filteredPartite}
-                  onOpenTimeline={() => {
-                    setPreviousViewMode(viewMode);
-                    runWithViewTransition(() => setViewMode('timeline'));
-                  }}
-                  onClose={() => {
-                    setShowWeeklySummary(false);
-                    localStorage.setItem('cynthia_show_weekly_summary', 'false');
-                  }}
-                />
+                <div className="no-print">
+                  <WeeklySummaryStrip
+                    partite={filteredPartite}
+                    onOpenTimeline={() => {
+                      setPreviousViewMode(viewMode);
+                      runWithViewTransition(() => setViewMode('timeline'));
+                    }}
+                    onClose={() => {
+                      setShowWeeklySummary(false);
+                      localStorage.setItem('cynthia_show_weekly_summary', 'false');
+                    }}
+                  />
+                </div>
               ) : (
-                <div className="flex justify-end mb-3">
+                <div className="flex justify-end mb-3 no-print">
                   <button
                     id="btn-reopen-weekly-summary"
                     type="button"
@@ -452,6 +491,8 @@ export default function App() {
                   />
                 ))}
               </div>
+            ) : viewMode === 'fields' ? (
+              <ImpegnoCampiView partite={filteredPartite} />
             ) : viewMode === 'table' ? (
               <MatchTable partite={filteredPartite} />
             ) : viewMode === 'timeline' ? (
@@ -529,6 +570,7 @@ export default function App() {
           filters.campionato !== 'ALL' ||
           (Boolean(filters.societa) && filters.societa !== 'ALL') ||
           filters.data !== 'ALL' ||
+          (Boolean(filters.dayOfWeek) && filters.dayOfWeek !== 'ALL') ||
           Boolean(filters.startDate) ||
           Boolean(filters.endDate) ||
           filters.location !== 'all' ||

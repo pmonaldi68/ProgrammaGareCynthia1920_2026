@@ -87,7 +87,7 @@ export const PwaInstallPrompt: React.FC = () => {
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <img
-            src="/pwa-192x192.png"
+            src="./pwa-192x192.png"
             alt="Logo Cynthia 1920"
             className="w-12 h-12 rounded-xl object-contain shadow-xs border border-sky-200 dark:border-sky-800 flex-shrink-0 bg-sky-900 p-0.5"
             referrerPolicy="no-referrer"

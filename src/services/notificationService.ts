@@ -10,7 +10,7 @@ const VARIATION_LOG_KEY = 'cynthia_variations_history_v1';
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
     try {
-      const reg = await navigator.serviceWorker.register('/sw.js');
+      const reg = await navigator.serviceWorker.register('./sw.js');
       return reg;
     } catch (err) {
       console.warn('Registrazione Service Worker non riuscita:', err);
