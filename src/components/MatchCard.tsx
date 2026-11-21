@@ -151,16 +151,17 @@ export const MatchCard: React.FC<MatchCardProps> = ({ partita }) => {
         {/* Matchup Scoreboard: Clean Contrast Without Nested Box Overload */}
         <div className="space-y-1.5 py-1">
           <div
-            className={`px-3.5 py-2.5 rounded-xl flex items-center justify-between gap-2 transition-colors ${
+            className={`px-3.5 py-2.5 rounded-xl grid grid-cols-[2.75rem_1fr_2.75rem] items-center gap-2 transition-colors ${
               partita.isCynthiaCasa
                 ? 'bg-sky-50/90 dark:bg-sky-950/45 text-sky-950 dark:text-sky-50 font-extrabold ring-1 ring-inset ring-sky-200/80 dark:ring-sky-800/70'
                 : 'bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 font-bold'
             }`}
           >
-            <span className="text-[15px] @sm:text-base tracking-tight leading-snug">
+            <span aria-hidden="true" />
+            <span className="text-[15px] @sm:text-base tracking-tight leading-snug text-center">
               {partita.squadraCasa}
             </span>
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 shrink-0">
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 text-right">
               Casa
             </span>
           </div>
@@ -174,16 +175,17 @@ export const MatchCard: React.FC<MatchCardProps> = ({ partita }) => {
           </div>
 
           <div
-            className={`px-3.5 py-2.5 rounded-xl flex items-center justify-between gap-2 transition-colors ${
+            className={`px-3.5 py-2.5 rounded-xl grid grid-cols-[2.75rem_1fr_2.75rem] items-center gap-2 transition-colors ${
               partita.isCynthiaOspite
                 ? 'bg-sky-50/90 dark:bg-sky-950/45 text-sky-950 dark:text-sky-50 font-extrabold ring-1 ring-inset ring-sky-200/80 dark:ring-sky-800/70'
                 : 'bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 font-bold'
             }`}
           >
-            <span className="text-[15px] @sm:text-base tracking-tight leading-snug">
+            <span aria-hidden="true" />
+            <span className="text-[15px] @sm:text-base tracking-tight leading-snug text-center">
               {partita.squadraOspite}
             </span>
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 shrink-0">
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 text-right">
               Ospite
             </span>
           </div>

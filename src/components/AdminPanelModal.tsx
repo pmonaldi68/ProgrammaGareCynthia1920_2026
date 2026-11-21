@@ -48,8 +48,8 @@ interface AdminPanelModalProps {
   donBoscoCount?: number;
 }
 
-const ADMIN_PASSWORD = 'Admin1234';
-const AUTH_STORAGE_KEY = 'cynthia_admin_authenticated';
+const ADMIN_PASSWORD = '9M0n@1di#!';
+const AUTH_STORAGE_KEY = 'cynthia_admin_authenticated_v2';
 
 type AdminTab = 'all' | 'match' | 'data' | 'system';
 

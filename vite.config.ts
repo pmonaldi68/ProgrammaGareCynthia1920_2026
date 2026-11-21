@@ -1,7 +1,34 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import fs from 'fs/promises';
 import path from 'path';
 import {defineConfig} from 'vite';
+
+function stripLegacyJsxDevMetadata(code: string): string {
+  return code
+    .replace(/,\s*__source:\s*\{[^}]*\},\s*__self:\s*this/g, '')
+    .replace(/__source:\s*\{[^}]*\},\s*/g, '')
+    .replace(/,\s*__self:\s*(?:this|void 0)/g, '');
+}
+
+function modernDependencyJsxPlugin() {
+  return {
+    name: 'modern-dependency-jsx-plugin',
+    transform(code: string, id: string) {
+      if (
+        id.includes('node_modules') &&
+        (id.includes('uncontrollable') || id.includes('react-big-calendar')) &&
+        (code.includes('__self') || code.includes('__source'))
+      ) {
+        return {
+          code: stripLegacyJsxDevMetadata(code),
+          map: null,
+        };
+      }
+      return null;
+    },
+  };
+}
 
 function resolveMapsPlugin() {
   return {
@@ -63,7 +90,35 @@ function resolveMapsPlugin() {
 export default defineConfig(() => {
   return {
     base: './',
-    plugins: [react(), tailwindcss(), resolveMapsPlugin()],
+    plugins: [
+      react({
+        jsxRuntime: 'automatic',
+      }),
+      tailwindcss(),
+      resolveMapsPlugin(),
+      modernDependencyJsxPlugin(),
+    ],
+    optimizeDeps: {
+      esbuildOptions: {
+        plugins: [
+          {
+            name: 'strip-legacy-jsx-dev-metadata',
+            setup(build) {
+              build.onLoad({ filter: /node_modules\/.*(?:uncontrollable|react-big-calendar).*\.js$/ }, async (args) => {
+                const contents = await fs.readFile(args.path, 'utf8');
+                if (!contents.includes('__self') && !contents.includes('__source')) {
+                  return null;
+                }
+                return {
+                  contents: stripLegacyJsxDevMetadata(contents),
+                  loader: 'js',
+                };
+              });
+            },
+          },
+        ],
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
