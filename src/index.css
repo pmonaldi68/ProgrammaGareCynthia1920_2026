@@ -318,6 +318,76 @@ p {
   margin: 10mm 11mm 12mm 11mm;
 }
 
+@page impegno-landscape {
+  size: A4 landscape;
+  margin: 9mm 10mm 10mm 10mm;
+}
+
+/* ==========================================================================
+   STAMPA SPECIFICA IMPEGNO CAMPI A4 ORIZZONTALE (SEGRETERIA & CUSTODI)
+   ========================================================================== */
+@media print {
+  body.print-impegno-campi #root > header,
+  body.print-impegno-campi #root > main,
+  body.print-impegno-campi #root > footer,
+  body.print-impegno-campi #impegno-campi-toolbar,
+  body.print-impegno-campi #impegno-campi-filters {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body.print-impegno-campi #modal-impegno-campi-backdrop,
+  body.print-impegno-campi #modal-impegno-campi-container,
+  body.print-impegno-campi #modal-impegno-campi-container > div {
+    display: block !important;
+    position: static !important;
+    background: #ffffff !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  body.print-impegno-campi #impegno-campi-sheet-a4 {
+    page: impegno-landscape !important;
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.print-impegno-campi #impegno-campi-sheet-a4 th:last-child,
+  body.print-impegno-campi #impegno-campi-sheet-a4 td:last-child {
+    display: table-cell !important;
+    visibility: visible !important;
+  }
+
+  body.print-impegno-campi #impegno-campi-sheet-a4 input {
+    display: inline-block !important;
+    visibility: visible !important;
+    background: #ffffff !important;
+    border: 1.25px solid #475569 !important;
+    color: #000000 !important;
+  }
+
+  body.print-impegno-campi #impegno-campi-sheet-a4 input::placeholder {
+    color: transparent !important;
+  }
+}
+
 /* ==========================================================================
    STAMPA SPECIFICA FOGLIO GARA PANCHINA A4 FEDELE 1:1
    ========================================================================== */
@@ -382,7 +452,6 @@ p {
   #banner-error,
   #pwa-install-prompt,
   #btn-reopen-weekly-summary,
-  #btn-print-impegno-campi,
   [role="dialog"],
   [aria-modal="true"],
   .fixed,
@@ -394,8 +463,8 @@ p {
   [id^="match-card-"] > div:last-child > div:last-child,
   [id^="match-card-"] button,
   /* Colonna 'Azioni' nella vista tabella classica */
-  table:not(#impegno-campi-view table) th:last-child,
-  table:not(#impegno-campi-view table) td:last-child,
+  table th:last-child,
+  table td:last-child,
   table button,
   /* Anteprime mappe dinamiche */
   [id^="lazy-map-"],
@@ -406,22 +475,6 @@ p {
   footer a {
     display: none !important;
     visibility: hidden !important;
-  }
-
-  /* Mantieni visibile ultima colonna (Rotazione Spogliatoi) nella vista Impegno Campi */
-  #impegno-campi-view th:last-child,
-  #impegno-campi-view td:last-child {
-    display: table-cell !important;
-    visibility: visible !important;
-  }
-
-  #impegno-campi-view article.impegno-venue-card {
-    border: 1px solid #cbd5e1 !important;
-    border-left: 4px solid #0284c7 !important;
-    border-radius: 6px !important;
-    margin-bottom: 10px !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
   }
 
   /* 2. Reset Globale e Ottimizzazione Inchiostro (Ink-Friendly) */

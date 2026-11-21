@@ -27,6 +27,7 @@ import {
   FileCode,
   FileSpreadsheet,
   Mail,
+  Building2,
 } from 'lucide-react';
 import { useTheme, COLOR_THEME_OPTIONS, PrimaryColor } from '../context/ThemeContext';
 import { sendWebNotification, requestNotificationPermission } from '../services/notificationService';
@@ -42,9 +43,11 @@ interface AdminPanelModalProps {
   onOpenPdfExport?: () => void;
   onOpenConvocazioni?: () => void;
   onOpenPecManager?: () => void;
+  onOpenImpegnoCampi?: () => void;
   sheetUrl: string;
   totalPartiteCount?: number;
   publicPartiteCount?: number;
+  homeMatchesCount?: number;
   donBoscoCount?: number;
 }
 
@@ -63,9 +66,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onOpenPdfExport,
   onOpenConvocazioni,
   onOpenPecManager,
+  onOpenImpegnoCampi,
   sheetUrl,
   totalPartiteCount,
   publicPartiteCount,
+  homeMatchesCount,
   donBoscoCount,
 }) => {
   const { theme, setTheme, resolvedTheme, primaryColor, setPrimaryColor } = useTheme();
@@ -373,6 +378,40 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                         <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 shadow-2xs shrink-0 flex items-center gap-1 ml-2">
                           <span>Apri</span>
                           <ChevronRight className="w-3.5 h-3.5 text-emerald-500" />
+                        </span>
+                      </button>
+                    )}
+
+                    {/* IMPEGNO CAMPI — GARE INTERNE (SEGRETERIA & CUSTODI) */}
+                    {onOpenImpegnoCampi && (
+                      <button
+                        id="admin-btn-impegno-campi"
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onOpenImpegnoCampi();
+                        }}
+                        className="w-full flex items-center justify-between p-3 sm:p-3.5 rounded-xl border border-sky-300 dark:border-sky-700/80 bg-gradient-to-r from-sky-50 to-amber-50/50 dark:from-sky-950/50 dark:to-slate-900 text-left transition group shadow-xs active:scale-[0.99] cursor-pointer hover:from-sky-100 hover:to-amber-50"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2.5 rounded-xl bg-sky-700 text-white border border-amber-400/50 shadow-sm shrink-0">
+                            <Building2 className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                              <span>Impegno Campi — Gare Interne</span>
+                              <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded-md bg-amber-400 text-slate-950 shadow-2xs">
+                                A4 Orizz. {homeMatchesCount !== undefined ? `· ${homeMatchesCount}` : ''}
+                              </span>
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                              Foglio Segreteria & Custodi con sole gare interne e caselle spogliatoi per le due squadre
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs font-bold text-sky-800 dark:text-sky-300 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-sky-300 dark:border-sky-700 shadow-2xs shrink-0 flex items-center gap-1 ml-2">
+                          <span>Apri</span>
+                          <ChevronRight className="w-3.5 h-3.5 text-sky-600" />
                         </span>
                       </button>
                     )}

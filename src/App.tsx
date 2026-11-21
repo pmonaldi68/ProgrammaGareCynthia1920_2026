@@ -19,7 +19,7 @@ import { StatsSummary } from './components/StatsSummary';
 import { FilterBar } from './components/FilterBar';
 import { MatchCard } from './components/MatchCard';
 import { MatchTable } from './components/MatchTable';
-import { ImpegnoCampiView } from './components/ImpegnoCampiView';
+import { ImpegnoCampiModal } from './components/ImpegnoCampiModal';
 import { MatchMapView } from './components/MatchMapView';
 import { MatchCalendarView } from './components/MatchCalendarView';
 import { WeeklyTimeline, WeeklySummaryStrip } from './components/WeeklyTimeline';
@@ -106,6 +106,7 @@ export default function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isConvocazioniModalOpen, setIsConvocazioniModalOpen] = useState<boolean>(false);
   const [isPecModalOpen, setIsPecModalOpen] = useState<boolean>(false);
+  const [isImpegnoCampiModalOpen, setIsImpegnoCampiModalOpen] = useState<boolean>(false);
   const [recentVariations, setRecentVariations] = useState<MatchVariation[]>([]);
   const [bannerVariation, setBannerVariation] = useState<MatchVariation | null>(null);
 
@@ -449,7 +450,7 @@ export default function App() {
           </div>
         ) : (
           <div className="view-transition-schedule">
-            {viewMode !== 'timeline' && viewMode !== 'fields' && (
+            {viewMode !== 'timeline' && (
               showWeeklySummary ? (
                 <div className="no-print">
                   <WeeklySummaryStrip
@@ -491,8 +492,6 @@ export default function App() {
                   />
                 ))}
               </div>
-            ) : viewMode === 'fields' ? (
-              <ImpegnoCampiView partite={filteredPartite} />
             ) : viewMode === 'table' ? (
               <MatchTable partite={filteredPartite} />
             ) : viewMode === 'timeline' ? (
@@ -604,10 +603,19 @@ export default function App() {
         onOpenPdfExport={() => setIsPdfModalOpen(true)}
         onOpenConvocazioni={() => setIsConvocazioniModalOpen(true)}
         onOpenPecManager={() => setIsPecModalOpen(true)}
+        onOpenImpegnoCampi={() => setIsImpegnoCampiModalOpen(true)}
         sheetUrl={config.sheetUrl}
         totalPartiteCount={partite.length}
         publicPartiteCount={publicPartite.length}
+        homeMatchesCount={publicPartite.filter(p => p.isCynthiaCasa).length}
         donBoscoCount={donBoscoPartite.length}
+      />
+
+      {/* Modale Impegno Campi — Gare Interne (Segreteria & Custodi, A4 Orizzontale) */}
+      <ImpegnoCampiModal
+        isOpen={isImpegnoCampiModalOpen}
+        onClose={() => setIsImpegnoCampiModalOpen(false)}
+        partite={publicPartite}
       />
 
       {/* Modale Gestione PEC Societaria (Posta Elettronica Certificata) */}

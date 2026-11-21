@@ -21,7 +21,6 @@ import {
   Shield,
   GanttChart,
   Clock,
-  Building2,
   Printer,
 } from 'lucide-react';
 
@@ -218,23 +217,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             >
               <LayoutGrid className="w-3.5 h-3.5" />
               <span>Vista Elenco</span>
-            </button>
-
-            <button
-              id="btn-view-fields"
-              type="button"
-              role="tab"
-              aria-selected={viewMode === 'fields'}
-              onClick={() => onChangeViewMode('fields')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
-                viewMode === 'fields'
-                  ? 'bg-sky-700 text-white shadow-2xs border border-amber-400/50'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-              title="Vista Impegno Campi per Segreteria e Custodi (solo gare in casa per impianto)"
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              <span>Impegno Campi</span>
             </button>
 
             <button
