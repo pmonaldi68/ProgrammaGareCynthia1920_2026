@@ -51,6 +51,29 @@ export const MatchSkeleton: React.FC<MatchSkeletonProps> = ({ viewMode = 'cards'
     );
   }
 
+  if (viewMode === 'calendar') {
+    return (
+      <div className="space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-sky-200/80 dark:border-slate-800 p-4 animate-pulse flex items-center justify-between gap-4">
+          <div className="h-6 w-56 bg-sky-100 dark:bg-slate-800 rounded-lg" />
+          <div className="h-5 w-40 bg-sky-50 dark:bg-slate-800 rounded-lg" />
+        </div>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-sky-200/80 dark:border-slate-800 p-4 space-y-3 animate-pulse">
+          <div className="flex items-center justify-between gap-2 pb-2">
+            <div className="h-8 w-44 bg-sky-100 dark:bg-slate-800 rounded-lg" />
+            <div className="h-6 w-36 bg-sky-100 dark:bg-slate-800 rounded-lg" />
+            <div className="h-8 w-52 bg-sky-100 dark:bg-slate-800 rounded-lg" />
+          </div>
+          <div className="grid grid-cols-7 gap-2">
+            {Array.from({ length: 35 }).map((_, i) => (
+              <div key={i} className="h-20 bg-sky-50/70 dark:bg-slate-800/80 rounded-lg border border-sky-100/60 dark:border-slate-800" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (viewMode === 'timeline') {
     return (
       <div className="space-y-4">

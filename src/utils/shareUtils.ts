@@ -63,12 +63,12 @@ export function buildMatchSharePayload(partita: Partita): MatchSharePayload {
     .join(' · ');
 
   const lines = [
-    `⚽ *CYNTHIA 1920 — ${partita.campionato}*`,
-    roundMeta ? `🏆 ${roundMeta}` : '',
-    `📅 ${dayFormatted} ${dateInfo.dayNumber}/${dateInfo.monthNumber}/${dateInfo.year} — Ore ${cleanHour}`,
-    `🆚 ${partita.squadraCasa} vs ${partita.squadraOspite}`,
-    `📍 ${venueFormatted}`,
-    `🗺️ ${mapsUrl}`,
+    `\u26BD *CYNTHIA 1920 \u2014 ${partita.campionato}*`,
+    roundMeta ? `\u{1F3C6} ${roundMeta}` : '',
+    `\u{1F4C5} ${dayFormatted} ${dateInfo.dayNumber}/${dateInfo.monthNumber}/${dateInfo.year} \u2014 Ore ${cleanHour}`,
+    `\u{1F19A} ${partita.squadraCasa} vs ${partita.squadraOspite}`,
+    `\u{1F4CD} ${venueFormatted}`,
+    `\u{1F5FA}\uFE0F ${mapsUrl}`,
   ].filter(Boolean);
 
   const shareUrl =
@@ -78,18 +78,19 @@ export function buildMatchSharePayload(partita: Partita): MatchSharePayload {
       : undefined;
 
   return {
-    title: `Cynthia 1920 · ${partita.campionato}: ${partita.squadraCasa} vs ${partita.squadraOspite}`,
+    title: `Cynthia 1920 \u00B7 ${partita.campionato}: ${partita.squadraCasa} vs ${partita.squadraOspite}`,
     text: lines.join('\n'),
     ...(shareUrl ? { url: shareUrl } : {}),
   };
 }
 
 /**
- * Costruisce il link diretto wa.me per aprire WhatsApp con il testo gara precompilato.
+ * Costruisce il link diretto api.whatsapp.com/send preservando correttamente
+ * tutte le emoji UTF-8 (a differenza del redirect wa.me che puo alterare i caratteri multibyte).
  */
 export function getWhatsAppShareUrl(partita: Partita): string {
   const { text } = buildMatchSharePayload(partita);
-  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+  return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
 }
 
 /**

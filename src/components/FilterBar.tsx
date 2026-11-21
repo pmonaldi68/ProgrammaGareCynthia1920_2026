@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { FilterState, ViewMode, LocationFilter, TimeWindowFilter, Partita } from '../types';
 import { PredictiveSearchBar } from './PredictiveSearchBar';
 import { detectPartitaClub } from '../utils/donBoscoUtils';
@@ -22,6 +22,8 @@ import {
   GanttChart,
   Clock,
   Printer,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 interface FilterBarProps {
@@ -69,6 +71,19 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   );
 
   const sourcePartite = allPartite && allPartite.length > 0 ? allPartite : partite;
+
+  const categoryList = useMemo(() => {
+    const set = new Set<string>();
+    (availableCampionati || []).forEach(c => {
+      const clean = (c || '').trim();
+      if (clean) set.add(clean);
+    });
+    sourcePartite.forEach(p => {
+      const clean = (p.campionato || '').trim();
+      if (clean) set.add(clean);
+    });
+    return Array.from(set).sort();
+  }, [availableCampionati, sourcePartite]);
 
   const societaList = useMemo(() => {
     if (availableSocieta && availableSocieta.length > 0) return availableSocieta;
@@ -125,6 +140,57 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     }
     return hasDrawerFilters;
   });
+
+  const [wrapAllCategories, setWrapAllCategories] = useState<boolean>(false);
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollCatLeft, setCanScrollCatLeft] = useState<boolean>(false);
+  const [canScrollCatRight, setCanScrollCatRight] = useState<boolean>(false);
+
+  const updateCategoryScrollButtons = useCallback(() => {
+    const el = categoryScrollRef.current;
+    if (!el || wrapAllCategories) {
+      setCanScrollCatLeft(false);
+      setCanScrollCatRight(false);
+      return;
+    }
+    setCanScrollCatLeft(el.scrollLeft > 4);
+    setCanScrollCatRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, [wrapAllCategories]);
+
+  useEffect(() => {
+    updateCategoryScrollButtons();
+    const timer = setTimeout(updateCategoryScrollButtons, 80);
+    window.addEventListener('resize', updateCategoryScrollButtons);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', updateCategoryScrollButtons);
+    };
+  }, [categoryList, wrapAllCategories, updateCategoryScrollButtons]);
+
+  const scrollCategories = (direction: 'left' | 'right') => {
+    const el = categoryScrollRef.current;
+    if (!el) return;
+    el.scrollBy({
+      left: direction === 'left' ? -240 : 240,
+      behavior: 'smooth',
+    });
+  };
+
+  useEffect(() => {
+    const el = categoryScrollRef.current;
+    if (!el || wrapAllCategories) return;
+
+    const onWheel = (e: WheelEvent) => {
+      if (el.scrollWidth <= el.clientWidth) return;
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [wrapAllCategories, categoryList]);
 
   const toggleExpanded = () => {
     setIsExpanded(prev => {
@@ -193,14 +259,19 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       id="filter-bar"
       className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 mb-6 transition-colors relative z-30 shadow-2xs"
     >
-      {/* Top Toolbar: View Switcher (Vista Elenco / Impegno Campi / Tabella / Timeline / Calendario / Mappa) + Stampa/PDF + Filtri avanzati */}
+      {/* Top Toolbar: Selettore 'Vista' (Schede / Calendario Mensile + Tabella / Timeline / Mappa) + Stampa/PDF + Filtri avanzati */}
       <div className="p-3 sm:px-4 sm:py-3.5 flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Segmented View Switcher: Primo Piano su Vista Elenco e Impegno Campi */}
+        <div className="flex items-center gap-2 min-w-0 max-w-full">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0 select-none">
+            Vista:
+          </span>
+
+          {/* Selettore Vista: Passaggio rapido tra Schede e Calendario Mensile integrato + viste complementari */}
           <div
+            id="view-mode-selector"
             role="tablist"
-            aria-label="Modalità di visualizzazione programma"
-            className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 overflow-x-auto max-w-full no-scrollbar"
+            aria-label="Selettore vista programma gare"
+            className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 overflow-x-auto thin-scrollbar max-w-full"
           >
             <button
               id="btn-view-cards"
@@ -208,16 +279,36 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               role="tab"
               aria-selected={viewMode === 'cards'}
               onClick={() => onChangeViewMode('cards')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-bold transition duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
                 viewMode === 'cards'
-                  ? 'bg-sky-700 text-white shadow-2xs border border-amber-400/50'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? 'bg-sky-700 text-white shadow-2xs border border-amber-400/70'
+                  : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white/70 dark:hover:bg-slate-700/60'
               }`}
-              title="Vista Elenco predefinita a schede"
+              title="Visualizzazione a schede"
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Vista Elenco</span>
+              <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
+              <span>Schede</span>
             </button>
+
+            <button
+              id="btn-view-calendar"
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'calendar'}
+              onClick={() => onChangeViewMode('calendar')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-bold transition duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
+                viewMode === 'calendar'
+                  ? 'bg-sky-700 text-white shadow-2xs border border-amber-400/70'
+                  : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-white/70 dark:hover:bg-slate-700/60'
+              }`}
+              title="Visualizzazione grafica a calendario mensile"
+            >
+              <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+              <span className="sm:hidden">Calendario</span>
+              <span className="hidden sm:inline">Calendario Mensile</span>
+            </button>
+
+            <div className="h-4 w-px bg-slate-300/80 dark:bg-slate-600 shrink-0 mx-0.5" aria-hidden="true" />
 
             <button
               id="btn-view-table"
@@ -225,14 +316,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               role="tab"
               aria-selected={viewMode === 'table'}
               onClick={() => onChangeViewMode('table')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs font-semibold transition duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
                 viewMode === 'table'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs border border-slate-200 dark:border-slate-700'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
-              title="Visualizza come tabella dettagliata"
+              title="Visualizza come tabella su una riga"
             >
-              <Table className="w-3.5 h-3.5" />
+              <Table className="w-3.5 h-3.5 shrink-0" />
               <span className="hidden md:inline">Tabella</span>
             </button>
 
@@ -242,32 +333,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               role="tab"
               aria-selected={viewMode === 'timeline'}
               onClick={() => onChangeViewMode('timeline')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs font-semibold transition duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
                 viewMode === 'timeline'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs border border-slate-200 dark:border-slate-700'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
               title="Visualizza timeline orizzontale della settimana"
             >
-              <GanttChart className="w-3.5 h-3.5" />
+              <GanttChart className="w-3.5 h-3.5 shrink-0" />
               <span className="hidden md:inline">Timeline</span>
-            </button>
-
-            <button
-              id="btn-view-calendar"
-              type="button"
-              role="tab"
-              aria-selected={viewMode === 'calendar'}
-              onClick={() => onChangeViewMode('calendar')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
-                viewMode === 'calendar'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-              title="Visualizza graficamente sul calendario"
-            >
-              <CalendarDays className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Calendario</span>
             </button>
 
             <button
@@ -276,15 +350,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               role="tab"
               aria-selected={viewMode === 'map'}
               onClick={() => onChangeViewMode('map')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs font-semibold transition duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
                 viewMode === 'map'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs border border-slate-200 dark:border-slate-700'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
               title="Visualizza campi su mappa interattiva"
             >
-              <MapPin className="w-3.5 h-3.5" />
-              <span className="hidden lg:inline">Mappa</span>
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden md:inline">Mappa</span>
             </button>
           </div>
         </div>
@@ -359,10 +433,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
       </div>
 
-      {/* BARRA FILTRI RAPIDI SCROLLABILE ORIZZONTALMENTE SU MOBILE (Luogo, Giorno, Prossime 24h/48h, Categoria) */}
-      <div className="px-3 sm:px-4 pb-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5">
+      {/* BARRA FILTRI RAPIDI SCROLLABILE ORIZZONTALMENTE (Luogo, Giorno, Prossime 24h/48h, Categoria) */}
+      <div className="px-3 sm:px-4 pb-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5 min-w-0 w-full">
         {/* Riga 1: Luogo + Giorno + Finestra 24h/48h + Azzera */}
-        <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-0.5">
+        <div className="flex flex-nowrap items-center gap-3 overflow-x-auto thin-scrollbar py-1 px-0.5 pr-3 w-full min-w-0 touch-pan-x overscroll-x-contain">
           {/* Pillole Luogo */}
           <div className="flex items-center gap-1 shrink-0" role="group" aria-label="Filtra per luogo">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">
@@ -499,52 +573,106 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           )}
         </div>
 
-        {/* Riga 2: Selettore rapido dinamico Categoria (Scrollabile orizzontalmente su mobile) */}
-        {availableCampionati.length > 0 && (
-          <div
-            className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5"
-            role="group"
-            aria-label="Selettore rapido categoria"
-          >
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1 shrink-0">
-              Categoria:
-            </span>
-            <button
-              id="pill-category-all"
-              type="button"
-              onClick={() => onChangeFilters({ ...filters, campionato: 'ALL' })}
-              aria-pressed={filters.campionato === 'ALL'}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 border ${
-                filters.campionato === 'ALL'
-                  ? 'bg-sky-700 text-white border-amber-400 shadow-2xs'
-                  : 'bg-sky-50/70 dark:bg-slate-800 text-sky-900 dark:text-slate-200 border-sky-200/80 dark:border-slate-700 hover:bg-sky-100 dark:hover:bg-slate-700'
-              }`}
-            >
-              Tutte
-            </button>
-            {availableCampionati.map(camp => {
-              const isSelected = filters.campionato === camp;
-              return (
+        {/* Riga 2: Selettore rapido dinamico Categoria (Scrollabile orizzontalmente overflow-x-auto senza sovrapposizioni o tagli) */}
+        {categoryList.length > 0 && (
+          <div className="space-y-1.5 min-w-0 w-full">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Categoria ({categoryList.length})
+                </span>
+                {filters.campionato !== 'ALL' && (
+                  <span className="text-[11px] font-bold text-sky-700 dark:text-sky-300 truncate">
+                    · {filters.campionato}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                {!wrapAllCategories && (canScrollCatLeft || canScrollCatRight) && (
+                  <div className="flex items-center gap-1 mr-1">
+                    <button
+                      type="button"
+                      onClick={() => scrollCategories('left')}
+                      disabled={!canScrollCatLeft}
+                      aria-label="Scorri categorie a sinistra"
+                      title="Scorri a sinistra"
+                      className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-slate-700 disabled:opacity-35 cursor-pointer disabled:cursor-default transition"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => scrollCategories('right')}
+                      disabled={!canScrollCatRight}
+                      aria-label="Scorri categorie a destra"
+                      title="Scorri a destra"
+                      className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-slate-700 disabled:opacity-35 cursor-pointer disabled:cursor-default transition"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
                 <button
-                  key={camp}
+                  id="btn-toggle-all-categories-wrap"
                   type="button"
-                  onClick={() =>
-                    onChangeFilters({
-                      ...filters,
-                      campionato: isSelected ? 'ALL' : camp,
-                    })
-                  }
-                  aria-pressed={isSelected}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 border ${
-                    isSelected
-                      ? 'bg-sky-700 text-white border-amber-400 shadow-2xs'
-                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-300 hover:bg-sky-50 dark:hover:bg-slate-700'
-                  }`}
+                  onClick={() => setWrapAllCategories(prev => !prev)}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800 hover:bg-sky-100 dark:hover:bg-sky-900/60 transition cursor-pointer whitespace-nowrap"
                 >
-                  {camp}
+                  <span>{wrapAllCategories ? 'Riduci in una riga' : 'Mostra tutte'}</span>
                 </button>
-              );
-            })}
+              </div>
+            </div>
+
+            <div
+              ref={categoryScrollRef}
+              onScroll={updateCategoryScrollButtons}
+              className={
+                wrapAllCategories
+                  ? 'flex flex-wrap items-center gap-2 py-1 px-0.5 w-full min-w-0'
+                  : 'flex flex-nowrap items-center gap-2 overflow-x-auto thin-scrollbar py-1.5 px-0.5 pr-4 w-full max-w-full min-w-0 touch-pan-x overscroll-x-contain'
+              }
+              role="group"
+              aria-label="Selettore rapido categoria"
+            >
+              <button
+                id="pill-category-all"
+                type="button"
+                onClick={() => onChangeFilters({ ...filters, campionato: 'ALL' })}
+                aria-pressed={filters.campionato === 'ALL'}
+                className={`flex-none px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap border ${
+                  filters.campionato === 'ALL'
+                    ? 'bg-sky-700 text-white border-amber-400 shadow-2xs'
+                    : 'bg-sky-50/70 dark:bg-slate-800 text-sky-900 dark:text-slate-200 border-sky-200/80 dark:border-slate-700 hover:bg-sky-100 dark:hover:bg-slate-700'
+                }`}
+              >
+                Tutte ({categoryList.length})
+              </button>
+              {categoryList.map(camp => {
+                const isSelected = filters.campionato === camp;
+                return (
+                  <button
+                    key={camp}
+                    type="button"
+                    onClick={() =>
+                      onChangeFilters({
+                        ...filters,
+                        campionato: isSelected ? 'ALL' : camp,
+                      })
+                    }
+                    aria-pressed={isSelected}
+                    className={`flex-none px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap border ${
+                      isSelected
+                        ? 'bg-sky-700 text-white border-amber-400 shadow-2xs'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-300 hover:bg-sky-50 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {camp}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

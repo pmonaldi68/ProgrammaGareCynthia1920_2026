@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Calendar, dateFnsLocalizer, View, Views } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay, isSameDay } from 'date-fns';
+import { format, parse, startOfWeek, getDay, isSameDay, isSameMonth } from 'date-fns';
 import { it } from 'date-fns/locale/it';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { Partita } from '../types';
@@ -12,6 +12,7 @@ import {
   Calendar as CalendarIcon,
   X,
   Eye,
+  Compass,
 } from 'lucide-react';
 
 const locales = {
@@ -58,14 +59,27 @@ const italianMessages = {
 // Componente personalizzato per rendere le gare nelle caselle del calendario
 const CustomCalendarEvent: React.FC<{ event: CalendarMatchEvent }> = ({ event }) => {
   const p = event.partita;
+  const locCode = p.isCynthiaCasa ? 'C' : p.isCynthiaOspite ? 'T' : '';
+
   return (
     <div
-      className="flex items-center gap-1.5 overflow-hidden text-left py-0.5 select-none w-full"
-      title={`${p.ora || ''} • ${p.campionato}: ${p.squadraCasa} vs ${p.squadraOspite} (Clicca per dettagli completi e mappa campo)`}
+      className="flex items-center gap-1 overflow-hidden text-left py-0.5 select-none w-full"
+      title={`${p.ora ? `${p.ora} · ` : ''}${p.campionato} (${p.isCynthiaCasa ? 'Casa' : 'Trasferta'}): ${p.squadraCasa} vs ${p.squadraOspite} — ${p.campo}`}
     >
       {p.ora && (
-        <span className="font-mono text-[9.5px] bg-black/25 px-1 py-0.5 rounded shrink-0 font-bold tracking-tight">
+        <span className="font-mono text-[9.5px] bg-black/25 px-1 py-0.5 rounded shrink-0 font-bold tracking-tight tabular-nums">
           {p.ora}
+        </span>
+      )}
+      {locCode && (
+        <span
+          className={`text-[9px] font-black px-1 py-0.5 rounded shrink-0 leading-none ${
+            p.isCynthiaCasa
+              ? 'bg-amber-400 text-sky-950'
+              : 'bg-white/20 text-white'
+          }`}
+        >
+          {locCode}
         </span>
       )}
       <span className="truncate font-bold text-[11px] leading-tight">
@@ -80,7 +94,7 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
   const events: CalendarMatchEvent[] = useMemo(() => {
     return partite.map((p) => {
       const { start, end } = parseMatchDateTime(p.data, p.ora);
-      const title = `${p.ora ? `${p.ora} • ` : ''}${p.campionato}: ${p.squadraCasa} vs ${p.squadraOspite}`;
+      const title = `${p.ora ? `${p.ora} · ` : ''}${p.campionato}: ${p.squadraCasa} vs ${p.squadraOspite}`;
       return {
         id: p.id,
         title,
@@ -92,7 +106,7 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
     });
   }, [partite]);
 
-  // Calcola la data iniziale: la data della prima partita se presente, altrimenti la data odierna
+  // Calcola la data iniziale: la data della prossima partita o la prima disponibile
   const initialDate = useMemo(() => {
     if (events.length > 0) {
       const sorted = [...events].sort((a, b) => a.start.getTime() - b.start.getTime());
@@ -108,6 +122,19 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [selectedPartita, setSelectedPartita] = useState<Partita | null>(null);
 
+  // Quando cambiano i filtri o arrivano dati dal foglio, posiziona il mese su un periodo con partite se il mese corrente è vuoto
+  useEffect(() => {
+    if (events.length === 0) return;
+    const hasMatchesInCurrentMonth = events.some((e) => isSameMonth(e.start, currentDate));
+    if (!hasMatchesInCurrentMonth) {
+      setCurrentDate(initialDate);
+    }
+  }, [events, initialDate]);
+
+  const monthMatchCount = useMemo(() => {
+    return events.filter((e) => isSameMonth(e.start, currentDate)).length;
+  }, [events, currentDate]);
+
   // Trova le partite del giorno selezionato
   const dayMatches = useMemo(() => {
     if (!selectedDay) return [];
@@ -117,10 +144,11 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
     });
   }, [selectedDay, partite]);
 
-  // Gestione stile eventi colorati per Cynthia, Don Bosco, ecc.
+  // Gestione stile eventi colorati per Cynthia Casa (con dettaglio oro), Trasferta e Don Bosco
   const eventPropGetter = (event: CalendarMatchEvent) => {
     const p = event.partita;
     let bg = '#0284c7'; // default sky-600
+    let border = '1px solid #0369a1';
 
     const isDonBosco =
       p.squadraCasa.toUpperCase().includes('DON BOSCO') ||
@@ -128,11 +156,14 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
       (p.societa && p.societa.toUpperCase().includes('DON BOSCO'));
 
     if (isDonBosco) {
-      bg = '#d97706'; // amber-600 (Gialloblù Don Bosco)
+      bg = '#d97706'; // amber-600
+      border = '1px solid #b45309';
     } else if (p.isCynthiaCasa) {
       bg = '#0369a1'; // sky-700 (Cynthia in Casa)
+      border = '1px solid #f59e0b'; // dettaglio Oro
     } else if (p.isCynthiaOspite) {
       bg = '#0284c7'; // sky-600 (Cynthia Trasferta)
+      border = '1px solid #0ea5e9';
     }
 
     return {
@@ -140,7 +171,7 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
         backgroundColor: bg,
         borderRadius: '6px',
         color: '#ffffff',
-        border: 'none',
+        border,
         fontSize: '0.75rem',
         fontWeight: '600',
         padding: '2px 5px',
@@ -172,77 +203,88 @@ export const MatchCalendarView: React.FC<MatchCalendarViewProps> = ({ partite })
     });
 
     if (matchesOnSlot.length === 1) {
-      // Se c'è una sola partita in quel giorno, apri direttamente i dettagli completi
       setSelectedPartita(matchesOnSlot[0]);
     } else {
-      // Se ci sono più partite o zero partite, mostra la panoramica della giornata
       setSelectedDay(slotInfo.start);
     }
   };
 
   return (
     <div id="match-calendar-container" className="space-y-4">
-      {/* Barra Informativa Calendario & Controlli Rapidi */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-sky-600 text-white shadow-xs shrink-0">
+      {/* Barra Informativa Calendario Mensile & Controlli Rapidi */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="flex items-start sm:items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-sky-700 text-white border border-amber-400/60 shadow-2xs shrink-0">
             <CalendarDays className="w-5 h-5" />
           </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-              <span>Calendario Gare Interattivo</span>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
-                {events.length} {events.length === 1 ? 'Gara' : 'Gare'}
-              </span>
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white leading-tight">
+              Calendario Mensile Gare
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Clicca su una partita nel calendario per aprire la scheda con campo, mappa, orario e navigazione
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
+              {monthMatchCount} {monthMatchCount === 1 ? 'gara' : 'gare'} in{' '}
+              <span className="capitalize font-semibold text-slate-700 dark:text-slate-300">
+                {format(currentDate, 'MMMM yyyy', { locale: it })}
+              </span>
+              {' · '}
+              {events.length} totali · Clicca su una partita per mappa, orario e dettagli
             </p>
           </div>
         </div>
 
-        {/* Legenda Colori */}
-        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-200 border border-sky-200 dark:border-sky-800">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#0369a1]" />
-            <span>Cynthia (Casa)</span>
+        {/* Legenda Colori Pulita + Pulsante Salta al Mese con Gare */}
+        <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
+          {events.length > 0 && monthMatchCount === 0 && (
+            <button
+              type="button"
+              onClick={() => setCurrentDate(initialDate)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold transition cursor-pointer shadow-2xs"
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span className="capitalize">
+                Vai a {format(initialDate, 'MMMM yyyy', { locale: it })}
+              </span>
+            </button>
+          )}
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-xs bg-[#0369a1] border border-amber-400 shrink-0" />
+            <span>Casa (C)</span>
           </span>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 text-cyan-800 dark:text-cyan-200 border border-cyan-200 dark:border-cyan-800">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#0284c7]" />
-            <span>Cynthia (Trasferta)</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#d97706]" />
-            <span>Don Bosco</span>
+          <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-xs bg-[#0284c7] shrink-0" />
+            <span>Trasferta (T)</span>
           </span>
         </div>
       </div>
 
-      {/* Box Principale Calendario React-Big-Calendar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-3 sm:p-5 shadow-xs overflow-hidden">
-        <div className="h-[640px] sm:h-[740px] w-full text-slate-800 dark:text-slate-100">
-          <Calendar
-            localizer={localizer}
-            events={events}
-            startAccessor="start"
-            endAccessor="end"
-            style={{ height: '100%' }}
-            culture="it"
-            messages={italianMessages}
-            view={currentView}
-            onView={handleViewChange}
-            date={currentDate}
-            onNavigate={handleNavigate}
-            eventPropGetter={eventPropGetter}
-            components={{
-              event: CustomCalendarEvent,
-            }}
-            selectable
-            onSelectEvent={handleSelectEvent}
-            onSelectSlot={handleSelectSlot}
-            views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
-            popup
-          />
+      {/* Box Principale Calendario Mensile React-Big-Calendar */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-3 sm:p-5 shadow-2xs overflow-hidden">
+        <div className="overflow-x-auto thin-scrollbar">
+          <div className="min-w-[660px] md:min-w-0 h-[620px] sm:h-[720px] w-full text-slate-800 dark:text-slate-100">
+            <Calendar
+              localizer={localizer}
+              events={events}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: '100%' }}
+              culture="it"
+              messages={italianMessages}
+              view={currentView}
+              onView={handleViewChange}
+              date={currentDate}
+              onNavigate={handleNavigate}
+              eventPropGetter={eventPropGetter}
+              components={{
+                event: CustomCalendarEvent,
+              }}
+              selectable
+              onSelectEvent={handleSelectEvent}
+              onSelectSlot={handleSelectSlot}
+              views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
+              popup
+            />
+          </div>
         </div>
       </div>
 
