@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { Trophy, ExternalLink } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Trophy, ExternalLink, Maximize2, X } from 'lucide-react';
 
 type WidgetType = 'panoramica' | 'classifica' | 'risultati' | 'marcatori' | 'ultima' | 'prossima';
 
@@ -108,6 +109,7 @@ const WIDGET_NATIVE_WIDTH = 500;
 
 interface TuttocampoFrameProps {
   title: string;
+  championshipLabel?: string;
   endpoint: 'Risultati' | 'Classifica' | 'Marcatori' | 'Partita' | 'ProssimaPartita';
   championshipId: string;
   height: number;
@@ -115,17 +117,27 @@ interface TuttocampoFrameProps {
 
 const TuttocampoFrame: React.FC<TuttocampoFrameProps> = ({
   title,
+  championshipLabel,
   endpoint,
   championshipId,
   height,
 }) => {
   const src = `https://www.tuttocampo.it/WidgetV2/${endpoint}/${championshipId}`;
   const [loading, setLoading] = useState(true);
+  const [modalLoading, setModalLoading] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const modalViewportRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState<number>(1);
+  const [modalSize, setModalSize] = useState<{ width: number; height: number }>({
+    width: 800,
+    height: 700,
+  });
 
   useEffect(() => {
     setLoading(true);
+    setModalLoading(true);
   }, [src]);
 
   // Calcola dinamicamente il fattore di scala rispetto alla larghezza nativa (500px)
@@ -155,64 +167,227 @@ const TuttocampoFrame: React.FC<TuttocampoFrameProps> = ({
     return () => window.removeEventListener('resize', updateScale);
   }, [height]);
 
+  // Gestione apertura modale a schermo intero: blocco scroll body, tasto ESC e misura viewport
+  useEffect(() => {
+    if (!isExpanded) return;
+
+    setModalLoading(true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsExpanded(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isExpanded]);
+
+  useLayoutEffect(() => {
+    if (!isExpanded) return;
+    const el = modalViewportRef.current;
+    if (!el) return;
+
+    const updateModalSize = () => {
+      setModalSize({
+        width: el.clientWidth,
+        height: el.clientHeight,
+      });
+    };
+
+    updateModalSize();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(updateModalSize);
+      observer.observe(el);
+      return () => observer.disconnect();
+    }
+
+    window.addEventListener('resize', updateModalSize);
+    return () => window.removeEventListener('resize', updateModalSize);
+  }, [isExpanded]);
+
+  const modalAvailableWidth = Math.max(260, modalSize.width - (modalSize.width >= 640 ? 48 : 16));
+  const modalScale =
+    modalAvailableWidth < WIDGET_NATIVE_WIDTH ? modalAvailableWidth / WIDGET_NATIVE_WIDTH : 1;
+  const modalBoxWidth = modalScale < 1 ? modalAvailableWidth : Math.min(820, modalAvailableWidth);
+  const modalVisibleHeight = Math.max(height, modalSize.height - (modalSize.width >= 640 ? 48 : 16));
+  const modalIframeHeight =
+    modalScale < 1 ? Math.max(height, Math.round(modalVisibleHeight / modalScale)) : modalVisibleHeight;
+
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden flex flex-col w-full max-w-[540px] mx-auto min-w-0 transition-colors">
-      <div className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 truncate">
-          {title}
-        </span>
-        <a
-          href={src}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-700 dark:text-sky-300 hover:underline shrink-0"
-          title={`Apri ${title} in una nuova scheda`}
-        >
-          <span>Tuttocampo Live</span>
-          <ExternalLink className="w-3 h-3" />
-        </a>
-      </div>
+    <>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden flex flex-col w-full max-w-[540px] mx-auto min-w-0 transition-colors">
+        <div className="w-full px-3 sm:px-4 py-2.5 bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 truncate">
+            {title}
+          </span>
 
-      {/* Contenitore responsive esterno */}
-      <div className="w-full p-2 sm:p-4 bg-white">
-        {/* Responsive iframe wrapper con aspect-ratio calibrato su 500 x height */}
-        <div
-          ref={wrapperRef}
-          className="relative w-full max-w-[500px] mx-auto overflow-hidden"
-          style={{
-            aspectRatio: `${WIDGET_NATIVE_WIDTH} / ${height}`,
-            maxHeight: `${height}px`,
-          }}
-        >
-          {loading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/95 z-10 gap-3 px-4 text-center">
-              <div className="w-8 h-8 border-4 border-sky-200 border-t-sky-700 rounded-full animate-spin" />
-              <span className="text-xs font-medium text-slate-600">
-                Caricamento {title.toLowerCase()}...
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsExpanded(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[32px] rounded-lg text-[11px] font-bold bg-sky-700 hover:bg-sky-800 text-white border border-amber-400/60 shadow-2xs transition cursor-pointer whitespace-nowrap"
+              title={`Apri ${title} a schermo intero`}
+              aria-label={`Espandi Widget ${title}`}
+            >
+              <Maximize2 className="w-3 h-3 shrink-0" />
+              <span>Espandi Widget</span>
+            </button>
 
-          <iframe
-            key={src}
-            src={src}
-            title={title}
-            width={WIDGET_NATIVE_WIDTH}
-            height={height}
-            scrolling="auto"
-            loading="lazy"
-            onLoad={() => setLoading(false)}
-            className="absolute top-0 left-0 border-0 block bg-white"
+            <a
+              href={src}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 p-1.5 rounded-lg text-[11px] font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-slate-700/60 transition shrink-0"
+              title={`Apri ${title} su Tuttocampo in una nuova scheda`}
+              aria-label={`Apri ${title} su Tuttocampo`}
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        </div>
+
+        {/* Contenitore responsive esterno */}
+        <div className="w-full p-2 sm:p-4 bg-white">
+          {/* Responsive iframe wrapper con aspect-ratio calibrato su 500 x height */}
+          <div
+            ref={wrapperRef}
+            className="relative w-full max-w-[500px] mx-auto overflow-hidden"
             style={{
-              width: `${WIDGET_NATIVE_WIDTH}px`,
-              height: `${height}px`,
-              transform: scale < 1 ? `scale(${scale})` : undefined,
-              transformOrigin: 'top left',
+              aspectRatio: `${WIDGET_NATIVE_WIDTH} / ${height}`,
+              maxHeight: `${height}px`,
             }}
-          />
+          >
+            {loading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/95 z-10 gap-3 px-4 text-center">
+                <div className="w-8 h-8 border-4 border-sky-200 border-t-sky-700 rounded-full animate-spin" />
+                <span className="text-xs font-medium text-slate-600">
+                  Caricamento {title.toLowerCase()}...
+                </span>
+              </div>
+            )}
+
+            <iframe
+              key={src}
+              src={src}
+              title={title}
+              width={WIDGET_NATIVE_WIDTH}
+              height={height}
+              scrolling="auto"
+              loading="lazy"
+              onLoad={() => setLoading(false)}
+              className="absolute top-0 left-0 border-0 block bg-white"
+              style={{
+                width: `${WIDGET_NATIVE_WIDTH}px`,
+                height: `${height}px`,
+                transform: scale < 1 ? `scale(${scale})` : undefined,
+                transformOrigin: 'top left',
+              }}
+            />
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Modale a schermo intero sopra l'applicazione */}
+      {isExpanded &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${title} a schermo intero`}
+            className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xs flex flex-col w-screen h-dvh overflow-hidden animate-in fade-in duration-150"
+          >
+            {/* Header modale full-screen */}
+            <div className="bg-gradient-to-r from-sky-800 via-sky-900 to-slate-900 text-white px-3 sm:px-6 py-3 flex items-center justify-between gap-3 border-b border-amber-400/40 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-white/10 border border-amber-400/40 shrink-0">
+                  <Trophy className="w-4 h-4 text-amber-300" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm sm:text-base font-extrabold text-white truncate">
+                    {title}
+                  </h3>
+                  {championshipLabel && (
+                    <p className="text-[11px] sm:text-xs text-sky-200 truncate">
+                      {championshipLabel}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-sky-100 border border-white/15 transition whitespace-nowrap"
+                >
+                  <span>Apri su Tuttocampo</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded(false)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs sm:text-sm font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-xs transition cursor-pointer whitespace-nowrap"
+                  aria-label="Chiudi finestra a schermo intero"
+                >
+                  <X className="w-4 h-4 shrink-0" />
+                  <span>Chiudi</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Area contenuto modale: scala edge-to-edge su mobile e a tutta ampiezza su tablet/desktop */}
+            <div
+              ref={modalViewportRef}
+              className="flex-1 w-full bg-white overflow-y-auto overflow-x-hidden flex justify-center p-2 sm:p-6"
+            >
+              <div
+                className="relative overflow-hidden mx-auto"
+                style={{
+                  width: `${modalBoxWidth}px`,
+                  height: `${modalVisibleHeight}px`,
+                }}
+              >
+                {modalLoading && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/95 z-10 gap-3 px-4 text-center">
+                    <div className="w-9 h-9 border-4 border-sky-200 border-t-sky-700 rounded-full animate-spin" />
+                    <span className="text-xs sm:text-sm font-semibold text-slate-600">
+                      Caricamento vista espansa {title.toLowerCase()}...
+                    </span>
+                  </div>
+                )}
+
+                <iframe
+                  key={`modal-${src}`}
+                  src={src}
+                  title={`${title} (Schermo Intero)`}
+                  width={modalScale < 1 ? WIDGET_NATIVE_WIDTH : modalBoxWidth}
+                  height={modalIframeHeight}
+                  scrolling="auto"
+                  onLoad={() => setModalLoading(false)}
+                  className="absolute top-0 left-0 border-0 block bg-white"
+                  style={{
+                    width: modalScale < 1 ? `${WIDGET_NATIVE_WIDTH}px` : `${modalBoxWidth}px`,
+                    height: `${modalIframeHeight}px`,
+                    transform: modalScale < 1 ? `scale(${modalScale})` : undefined,
+                    transformOrigin: 'top left',
+                  }}
+                />
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+    </>
   );
 };
 
@@ -352,12 +527,14 @@ export const TuttocampoWidgets: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <TuttocampoFrame
               title="Ultima Partita"
+              championshipLabel={currentChampionship.label}
               endpoint="Partita"
               championshipId={selectedId}
               height={350}
             />
             <TuttocampoFrame
               title="Prossima Partita"
+              championshipLabel={currentChampionship.label}
               endpoint="ProssimaPartita"
               championshipId={selectedId}
               height={350}
@@ -368,6 +545,7 @@ export const TuttocampoWidgets: React.FC = () => {
         {activeTab === 'classifica' && (
           <TuttocampoFrame
             title="Classifica"
+            championshipLabel={currentChampionship.label}
             endpoint="Classifica"
             championshipId={selectedId}
             height={800}
@@ -377,6 +555,7 @@ export const TuttocampoWidgets: React.FC = () => {
         {activeTab === 'risultati' && (
           <TuttocampoFrame
             title="Risultati"
+            championshipLabel={currentChampionship.label}
             endpoint="Risultati"
             championshipId={selectedId}
             height={600}
@@ -386,6 +565,7 @@ export const TuttocampoWidgets: React.FC = () => {
         {activeTab === 'marcatori' && (
           <TuttocampoFrame
             title="Classifica Marcatori"
+            championshipLabel={currentChampionship.label}
             endpoint="Marcatori"
             championshipId={selectedId}
             height={700}
@@ -395,6 +575,7 @@ export const TuttocampoWidgets: React.FC = () => {
         {activeTab === 'ultima' && (
           <TuttocampoFrame
             title="Ultima Partita"
+            championshipLabel={currentChampionship.label}
             endpoint="Partita"
             championshipId={selectedId}
             height={350}
@@ -404,6 +585,7 @@ export const TuttocampoWidgets: React.FC = () => {
         {activeTab === 'prossima' && (
           <TuttocampoFrame
             title="Prossima Partita"
+            championshipLabel={currentChampionship.label}
             endpoint="ProssimaPartita"
             championshipId={selectedId}
             height={350}
