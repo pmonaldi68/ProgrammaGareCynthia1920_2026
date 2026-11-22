@@ -24,6 +24,7 @@ import {
   Printer,
   ChevronLeft,
   ChevronRight,
+  Trophy,
 } from 'lucide-react';
 
 interface FilterBarProps {
@@ -360,6 +361,23 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <MapPin className="w-3.5 h-3.5 shrink-0" />
               <span className="hidden md:inline">Mappa</span>
             </button>
+
+            <button
+              id="btn-view-tuttocampo"
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'tuttocampo'}
+              onClick={() => onChangeViewMode('tuttocampo')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-bold transition duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
+                viewMode === 'tuttocampo'
+                  ? 'bg-sky-700 text-white shadow-2xs border border-amber-400/70'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-sky-800 dark:hover:text-white hover:bg-white/70 dark:hover:bg-slate-700/60'
+              }`}
+              title="Risultati, Classifiche e Marcatori ufficiali Tuttocampo"
+            >
+              <Trophy className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+              <span>Classifiche</span>
+            </button>
           </div>
         </div>
 
@@ -433,252 +451,256 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
       </div>
 
-      {/* BARRA FILTRI RAPIDI SCROLLABILE ORIZZONTALMENTE (Luogo, Giorno, Prossime 24h/48h, Categoria) */}
-      <div className="px-3 sm:px-4 pb-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5 min-w-0 w-full">
-        {/* Riga 1: Luogo + Giorno + Finestra 24h/48h + Azzera */}
-        <div className="flex flex-nowrap items-center gap-3 overflow-x-auto thin-scrollbar py-1 px-0.5 pr-3 w-full min-w-0 touch-pan-x overscroll-x-contain">
-          {/* Pillole Luogo */}
-          <div className="flex items-center gap-1 shrink-0" role="group" aria-label="Filtra per luogo">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">
-              Luogo:
-            </span>
-            {(
-              [
-                { val: 'all', label: 'Tutte' },
-                { val: 'casa', label: 'Casa' },
-                { val: 'trasferta', label: 'Trasferta' },
-              ] as Array<{ val: LocationFilter; label: string }>
-            ).map(opt => {
-              const active = filters.location === opt.val;
-              return (
+      {viewMode !== 'tuttocampo' && (
+        <>
+          {/* BARRA FILTRI RAPIDI SCROLLABILE ORIZZONTALMENTE (Luogo, Giorno, Prossime 24h/48h, Categoria) */}
+          <div className="px-3 sm:px-4 pb-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5 min-w-0 w-full">
+            {/* Riga 1: Luogo + Giorno + Finestra 24h/48h + Azzera */}
+            <div className="flex flex-nowrap items-center gap-3 overflow-x-auto thin-scrollbar py-1 px-0.5 pr-3 w-full min-w-0 touch-pan-x overscroll-x-contain">
+              {/* Pillole Luogo */}
+              <div className="flex items-center gap-1 shrink-0" role="group" aria-label="Filtra per luogo">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">
+                  Luogo:
+                </span>
+                {(
+                  [
+                    { val: 'all', label: 'Tutte' },
+                    { val: 'casa', label: 'Casa' },
+                    { val: 'trasferta', label: 'Trasferta' },
+                  ] as Array<{ val: LocationFilter; label: string }>
+                ).map(opt => {
+                  const active = filters.location === opt.val;
+                  return (
+                    <button
+                      key={opt.val}
+                      id={`pill-location-${opt.val}`}
+                      type="button"
+                      onClick={() =>
+                        onChangeFilters({
+                          ...filters,
+                          location: active && opt.val !== 'all' ? 'all' : opt.val,
+                        })
+                      }
+                      aria-pressed={active}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap border ${
+                        active
+                          ? opt.val === 'casa'
+                            ? 'bg-sky-700 text-white border-amber-400 shadow-2xs'
+                            : 'bg-slate-900 dark:bg-sky-600 text-white border-slate-900 dark:border-sky-500 shadow-2xs'
+                          : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="h-5 w-px bg-slate-200 dark:bg-slate-700 shrink-0" aria-hidden="true" />
+
+              {/* Pillole Giorno (Tutti | Sabato | Domenica + eventuali infrasettimanali) */}
+              <div className="flex items-center gap-1 shrink-0" role="group" aria-label="Filtra per giorno">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">
+                  Giorno:
+                </span>
                 <button
-                  key={opt.val}
-                  id={`pill-location-${opt.val}`}
+                  id="pill-day-all"
                   type="button"
-                  onClick={() =>
-                    onChangeFilters({
-                      ...filters,
-                      location: active && opt.val !== 'all' ? 'all' : opt.val,
-                    })
-                  }
-                  aria-pressed={active}
+                  onClick={() => onChangeFilters({ ...filters, dayOfWeek: 'ALL' })}
+                  aria-pressed={activeDayOfWeek === 'ALL'}
                   className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap border ${
-                    active
-                      ? opt.val === 'casa'
-                        ? 'bg-sky-700 text-white border-amber-400 shadow-2xs'
-                        : 'bg-slate-900 dark:bg-sky-600 text-white border-slate-900 dark:border-sky-500 shadow-2xs'
+                    activeDayOfWeek === 'ALL'
+                      ? 'bg-slate-900 dark:bg-sky-600 text-white border-slate-900 dark:border-sky-500 shadow-2xs'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-700'
                   }`}
                 >
-                  {opt.label}
+                  Tutti
                 </button>
-              );
-            })}
-          </div>
+                {availableDaysOfWeek.map(dayUpper => {
+                  const isSelected = activeDayOfWeek === dayUpper;
+                  return (
+                    <button
+                      key={dayUpper}
+                      id={`pill-day-${dayUpper.toLowerCase()}`}
+                      type="button"
+                      onClick={() =>
+                        onChangeFilters({
+                          ...filters,
+                          dayOfWeek: isSelected ? 'ALL' : dayUpper,
+                        })
+                      }
+                      aria-pressed={isSelected}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap border ${
+                        isSelected
+                          ? 'bg-sky-700 text-white border-amber-400 shadow-2xs'
+                          : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {formatDayLabel(dayUpper)}
+                    </button>
+                  );
+                })}
+              </div>
 
-          <div className="h-5 w-px bg-slate-200 dark:bg-slate-700 shrink-0" aria-hidden="true" />
+              <div className="h-5 w-px bg-slate-200 dark:bg-slate-700 shrink-0" aria-hidden="true" />
 
-          {/* Pillole Giorno (Tutti | Sabato | Domenica + eventuali infrasettimanali) */}
-          <div className="flex items-center gap-1 shrink-0" role="group" aria-label="Filtra per giorno">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">
-              Giorno:
-            </span>
-            <button
-              id="pill-day-all"
-              type="button"
-              onClick={() => onChangeFilters({ ...filters, dayOfWeek: 'ALL' })}
-              aria-pressed={activeDayOfWeek === 'ALL'}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap border ${
-                activeDayOfWeek === 'ALL'
-                  ? 'bg-slate-900 dark:bg-sky-600 text-white border-slate-900 dark:border-sky-500 shadow-2xs'
-                  : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-700'
-              }`}
-            >
-              Tutti
-            </button>
-            {availableDaysOfWeek.map(dayUpper => {
-              const isSelected = activeDayOfWeek === dayUpper;
-              return (
+              {/* Filtro Rapido Prossime 24h / 48h */}
+              <div className="flex items-center gap-1 shrink-0" role="group" aria-label="Filtro prossime ore">
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">
+                  <Clock className="w-3 h-3 text-sky-600 dark:text-sky-400" />
+                  <span>Ore:</span>
+                </span>
                 <button
-                  key={dayUpper}
-                  id={`pill-day-${dayUpper.toLowerCase()}`}
+                  id="btn-quick-filter-24h"
                   type="button"
-                  onClick={() =>
-                    onChangeFilters({
-                      ...filters,
-                      dayOfWeek: isSelected ? 'ALL' : dayUpper,
-                    })
-                  }
-                  aria-pressed={isSelected}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap border ${
-                    isSelected
+                  onClick={() => handleTimeWindowChange('24h')}
+                  aria-pressed={activeTimeWindow === '24h'}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap border tabular-nums ${
+                    activeTimeWindow === '24h'
                       ? 'bg-sky-700 text-white border-amber-400 shadow-2xs'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-700'
                   }`}
+                  title="Solo gare nelle prossime 24 ore"
                 >
-                  {formatDayLabel(dayUpper)}
+                  24h
                 </button>
-              );
-            })}
-          </div>
-
-          <div className="h-5 w-px bg-slate-200 dark:bg-slate-700 shrink-0" aria-hidden="true" />
-
-          {/* Filtro Rapido Prossime 24h / 48h */}
-          <div className="flex items-center gap-1 shrink-0" role="group" aria-label="Filtro prossime ore">
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">
-              <Clock className="w-3 h-3 text-sky-600 dark:text-sky-400" />
-              <span>Ore:</span>
-            </span>
-            <button
-              id="btn-quick-filter-24h"
-              type="button"
-              onClick={() => handleTimeWindowChange('24h')}
-              aria-pressed={activeTimeWindow === '24h'}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap border tabular-nums ${
-                activeTimeWindow === '24h'
-                  ? 'bg-sky-700 text-white border-amber-400 shadow-2xs'
-                  : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-700'
-              }`}
-              title="Solo gare nelle prossime 24 ore"
-            >
-              24h
-            </button>
-            <button
-              id="btn-quick-filter-48h"
-              type="button"
-              onClick={() => handleTimeWindowChange('48h')}
-              aria-pressed={activeTimeWindow === '48h'}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap border tabular-nums ${
-                activeTimeWindow === '48h'
-                  ? 'bg-sky-700 text-white border-amber-400 shadow-2xs'
-                  : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-700'
-              }`}
-              title="Solo gare nelle prossime 48 ore"
-            >
-              48h
-            </button>
-          </div>
-
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={handleReset}
-              className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 transition-colors cursor-pointer whitespace-nowrap shrink-0"
-              title="Ripristina tutti i filtri"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>Azzera</span>
-            </button>
-          )}
-        </div>
-
-        {/* Riga 2: Selettore rapido dinamico Categoria (Scrollabile orizzontalmente overflow-x-auto senza sovrapposizioni o tagli) */}
-        {categoryList.length > 0 && (
-          <div className="space-y-1.5 min-w-0 w-full">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Categoria ({categoryList.length})
-                </span>
-                {filters.campionato !== 'ALL' && (
-                  <span className="text-[11px] font-bold text-sky-700 dark:text-sky-300 truncate">
-                    · {filters.campionato}
-                  </span>
-                )}
+                <button
+                  id="btn-quick-filter-48h"
+                  type="button"
+                  onClick={() => handleTimeWindowChange('48h')}
+                  aria-pressed={activeTimeWindow === '48h'}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap border tabular-nums ${
+                    activeTimeWindow === '48h'
+                      ? 'bg-sky-700 text-white border-amber-400 shadow-2xs'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-slate-700'
+                  }`}
+                  title="Solo gare nelle prossime 48 ore"
+                >
+                  48h
+                </button>
               </div>
 
-              <div className="flex items-center gap-1 shrink-0">
-                {!wrapAllCategories && (canScrollCatLeft || canScrollCatRight) && (
-                  <div className="flex items-center gap-1 mr-1">
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                  title="Ripristina tutti i filtri"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Azzera</span>
+                </button>
+              )}
+            </div>
+
+            {/* Riga 2: Selettore rapido dinamico Categoria (Scrollabile orizzontalmente overflow-x-auto senza sovrapposizioni o tagli) */}
+            {categoryList.length > 0 && (
+              <div className="space-y-1.5 min-w-0 w-full">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Categoria ({categoryList.length})
+                    </span>
+                    {filters.campionato !== 'ALL' && (
+                      <span className="text-[11px] font-bold text-sky-700 dark:text-sky-300 truncate">
+                        · {filters.campionato}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    {!wrapAllCategories && (canScrollCatLeft || canScrollCatRight) && (
+                      <div className="flex items-center gap-1 mr-1">
+                        <button
+                          type="button"
+                          onClick={() => scrollCategories('left')}
+                          disabled={!canScrollCatLeft}
+                          aria-label="Scorri categorie a sinistra"
+                          title="Scorri a sinistra"
+                          className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-slate-700 disabled:opacity-35 cursor-pointer disabled:cursor-default transition"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => scrollCategories('right')}
+                          disabled={!canScrollCatRight}
+                          aria-label="Scorri categorie a destra"
+                          title="Scorri a destra"
+                          className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-slate-700 disabled:opacity-35 cursor-pointer disabled:cursor-default transition"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
                     <button
+                      id="btn-toggle-all-categories-wrap"
                       type="button"
-                      onClick={() => scrollCategories('left')}
-                      disabled={!canScrollCatLeft}
-                      aria-label="Scorri categorie a sinistra"
-                      title="Scorri a sinistra"
-                      className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-slate-700 disabled:opacity-35 cursor-pointer disabled:cursor-default transition"
+                      onClick={() => setWrapAllCategories(prev => !prev)}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800 hover:bg-sky-100 dark:hover:bg-sky-900/60 transition cursor-pointer whitespace-nowrap"
                     >
-                      <ChevronLeft className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => scrollCategories('right')}
-                      disabled={!canScrollCatRight}
-                      aria-label="Scorri categorie a destra"
-                      title="Scorri a destra"
-                      className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-slate-700 disabled:opacity-35 cursor-pointer disabled:cursor-default transition"
-                    >
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <span>{wrapAllCategories ? 'Riduci in una riga' : 'Mostra tutte'}</span>
                     </button>
                   </div>
-                )}
+                </div>
 
-                <button
-                  id="btn-toggle-all-categories-wrap"
-                  type="button"
-                  onClick={() => setWrapAllCategories(prev => !prev)}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800 hover:bg-sky-100 dark:hover:bg-sky-900/60 transition cursor-pointer whitespace-nowrap"
+                <div
+                  ref={categoryScrollRef}
+                  onScroll={updateCategoryScrollButtons}
+                  className={
+                    wrapAllCategories
+                      ? 'flex flex-wrap items-center gap-2 py-1 px-0.5 w-full min-w-0'
+                      : 'flex flex-nowrap items-center gap-2 overflow-x-auto thin-scrollbar py-1.5 px-0.5 pr-4 w-full max-w-full min-w-0 touch-pan-x overscroll-x-contain'
+                  }
+                  role="group"
+                  aria-label="Selettore rapido categoria"
                 >
-                  <span>{wrapAllCategories ? 'Riduci in una riga' : 'Mostra tutte'}</span>
-                </button>
-              </div>
-            </div>
-
-            <div
-              ref={categoryScrollRef}
-              onScroll={updateCategoryScrollButtons}
-              className={
-                wrapAllCategories
-                  ? 'flex flex-wrap items-center gap-2 py-1 px-0.5 w-full min-w-0'
-                  : 'flex flex-nowrap items-center gap-2 overflow-x-auto thin-scrollbar py-1.5 px-0.5 pr-4 w-full max-w-full min-w-0 touch-pan-x overscroll-x-contain'
-              }
-              role="group"
-              aria-label="Selettore rapido categoria"
-            >
-              <button
-                id="pill-category-all"
-                type="button"
-                onClick={() => onChangeFilters({ ...filters, campionato: 'ALL' })}
-                aria-pressed={filters.campionato === 'ALL'}
-                className={`flex-none px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap border ${
-                  filters.campionato === 'ALL'
-                    ? 'bg-sky-700 text-white border-amber-400 shadow-2xs'
-                    : 'bg-sky-50/70 dark:bg-slate-800 text-sky-900 dark:text-slate-200 border-sky-200/80 dark:border-slate-700 hover:bg-sky-100 dark:hover:bg-slate-700'
-                }`}
-              >
-                Tutte ({categoryList.length})
-              </button>
-              {categoryList.map(camp => {
-                const isSelected = filters.campionato === camp;
-                return (
                   <button
-                    key={camp}
+                    id="pill-category-all"
                     type="button"
-                    onClick={() =>
-                      onChangeFilters({
-                        ...filters,
-                        campionato: isSelected ? 'ALL' : camp,
-                      })
-                    }
-                    aria-pressed={isSelected}
+                    onClick={() => onChangeFilters({ ...filters, campionato: 'ALL' })}
+                    aria-pressed={filters.campionato === 'ALL'}
                     className={`flex-none px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap border ${
-                      isSelected
+                      filters.campionato === 'ALL'
                         ? 'bg-sky-700 text-white border-amber-400 shadow-2xs'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-300 hover:bg-sky-50 dark:hover:bg-slate-700'
+                        : 'bg-sky-50/70 dark:bg-slate-800 text-sky-900 dark:text-slate-200 border-sky-200/80 dark:border-slate-700 hover:bg-sky-100 dark:hover:bg-slate-700'
                     }`}
                   >
-                    {camp}
+                    Tutte ({categoryList.length})
                   </button>
-                );
-              })}
-            </div>
+                  {categoryList.map(camp => {
+                    const isSelected = filters.campionato === camp;
+                    return (
+                      <button
+                        key={camp}
+                        type="button"
+                        onClick={() =>
+                          onChangeFilters({
+                            ...filters,
+                            campionato: isSelected ? 'ALL' : camp,
+                          })
+                        }
+                        aria-pressed={isSelected}
+                        className={`flex-none px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap border ${
+                          isSelected
+                            ? 'bg-sky-700 text-white border-amber-400 shadow-2xs'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-300 hover:bg-sky-50 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        {camp}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* Expandable Filter Panel (Società, Date singole/intervallo, Ricerca predittiva) */}
-      {isExpanded && (
+      {viewMode !== 'tuttocampo' && isExpanded && (
         <div className="modern-popover-enter p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Club */}

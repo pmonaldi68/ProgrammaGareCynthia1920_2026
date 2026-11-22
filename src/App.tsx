@@ -22,6 +22,7 @@ import { MatchTable } from './components/MatchTable';
 import { ImpegnoCampiModal } from './components/ImpegnoCampiModal';
 import { MatchMapView } from './components/MatchMapView';
 import { MatchCalendarView } from './components/MatchCalendarView';
+import { TuttocampoWidgets } from './components/TuttocampoWidgets';
 import { WeeklyTimeline, WeeklySummaryStrip } from './components/WeeklyTimeline';
 import { MatchSkeleton } from './components/MatchSkeleton';
 import { PwaInstallPrompt } from './components/PwaInstallPrompt';
@@ -36,7 +37,7 @@ import { PecManagerModal } from './components/PecManagerModal';
 import { DEFAULT_PARTITE } from './data/defaultPartite';
 import { getPublicPartite, getDonBoscoPartite, detectPartitaClub } from './utils/donBoscoUtils';
 import { runWithViewTransition } from './utils/viewTransition';
-import { AlertCircle, FileCode, BellRing, X, Palette, GanttChart } from 'lucide-react';
+import { AlertCircle, FileCode, BellRing, X, Palette, GanttChart, Trophy } from 'lucide-react';
 
 const SAVED_FILTERS_KEY = 'cynthia_saved_filters_v1';
 
@@ -407,7 +408,9 @@ export default function App() {
         )}
 
         {/* Barra Statistiche Riepilogative */}
-        <StatsSummary partite={filteredPartite} totalAvailable={publicPartite.length} />
+        {viewMode !== 'tuttocampo' && (
+          <StatsSummary partite={filteredPartite} totalAvailable={publicPartite.length} />
+        )}
 
         {/* Barra Filtri (Selettore Vista Elenco/Impegno Campi, Pillole Rapide Scrollabili Luogo/Giorno/Categoria, Ricerca Predittiva) */}
         <FilterBar
@@ -428,8 +431,12 @@ export default function App() {
           onOpenPdfExport={() => setIsPdfModalOpen(true)}
         />
 
-        {/* Visualizzazione Partite: Skeleton Screen durante il fetch iniziale, altrimenti vista scelta */}
-        {isLoading ? (
+        {/* Visualizzazione Partite o Widget Classifiche Ufficiali */}
+        {viewMode === 'tuttocampo' ? (
+          <div className="view-transition-schedule">
+            <TuttocampoWidgets />
+          </div>
+        ) : isLoading ? (
           <MatchSkeleton viewMode={viewMode} count={6} />
         ) : filteredPartite.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-12 text-center shadow-xs my-6">
@@ -528,6 +535,18 @@ export default function App() {
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => {
+                runWithViewTransition(() => setViewMode('tuttocampo'));
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="text-slate-600 dark:text-slate-400 hover:text-sky-700 dark:hover:text-sky-300 hover:underline transition-colors flex items-center gap-1.5 font-semibold cursor-pointer"
+            >
+              <Trophy className="w-3.5 h-3.5 text-amber-500" />
+              <span>Risultati & Classifiche</span>
+            </button>
+            <span aria-hidden="true" className="text-slate-300 dark:text-slate-700">·</span>
             <button
               type="button"
               onClick={() => setIsPdfModalOpen(true)}
